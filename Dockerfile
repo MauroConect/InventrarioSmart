@@ -68,11 +68,16 @@ RUN mkdir -p /var/www/storage/framework/{sessions,views,cache} && \
 
 WORKDIR /var/www
 
-# Copiar archivos de la aplicación
-COPY --chown=www:www . /var/www
+# Copiar archivos de la aplicación (como root primero)
+COPY . /var/www
 
 # Copiar assets compilados desde el stage de build
-COPY --from=node-builder --chown=www:www /app/public/build /var/www/public/build
+COPY --from=node-builder /app/public/build /var/www/public/build
+
+# Asegurar permisos correctos antes de cambiar de usuario
+RUN chown -R www:www /var/www && \
+    chmod -R 755 /var/www && \
+    chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
 # Cambiar a usuario www
 USER www

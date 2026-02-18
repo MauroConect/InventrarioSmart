@@ -24,8 +24,8 @@ services:
 
   webserver:
     ports:
-      - "80:80"
-      - "443:443"
+      - "8000:80"  # Puerto interno, nginx del sistema maneja el 80
+      # - "443:443"  # SSL se maneja con certbot en nginx del sistema
     volumes:
       - ./public:/var/www/public:ro
       - ./docker/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
