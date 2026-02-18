@@ -1,62 +1,85 @@
-FROM php:8.2-fpm
+# ============================================
+# STAGE 1: Build - Compilar assets con Node.js
+# ============================================
+FROM node:20-alpine AS node-builder
 
-# Set working directory
-WORKDIR /var/www
+WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
+# Copiar solo archivos necesarios para npm install
+COPY package.json package-lock.json ./
+
+# Instalar dependencias (solo producción si es posible, pero necesitamos devDependencies para build)
+RUN npm ci --prefer-offline --no-audit --progress=false
+
+# Copiar archivos fuente
+COPY vite.config.js postcss.config.js tailwind.config.js ./
+COPY resources ./resources
+
+# Compilar assets para producción
+RUN npm run build
+
+# ============================================
+# STAGE 2: PHP Runtime - Solo PHP, sin Node.js
+# ============================================
+FROM php:8.2-fpm-alpine
+
+# Instalar solo dependencias esenciales del sistema
+RUN apk add --no-cache \
+    libpng \
+    libjpeg-turbo \
+    freetype \
+    libzip \
+    oniguruma \
+    libxml2 \
+    && apk add --no-cache --virtual .build-deps \
+    $PHPIZE_DEPS \
     libpng-dev \
-    libjpeg62-turbo-dev \
-    libfreetype6-dev \
-    locales \
-    zip \
-    jpegoptim optipng pngquant gifsicle \
-    vim \
-    unzip \
-    git \
-    curl \
+    libjpeg-turbo-dev \
+    freetype-dev \
     libzip-dev \
-    libonig-dev \
+    oniguruma-dev \
     libxml2-dev \
-    pkg-config \
-    gnupg \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+    pdo_mysql \
+    mbstring \
+    zip \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    && apk del .build-deps \
+    && rm -rf /var/cache/apk/*
 
-# Install Node.js 20.x
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath && \
-    docker-php-ext-configure gd --with-freetype --with-jpeg && \
-    docker-php-ext-install gd
-
-# Install Composer
+# Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Create user for Laravel application
-RUN groupadd -g 1000 www && \
-    useradd -u 1000 -ms /bin/bash -g www www
+# Crear usuario para Laravel
+RUN addgroup -g 1000 www && \
+    adduser -u 1000 -G www -s /bin/sh -D www
 
-# Set permissions for storage and bootstrap/cache
+# Crear directorios necesarios
 RUN mkdir -p /var/www/storage/framework/{sessions,views,cache} && \
     mkdir -p /var/www/storage/logs && \
     mkdir -p /var/www/bootstrap/cache
 
-# Copy application files
+WORKDIR /var/www
+
+# Copiar archivos de la aplicación
 COPY --chown=www:www . /var/www
 
-# Change to www user
+# Copiar assets compilados desde el stage de build
+COPY --from=node-builder --chown=www:www /app/public/build /var/www/public/build
+
+# Cambiar a usuario www
 USER www
 
-# Configure Composer
+# Configurar Composer para producción
 RUN composer global config process-timeout 600 && \
     composer global config preferred-install dist
 
-# Expose port 9000
+# Exponer puerto
 EXPOSE 9000
 
-# Start php-fpm
+# Comando por defecto
 CMD ["php-fpm"]

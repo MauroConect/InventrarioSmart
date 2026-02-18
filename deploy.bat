@@ -61,7 +61,13 @@ echo.
 
 REM Construir y levantar contenedores
 echo [INFO] Construyendo y levantando contenedores Docker...
-docker-compose up -d --build
+if "%ENVIRONMENT%"=="production" (
+    echo [INFO] Usando configuracion de produccion (assets se compilan en el build)...
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+) else (
+    echo [INFO] Usando configuracion de desarrollo...
+    docker-compose -f docker-compose.dev.yml up -d --build
+)
 if %errorlevel% neq 0 (
     echo [ERROR] Error al construir o levantar contenedores
     pause
@@ -76,7 +82,11 @@ echo.
 
 REM Instalar dependencias de Composer
 echo [INFO] Instalando dependencias de PHP (Composer)...
-docker-compose exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader
+if "%ENVIRONMENT%"=="production" (
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+) else (
+    docker-compose -f docker-compose.dev.yml exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader
+)
 if %errorlevel% neq 0 (
     echo [ERROR] Error al instalar dependencias de Composer
     pause
@@ -86,12 +96,20 @@ echo.
 
 REM Generar clave de aplicación
 echo [INFO] Generando clave de aplicacion...
-docker-compose exec -T app php artisan key:generate
+if "%ENVIRONMENT%"=="production" (
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app php artisan key:generate
+) else (
+    docker-compose -f docker-compose.dev.yml exec -T app php artisan key:generate
+)
 echo.
 
 REM Ejecutar migraciones
 echo [INFO] Ejecutando migraciones de base de datos...
-docker-compose exec -T app php artisan migrate --force
+if "%ENVIRONMENT%"=="production" (
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app php artisan migrate --force
+) else (
+    docker-compose -f docker-compose.dev.yml exec -T app php artisan migrate --force
+)
 if %errorlevel% neq 0 (
     echo [ERROR] Error al ejecutar migraciones
     pause
@@ -101,41 +119,46 @@ echo.
 
 REM Crear enlace simbólico para storage
 echo [INFO] Creando enlace simbolico para storage...
-docker-compose exec -T app php artisan storage:link
-echo.
-
-REM Instalar dependencias de Node.js
-echo [INFO] Instalando dependencias de Node.js...
-docker-compose exec -T app npm install
-if %errorlevel% neq 0 (
-    echo [ERROR] Error al instalar dependencias de Node.js
-    pause
-    exit /b 1
+if "%ENVIRONMENT%"=="production" (
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app php artisan storage:link
+) else (
+    docker-compose -f docker-compose.dev.yml exec -T app php artisan storage:link
 )
 echo.
 
-REM Compilar assets
-echo [INFO] Compilando assets...
-docker-compose exec -T app npm run build
-if %errorlevel% neq 0 (
-    echo [ERROR] Error al compilar assets
-    pause
-    exit /b 1
+REM En producción, los assets ya se compilaron durante el build del Dockerfile
+REM Solo compilar en desarrollo si es necesario
+if not "%ENVIRONMENT%"=="production" (
+    echo [INFO] Instalando dependencias de Node.js (solo desarrollo)...
+    docker-compose -f docker-compose.dev.yml exec -T app npm install --prefer-offline --no-audit
+    if %errorlevel% neq 0 (
+        echo [ADVERTENCIA] Error al instalar dependencias de Node.js, continuando...
+    )
+    echo.
+    echo [INFO] Para compilar assets en desarrollo, ejecuta: docker-compose -f docker-compose.dev.yml exec app npm run dev
+    echo.
+) else (
+    echo [INFO] Assets compilados durante el build del Dockerfile (produccion optimizada)
+    echo.
 )
-echo.
 
 REM Optimizar Laravel para producción
 if "%ENVIRONMENT%"=="production" (
     echo [INFO] Optimizando Laravel para produccion...
-    docker-compose exec -T app php artisan config:cache
-    docker-compose exec -T app php artisan route:cache
-    docker-compose exec -T app php artisan view:cache
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app php artisan config:cache
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app php artisan route:cache
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app php artisan view:cache
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app php artisan event:cache
     echo.
 )
 
 REM Verificar estado
 echo [INFO] Verificando estado de los contenedores...
-docker-compose ps
+if "%ENVIRONMENT%"=="production" (
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml ps
+) else (
+    docker-compose -f docker-compose.dev.yml ps
+)
 echo.
 
 echo ================================================

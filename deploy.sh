@@ -56,11 +56,21 @@ fi
 
 # Detener contenedores existentes
 print_message "Deteniendo contenedores existentes..."
-docker-compose down
+if [ "$ENVIRONMENT" = "production" ]; then
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
+else
+    docker-compose -f docker-compose.dev.yml down
+fi
 
 # Construir y levantar contenedores
 print_message "Construyendo y levantando contenedores Docker..."
-docker-compose up -d --build
+if [ "$ENVIRONMENT" = "production" ]; then
+    print_message "Usando configuración de producción (assets se compilan en el build)..."
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+else
+    print_message "Usando configuración de desarrollo..."
+    docker-compose -f docker-compose.dev.yml up -d --build
+fi
 
 # Esperar a que la base de datos esté lista
 print_message "Esperando a que la base de datos esté lista..."
@@ -68,48 +78,60 @@ sleep 15
 
 # Instalar dependencias de Composer
 print_message "Instalando dependencias de PHP (Composer)..."
-docker-compose exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader
+if [ "$ENVIRONMENT" = "production" ]; then
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+else
+    docker-compose -f docker-compose.dev.yml exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader
+fi
 
 # Generar clave de aplicación si no existe
-if ! docker-compose exec -T app php artisan key:generate --show &> /dev/null; then
+if [ "$ENVIRONMENT" = "production" ]; then
+    COMPOSE_CMD="docker-compose -f docker-compose.yml -f docker-compose.prod.yml"
+else
+    COMPOSE_CMD="docker-compose -f docker-compose.dev.yml"
+fi
+
+if ! $COMPOSE_CMD exec -T app php artisan key:generate --show &> /dev/null; then
     print_message "Generando clave de aplicación..."
-    docker-compose exec -T app php artisan key:generate
+    $COMPOSE_CMD exec -T app php artisan key:generate
 else
     print_message "Clave de aplicación ya existe"
 fi
 
 # Ejecutar migraciones
 print_message "Ejecutando migraciones de base de datos..."
-docker-compose exec -T app php artisan migrate --force
+$COMPOSE_CMD exec -T app php artisan migrate --force
 
 # Crear enlace simbólico para storage
 print_message "Creando enlace simbólico para storage..."
-docker-compose exec -T app php artisan storage:link || true
+$COMPOSE_CMD exec -T app php artisan storage:link || true
 
-# Instalar dependencias de Node.js
-print_message "Instalando dependencias de Node.js..."
-docker-compose exec -T app npm install
-
-# Compilar assets
-if [ "$ENVIRONMENT" = "production" ]; then
-    print_message "Compilando assets para producción..."
-    docker-compose exec -T app npm run build
+# En producción, los assets ya se compilaron durante el build del Dockerfile
+# Solo compilar en desarrollo si es necesario
+if [ "$ENVIRONMENT" != "production" ]; then
+    print_message "Instalando dependencias de Node.js (solo desarrollo)..."
+    docker-compose -f docker-compose.dev.yml exec -T app npm install --prefer-offline --no-audit || print_warning "Error al instalar dependencias de Node.js, continuando..."
+    print_message "Para compilar assets en desarrollo, ejecuta: docker-compose -f docker-compose.dev.yml exec app npm run dev"
 else
-    print_message "Compilando assets para desarrollo..."
-    docker-compose exec -T app npm run build
+    print_message "Assets compilados durante el build del Dockerfile (producción optimizada)"
 fi
 
 # Optimizar Laravel para producción
 if [ "$ENVIRONMENT" = "production" ]; then
     print_message "Optimizando Laravel para producción..."
-    docker-compose exec -T app php artisan config:cache
-    docker-compose exec -T app php artisan route:cache
-    docker-compose exec -T app php artisan view:cache
+    $COMPOSE_CMD exec -T app php artisan config:cache
+    $COMPOSE_CMD exec -T app php artisan route:cache
+    $COMPOSE_CMD exec -T app php artisan view:cache
+    $COMPOSE_CMD exec -T app php artisan event:cache
 fi
 
 # Verificar estado de los contenedores
 print_message "Verificando estado de los contenedores..."
-docker-compose ps
+if [ "$ENVIRONMENT" = "production" ]; then
+    docker-compose -f docker-compose.yml -f docker-compose.prod.yml ps
+else
+    docker-compose -f docker-compose.dev.yml ps
+fi
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
