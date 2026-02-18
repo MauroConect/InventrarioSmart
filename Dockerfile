@@ -9,9 +9,10 @@ WORKDIR /app
 COPY package.json ./
 
 # Instalar dependencias
+# Usar --legacy-peer-deps para resolver conflictos de versiones
 # Si tienes package-lock.json, cópialo antes de ejecutar este build
 # Si no lo tienes, npm install lo generará automáticamente
-RUN npm install --prefer-offline --no-audit --progress=false
+RUN npm install --prefer-offline --no-audit --progress=false --legacy-peer-deps
 
 # Copiar archivos fuente
 COPY vite.config.js postcss.config.js tailwind.config.js ./
