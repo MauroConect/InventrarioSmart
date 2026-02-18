@@ -14,7 +14,7 @@ services:
     volumes:
       - ./storage:/var/www/storage
       - ./bootstrap/cache:/var/www/bootstrap/cache
-      - ./docker/php/prod.ini:/usr/local/etc/php/conf.d/local.ini
+      - ./docker/php/prod.ini:/usr/local/etc/php/conf.d/prod.ini
     # Límites más estrictos en producción
     deploy:
       resources:
