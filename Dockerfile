@@ -5,11 +5,13 @@ FROM node:20-alpine AS node-builder
 
 WORKDIR /app
 
-# Copiar solo archivos necesarios para npm install
-COPY package.json package-lock.json ./
+# Copiar package.json
+COPY package.json ./
 
-# Instalar dependencias (solo producción si es posible, pero necesitamos devDependencies para build)
-RUN npm ci --prefer-offline --no-audit --progress=false
+# Instalar dependencias
+# Si tienes package-lock.json, cópialo antes de ejecutar este build
+# Si no lo tienes, npm install lo generará automáticamente
+RUN npm install --prefer-offline --no-audit --progress=false
 
 # Copiar archivos fuente
 COPY vite.config.js postcss.config.js tailwind.config.js ./
