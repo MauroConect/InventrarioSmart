@@ -9,6 +9,8 @@ services:
       - APP_ENV=production
       - APP_DEBUG=false
       - APP_OPTIMIZE=true
+      # Asegurar que las credenciales de DB coincidan con el servicio db
+      - DB_PASSWORD=${DB_PASSWORD:-root}
     command: php-fpm
     # Deshabilitar volúmenes de desarrollo en producción
     volumes:
@@ -38,8 +40,11 @@ services:
 
   db:
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-changeme}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-changeme}
+      # Usar las mismas credenciales que el archivo base para mantener consistencia
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_USER: ${DB_USERNAME:-inventario_user}
+      MYSQL_DATABASE: ${DB_DATABASE:-inventario_db}
     ports: []  # No exponer MySQL en producción por defecto
     # Límites más estrictos
     deploy:
