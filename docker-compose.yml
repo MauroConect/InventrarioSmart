@@ -48,7 +48,8 @@ services:
     networks:
       - inventario-network
     depends_on:
-      - app
+      app:
+        condition: service_started
     # Límites de recursos
     deploy:
       resources:
