@@ -1,4 +1,4 @@
-# Dockerfile para desarrollo (con Node.js incluido)
+# Dockerfile para desarrollo - Solo Laravel/Blade (sin React/Vite)
 FROM php:8.2-fpm
 
 # Set working directory
@@ -20,11 +20,6 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Install Node.js 20.x (solo para desarrollo)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath && \
@@ -53,8 +48,8 @@ USER www
 RUN composer global config process-timeout 600 && \
     composer global config preferred-install dist
 
-# Expose ports
-EXPOSE 9000 5173
+# Expose port
+EXPOSE 9000
 
 # Start php-fpm
 CMD ["php-fpm"]

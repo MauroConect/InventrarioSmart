@@ -1,32 +1,7 @@
-# ============================================
-# STAGE 1: Build - Compilar assets con Node.js
-# ============================================
-FROM node:20-alpine AS node-builder
-
-WORKDIR /app
-
-# Copiar package.json
-COPY package.json ./
-
-# Instalar dependencias
-# Usar --legacy-peer-deps para resolver conflictos de versiones
-# Si tienes package-lock.json, cópialo antes de ejecutar este build
-# Si no lo tienes, npm install lo generará automáticamente
-RUN npm install --prefer-offline --no-audit --progress=false --legacy-peer-deps
-
-# Copiar archivos fuente
-COPY vite.config.js postcss.config.js tailwind.config.js ./
-COPY resources ./resources
-
-# Compilar assets para producción
-RUN npm run build
-
-# ============================================
-# STAGE 2: PHP Runtime - Solo PHP, sin Node.js
-# ============================================
+# Dockerfile para Producción - Solo Laravel/Blade (sin React/Vite)
 FROM php:8.2-fpm-alpine
 
-# Instalar solo dependencias esenciales del sistema
+# Instalar dependencias del sistema
 RUN apk add --no-cache \
     libpng \
     libjpeg-turbo \
@@ -68,11 +43,8 @@ RUN mkdir -p /var/www/storage/framework/{sessions,views,cache} && \
 
 WORKDIR /var/www
 
-# Copiar archivos de la aplicación (como root primero)
+# Copiar archivos de la aplicación
 COPY . /var/www
-
-# Copiar assets compilados desde el stage de build
-COPY --from=node-builder /app/public/build /var/www/public/build
 
 # Asegurar permisos correctos antes de cambiar de usuario
 RUN chown -R www:www /var/www && \

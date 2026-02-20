@@ -147,6 +147,7 @@
         @yield('content')
     @endauth
 
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
         // Configurar Axios para usar CSRF token
         axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -154,7 +155,6 @@
         axios.defaults.headers.common['Content-Type'] = 'application/json';
         axios.defaults.baseURL = '/api';
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     @stack('scripts')
 </body>
 </html>

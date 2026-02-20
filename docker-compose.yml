@@ -1,6 +1,5 @@
 # Docker Compose para Producción (optimizado)
-# Los assets se compilan durante el build del Dockerfile
-# No se necesita Node.js en runtime, solo PHP
+# Solo Laravel/Blade - No se necesita Node.js ni compilación de assets
 
 services:
   app:
@@ -10,7 +9,6 @@ services:
     container_name: inventario_app
     restart: unless-stopped
     working_dir: /var/www
-    # No exponer puerto 5173 en producción (solo se usa en dev)
     volumes:
       - ./storage:/var/www/storage
       - ./bootstrap/cache:/var/www/bootstrap/cache
