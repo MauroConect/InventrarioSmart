@@ -4,7 +4,9 @@ Sistema de gestión de inventario desarrollado con **Laravel** y **Blade**, dock
 
 ## 🚀 Despliegue Rápido
 
-### 1. Configurar entorno
+### Opción 1: Script Automático (Recomendado para Linux)
+
+#### 1. Configurar entorno
 ```bash
 cp .env.example .env
 ```
@@ -19,59 +21,77 @@ DB_PASSWORD=root
 APP_DEBUG=false
 ```
 
-### 2. Construir y levantar contenedores
+#### 2. Hacer ejecutables los scripts (solo la primera vez)
+```bash
+chmod +x deploy.sh deploy-produccion.sh crear-usuario-admin.sh
+```
+
+#### 3. Desplegar
+```bash
+# Despliegue completo (producción o desarrollo)
+./deploy.sh produccion
+
+# O usar el script rápido de producción
+./deploy-produccion.sh
+```
+
+#### 4. Crear usuario administrador
+```bash
+# Usuario por defecto: admin@inventario.com / password123
+./crear-usuario-admin.sh
+
+# O personalizado
+./crear-usuario-admin.sh tu-email@ejemplo.com tu-password
+```
+
+#### 5. Acceder a la aplicación
+Abre tu navegador en: **http://localhost:8000**
+
+---
+
+### Opción 2: Despliegue Manual
+
+#### 1. Configurar entorno
+```bash
+cp .env.example .env
+```
+
+Edita `.env` y asegúrate de que tenga:
+```env
+DB_HOST=db
+DB_PORT=3306
+DB_DATABASE=inventario_db
+DB_USERNAME=inventario_user
+DB_PASSWORD=root
+APP_DEBUG=false
+```
+
+#### 2. Construir y levantar contenedores
 ```bash
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml build
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-### 3. Instalar dependencias y configurar
+#### 3. Instalar dependencias y configurar
 ```bash
 # Instalar dependencias de Composer
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 
-# Crear .env en el contenedor si no existe
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app sh -c "if [ ! -f /var/www/.env ]; then cp /var/www/.env.example /var/www/.env 2>/dev/null || touch /var/www/.env; fi"
-
-# Generar clave de aplicación
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan key:generate --force
-
-# Copiar .env del contenedor al host (para sincronizar)
-docker cp inventario_app:/var/www/.env .env
-
 # Ejecutar migraciones
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan migrate --force
-
-# Crear enlace simbólico de storage
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan storage:link
 
 # Limpiar cachés
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan config:clear
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan cache:clear
 ```
 
-### 4. Crear usuario administrador
+#### 4. Crear usuario administrador
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan tinker
+./crear-usuario-admin.sh
 ```
 
-Dentro de tinker (ejecuta código PHP, NO comandos artisan):
-```php
-\App\Models\User::create([
-    'name' => 'Administrador',
-    'email' => 'admin@inventario.com',
-    'password' => bcrypt('password123')
-]);
-```
-
-Para salir de tinker: escribe `exit` o presiona `Ctrl+C`
-
-### 5. Acceder a la aplicación
+#### 5. Acceder a la aplicación
 Abre tu navegador en: **http://localhost:8000**
-
-**Credenciales:**
-- Email: `admin@inventario.com`
-- Password: `password123`
 
 ## 🔧 Acceder al Contenedor
 
@@ -112,14 +132,26 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php art
 # Ver logs
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
 
+# Ver logs solo del app
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f app
+
 # Detener contenedores
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
 
 # Reiniciar contenedores
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml restart
 
+# Reiniciar solo el app
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml restart app
+
 # Ejecutar comandos artisan
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan <comando>
+
+# Ver estado de contenedores
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml ps
+
+# Acceder al shell del contenedor
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app sh
 ```
 
 ## 🔧 Solución de Problemas
