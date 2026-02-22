@@ -1,8 +1,6 @@
 # Docker Compose para Producción - Override
 # Uso: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
-version: '3.8'
-
 services:
   app:
     environment:
@@ -17,6 +15,8 @@ services:
       - ./storage:/var/www/storage
       - ./bootstrap/cache:/var/www/bootstrap/cache
       - ./docker/php/prod.ini:/usr/local/etc/php/conf.d/prod.ini
+      - ./.env:/var/www/.env
+      - ./resources:/var/www/resources
     # Límites más estrictos en producción
     deploy:
       resources:

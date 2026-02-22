@@ -1,163 +1,162 @@
 # 🏪 Sistema de Control de Inventario Inteligente
 
-Sistema completo de gestión de inventario desarrollado con **Laravel** (Backend) y **React** (Frontend), dockerizado para fácil despliegue.
+Sistema de gestión de inventario desarrollado con **Laravel** y **Blade**, dockerizado para fácil despliegue.
 
-[![Laravel](https://img.shields.io/badge/Laravel-10.x-red.svg)](https://laravel.com)
-[![React](https://img.shields.io/badge/React-18.x-blue.svg)](https://reactjs.org)
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com)
-[![PHP](https://img.shields.io/badge/PHP-8.2-purple.svg)](https://www.php.net)
+## 🚀 Despliegue Rápido
 
-## Características
-
-- ✅ **Apertura y Cierre de Caja**: Control completo de cajas con apertura y cierre diario
-- ✅ **Control de Stock**: Gestión de inventario con movimientos de entrada, salida y ajustes
-- ✅ **Gestión de Clientes**: CRUD completo de clientes
-- ✅ **Cuenta Corriente**: Control de cuentas corrientes con movimientos
-- ✅ **Deudas de Clientes**: Gestión de deudas con seguimiento de pagos
-- ✅ **Proveedores**: Administración de proveedores
-- ✅ **Categorías de Productos**: Organización por categorías
-- ✅ **Ventas**: Sistema completo de ventas con múltiples formas de pago
-- ✅ **Dashboard Interactivo**: Gráficos y estadísticas en tiempo real
-- ✅ **Gestión de Cheques**: Control de cheques recibidos y emitidos
-- ✅ **Reportes**: Visualización de datos con gráficos interactivos
-
-## Requisitos
-
-- Docker
-- Docker Compose
-
-## Instalación
-
-1. Clonar el repositorio:
-```bash
-git clone <repository-url>
-cd InventarioInteligente
-```
-
-2. Copiar el archivo de entorno:
+### 1. Configurar entorno
 ```bash
 cp .env.example .env
 ```
 
-3. Construir y levantar los contenedores:
-```bash
-docker-compose up -d --build
-```
-
-4. Instalar dependencias de PHP:
-```bash
-docker-compose exec app composer install
-```
-
-5. Generar clave de aplicación:
-```bash
-docker-compose exec app php artisan key:generate
-```
-
-6. Ejecutar migraciones:
-```bash
-docker-compose exec app php artisan migrate
-```
-
-7. Instalar dependencias de Node.js:
-```bash
-docker-compose exec app npm install
-```
-
-8. Compilar assets:
-```bash
-docker-compose exec app npm run build
-```
-
-## Configuración
-
-Editar el archivo `.env` con las configuraciones necesarias:
-
+Edita `.env` y asegúrate de que tenga:
 ```env
-DB_CONNECTION=mysql
 DB_HOST=db
 DB_PORT=3306
 DB_DATABASE=inventario_db
 DB_USERNAME=inventario_user
 DB_PASSWORD=root
+APP_DEBUG=false
 ```
 
-## Uso
-
-Una vez levantados los contenedores, acceder a:
-- Frontend: http://localhost:8000
-- Base de datos: localhost:3306
-
-## Comandos útiles
-
-- Ver logs: `docker-compose logs -f`
-- Detener contenedores: `docker-compose down`
-- Reiniciar contenedores: `docker-compose restart`
-- Ejecutar comandos artisan: `docker-compose exec app php artisan <comando>`
-
-## Estructura del Proyecto
-
-```
-InventarioInteligente/
-├── app/
-│   ├── Http/Controllers/  # Controladores API
-│   └── Models/            # Modelos Eloquent
-├── database/
-│   └── migrations/        # Migraciones de base de datos
-├── resources/
-│   ├── js/
-│   │   ├── components/    # Componentes React
-│   │   ├── pages/         # Páginas React
-│   │   └── context/       # Contextos React
-│   └── views/             # Vistas Blade
-├── routes/
-│   ├── api.php           # Rutas API
-│   └── web.php           # Rutas Web
-└── docker/               # Configuración Docker
+### 2. Construir y levantar contenedores
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml build
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-## API Endpoints
+### 3. Instalar dependencias y configurar
+```bash
+# Instalar dependencias de Composer
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 
-### Autenticación
-- `POST /api/login` - Iniciar sesión
-- `POST /api/logout` - Cerrar sesión
-- `GET /api/user` - Usuario actual
+# Crear .env en el contenedor si no existe
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app sh -c "if [ ! -f /var/www/.env ]; then cp /var/www/.env.example /var/www/.env 2>/dev/null || touch /var/www/.env; fi"
 
-### Categorías
-- `GET /api/categorias` - Listar categorías
-- `POST /api/categorias` - Crear categoría
-- `PUT /api/categorias/{id}` - Actualizar categoría
-- `DELETE /api/categorias/{id}` - Eliminar categoría
+# Generar clave de aplicación
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan key:generate --force
 
-### Productos
-- `GET /api/productos` - Listar productos
-- `POST /api/productos` - Crear producto
-- `PUT /api/productos/{id}` - Actualizar producto
-- `DELETE /api/productos/{id}` - Eliminar producto
+# Copiar .env del contenedor al host (para sincronizar)
+docker cp inventario_app:/var/www/.env .env
 
-### Clientes
-- `GET /api/clientes` - Listar clientes
-- `POST /api/clientes` - Crear cliente
-- `PUT /api/clientes/{id}` - Actualizar cliente
-- `DELETE /api/clientes/{id}` - Eliminar cliente
+# Ejecutar migraciones
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan migrate --force
 
-### Cajas
-- `GET /api/cajas` - Listar cajas
-- `POST /api/cajas` - Abrir caja
-- `POST /api/cajas/{id}/cerrar` - Cerrar caja
+# Crear enlace simbólico de storage
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan storage:link
 
-### Ventas
-- `GET /api/ventas` - Listar ventas
-- `POST /api/ventas` - Crear venta
+# Limpiar cachés
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan config:clear
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan cache:clear
+```
 
-## Desarrollo
+### 4. Crear usuario administrador
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan tinker
+```
 
-Para desarrollo con hot-reload:
+Dentro de tinker (ejecuta código PHP, NO comandos artisan):
+```php
+\App\Models\User::create([
+    'name' => 'Administrador',
+    'email' => 'admin@inventario.com',
+    'password' => bcrypt('password123')
+]);
+```
+
+Para salir de tinker: escribe `exit` o presiona `Ctrl+C`
+
+### 5. Acceder a la aplicación
+Abre tu navegador en: **http://localhost:8000**
+
+**Credenciales:**
+- Email: `admin@inventario.com`
+- Password: `password123`
+
+## 🔧 Acceder al Contenedor
+
+### Entrar al shell del contenedor
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app sh
+```
+
+### Ejecutar comandos artisan (FUERA de tinker)
+```bash
+# Limpiar cachés
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan config:clear
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan cache:clear
+
+# Ejecutar migraciones
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan migrate
+
+# Ver rutas
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan route:list
+```
+
+### Usar Tinker (para código PHP)
+```bash
+# Entrar a tinker
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan tinker
+
+# Dentro de tinker puedes ejecutar código PHP:
+# \App\Models\User::all()
+# \App\Models\User::where('email', 'admin@inventario.com')->first()
+# exit  (para salir)
+```
+
+**IMPORTANTE**: Tinker es para código PHP, NO para comandos artisan. Para comandos artisan, sal de tinker y ejecútalos directamente.
+
+## 📋 Comandos Útiles
 
 ```bash
-docker-compose exec app npm run dev
+# Ver logs
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
+
+# Detener contenedores
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
+
+# Reiniciar contenedores
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml restart
+
+# Ejecutar comandos artisan
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan <comando>
 ```
 
-## Licencia
+## 🔧 Solución de Problemas
 
-MIT
+### Error 500: "No application encryption key has been specified"
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan key:generate --force
+docker cp inventario_app:/var/www/.env .env
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan config:clear
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml restart app
+```
+
+### Error: "vendor/autoload.php not found"
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+```
+
+### Error: "Permission denied" en storage
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app sh -c "chown -R www:www /var/www/storage /var/www/bootstrap/cache && chmod -R 775 /var/www/storage /var/www/bootstrap/cache"
+```
+
+### Error: "Connection refused" a la base de datos
+Verifica en `.env` que `DB_HOST=db` (no `localhost`) y `DB_PORT=3306` (no `3307`)
+
+## 📦 Requisitos
+
+- Docker
+- Docker Compose
+
+## 🎯 Características
+
+- ✅ Gestión de Productos y Categorías
+- ✅ Control de Stock
+- ✅ Ventas con múltiples formas de pago
+- ✅ Gestión de Clientes y Proveedores
+- ✅ Apertura y Cierre de Cajas
+- ✅ Cuentas Corrientes
+- ✅ Gestión de Cheques
+- ✅ Dashboard con estadísticas

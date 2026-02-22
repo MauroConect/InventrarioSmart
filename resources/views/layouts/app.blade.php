@@ -149,11 +149,11 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
-        // Configurar Axios para usar CSRF token
+        // Configurar Axios para usar CSRF token y cookies
         axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         axios.defaults.headers.common['Accept'] = 'application/json';
         axios.defaults.headers.common['Content-Type'] = 'application/json';
-        axios.defaults.baseURL = '/api';
+        axios.defaults.withCredentials = true;
     </script>
     @stack('scripts')
 </body>

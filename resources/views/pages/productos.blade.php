@@ -200,16 +200,15 @@ function productos() {
             try {
                 this.loading = true;
                 this.error = '';
-                const token = localStorage.getItem('token');
                 const params = this.search ? { search: this.search } : {};
                 const response = await axios.get('/api/productos', {
                     params,
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    withCredentials: true
                 });
                 this.productos = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error:', error);
-                this.error = 'Error al cargar productos';
+                this.error = 'Error al cargar productos: ' + (error.response?.data?.message || error.message);
                 this.productos = [];
             } finally {
                 this.loading = false;
@@ -218,9 +217,8 @@ function productos() {
         
         async fetchCategorias() {
             try {
-                const token = localStorage.getItem('token');
                 const response = await axios.get('/api/categorias', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    withCredentials: true
                 });
                 this.categorias = response.data?.data || response.data || [];
             } catch (error) {
@@ -230,9 +228,8 @@ function productos() {
         
         async fetchProveedores() {
             try {
-                const token = localStorage.getItem('token');
                 const response = await axios.get('/api/proveedores', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    withCredentials: true
                 });
                 this.proveedores = response.data?.data || response.data || [];
             } catch (error) {
@@ -280,15 +277,14 @@ function productos() {
             try {
                 this.error = '';
                 this.success = '';
-                const token = localStorage.getItem('token');
                 if (this.editing) {
                     await axios.put(`/api/productos/${this.editing}`, this.formData, {
-                        headers: { 'Authorization': `Bearer ${token}` }
+                        withCredentials: true
                     });
                     this.success = 'Producto actualizado correctamente';
                 } else {
                     await axios.post('/api/productos', this.formData, {
-                        headers: { 'Authorization': `Bearer ${token}` }
+                        withCredentials: true
                     });
                     this.success = 'Producto creado correctamente';
                 }
@@ -305,9 +301,8 @@ function productos() {
         async remove(id) {
             if (!confirm('¿Está seguro de eliminar este producto?')) return;
             try {
-                const token = localStorage.getItem('token');
                 await axios.delete(`/api/productos/${id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    withCredentials: true
                 });
                 this.success = 'Producto eliminado correctamente';
                 await this.fetch();

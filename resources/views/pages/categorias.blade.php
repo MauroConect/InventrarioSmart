@@ -110,14 +110,13 @@ function categorias() {
         async fetch() {
             try {
                 this.loading = true;
-                const token = localStorage.getItem('token');
                 const response = await axios.get('/api/categorias', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    withCredentials: true
                 });
                 this.categorias = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error al cargar categorías:', error);
-                alert('Error al cargar categorías');
+                alert('Error al cargar categorías: ' + (error.response?.data?.message || error.message));
             } finally {
                 this.loading = false;
             }
@@ -143,35 +142,33 @@ function categorias() {
         
         async save() {
             try {
-                const token = localStorage.getItem('token');
                 if (this.editing) {
                     await axios.put(`/api/categorias/${this.editing}`, this.formData, {
-                        headers: { 'Authorization': `Bearer ${token}` }
+                        withCredentials: true
                     });
                 } else {
                     await axios.post('/api/categorias', this.formData, {
-                        headers: { 'Authorization': `Bearer ${token}` }
+                        withCredentials: true
                     });
                 }
                 await this.fetch();
                 this.closeModal();
             } catch (error) {
                 console.error('Error al guardar:', error);
-                alert('Error al guardar la categoría');
+                alert('Error al guardar la categoría: ' + (error.response?.data?.message || error.message));
             }
         },
         
         async remove(id) {
             if (!confirm('¿Está seguro de eliminar esta categoría?')) return;
             try {
-                const token = localStorage.getItem('token');
                 await axios.delete(`/api/categorias/${id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    withCredentials: true
                 });
                 await this.fetch();
             } catch (error) {
                 console.error('Error al eliminar:', error);
-                alert('Error al eliminar la categoría');
+                alert('Error al eliminar la categoría: ' + (error.response?.data?.message || error.message));
             }
         }
     }
