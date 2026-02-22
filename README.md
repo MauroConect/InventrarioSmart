@@ -180,6 +180,32 @@ docker exec -u root $CONTAINER_ID sh -c "chown -R www:www /var/www/storage /var/
 ### Error: "Connection refused" a la base de datos
 Verifica en `.env` que `DB_HOST=db` (no `localhost`) y `DB_PORT=3306` (no `3307`)
 
+### Error: "Unauthenticated" en producción después del login
+Este error ocurre cuando las cookies de sesión no se comparten correctamente. Solución:
+
+1. **Ejecutar el script de diagnóstico:**
+   ```bash
+   chmod +x fix-autenticacion-produccion.sh
+   ./fix-autenticacion-produccion.sh
+   ```
+
+2. **O manualmente, agregar a tu `.env`:**
+   ```env
+   # Reemplaza 'tu-dominio.com' con tu dominio real
+   SANCTUM_STATEFUL_DOMAINS=localhost,localhost:3000,localhost:8000,127.0.0.1,127.0.0.1:8000,::1,tu-dominio.com,www.tu-dominio.com
+   
+   # Si usas HTTPS:
+   SESSION_SECURE_COOKIE=true
+   SESSION_SAME_SITE=none
+   ```
+
+3. **Limpiar cachés:**
+   ```bash
+   docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan config:clear
+   docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app php artisan cache:clear
+   docker-compose -f docker-compose.yml -f docker-compose.prod.yml restart app
+   ```
+
 ## 📦 Requisitos
 
 - Docker
