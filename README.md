@@ -171,7 +171,10 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app compose
 
 ### Error: "Permission denied" en storage
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec app sh -c "chown -R www:www /var/www/storage /var/www/bootstrap/cache && chmod -R 775 /var/www/storage /var/www/bootstrap/cache"
+# Obtener el ID del contenedor y ejecutar como root
+CONTAINER_ID=$(docker-compose -f docker-compose.yml -f docker-compose.prod.yml ps -q app)
+docker exec -u root $CONTAINER_ID sh -c "chmod -R 775 /var/www/storage /var/www/bootstrap/cache"
+docker exec -u root $CONTAINER_ID sh -c "chown -R www:www /var/www/storage /var/www/bootstrap/cache"
 ```
 
 ### Error: "Connection refused" a la base de datos

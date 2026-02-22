@@ -37,8 +37,12 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app comp
 
 # Permisos
 echo "🔐 Configurando permisos..."
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app chown -R www:www /var/www/storage /var/www/bootstrap/cache
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml exec -T app chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+# Ejecutar como root usando docker exec directamente
+CONTAINER_NAME=$(docker-compose -f docker-compose.yml -f docker-compose.prod.yml ps -q app)
+if [ ! -z "$CONTAINER_NAME" ]; then
+    docker exec -u root $CONTAINER_NAME sh -c "chmod -R 775 /var/www/storage /var/www/bootstrap/cache || true"
+    docker exec -u root $CONTAINER_NAME sh -c "chown -R www:www /var/www/storage /var/www/bootstrap/cache || true"
+fi
 
 # Migraciones
 echo "🗄️  Ejecutando migraciones..."

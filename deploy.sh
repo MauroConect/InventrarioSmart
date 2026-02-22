@@ -104,8 +104,14 @@ print_info "✓ Dependencias instaladas correctamente"
 
 # Paso 6: Configurar permisos
 print_info "Configurando permisos..."
-$COMPOSE_CMD exec -T app chown -R www:www /var/www/storage /var/www/bootstrap/cache
-$COMPOSE_CMD exec -T app chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+# Para volúmenes montados, ejecutar como root usando docker exec directamente
+CONTAINER_NAME=$($COMPOSE_CMD ps -q app)
+if [ ! -z "$CONTAINER_NAME" ]; then
+    docker exec -u root $CONTAINER_NAME sh -c "chmod -R 775 /var/www/storage /var/www/bootstrap/cache || true"
+    docker exec -u root $CONTAINER_NAME sh -c "chown -R www:www /var/www/storage /var/www/bootstrap/cache || true"
+else
+    print_warning "No se pudo obtener el nombre del contenedor, saltando configuración de permisos"
+fi
 
 # Paso 7: Ejecutar migraciones
 print_info "Ejecutando migraciones..."
