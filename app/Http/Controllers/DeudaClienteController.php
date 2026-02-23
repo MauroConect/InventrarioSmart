@@ -29,6 +29,9 @@ class DeudaClienteController extends Controller
             'cliente_id' => 'required|exists:clientes,id',
             'venta_id' => 'nullable|exists:ventas,id',
             'monto_total' => 'required|numeric|min:0.01',
+            'cuotas_originales' => 'nullable|integer|min:1',
+            'cuotas_pagadas' => 'nullable|integer|min:0',
+            'cuotas_restantes' => 'nullable|integer|min:0',
             'fecha_vencimiento' => 'nullable|date',
             'observaciones' => 'nullable|string',
         ]);
@@ -36,6 +39,30 @@ class DeudaClienteController extends Controller
         $validated['monto_pagado'] = 0;
         $validated['monto_pendiente'] = $validated['monto_total'];
         $validated['estado'] = 'pendiente';
+        
+        // Si hay cuotas pagadas, calcular monto pagado y pendiente
+        if (isset($validated['cuotas_originales']) && isset($validated['cuotas_pagadas'])) {
+            $cuotasOriginales = $validated['cuotas_originales'];
+            $cuotasPagadas = $validated['cuotas_pagadas'] ?? 0;
+            $montoTotal = $validated['monto_total'];
+            
+            if ($cuotasOriginales > 0) {
+                $montoPorCuota = $montoTotal / $cuotasOriginales;
+                $validated['monto_pagado'] = $montoPorCuota * $cuotasPagadas;
+                $validated['monto_pendiente'] = $montoTotal - $validated['monto_pagado'];
+                
+                if ($validated['monto_pendiente'] <= 0) {
+                    $validated['estado'] = 'pagada';
+                } elseif ($validated['monto_pagado'] > 0) {
+                    $validated['estado'] = 'parcial';
+                }
+            }
+            
+            // Calcular cuotas restantes si no se proporcionó
+            if (!isset($validated['cuotas_restantes'])) {
+                $validated['cuotas_restantes'] = $cuotasOriginales - $cuotasPagadas;
+            }
+        }
 
         $deuda = DeudaCliente::create($validated);
         return response()->json($deuda->load(['cliente', 'venta']), 201);

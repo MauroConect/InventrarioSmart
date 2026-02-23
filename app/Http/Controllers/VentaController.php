@@ -41,6 +41,7 @@ class VentaController extends Controller
             'monto_tarjeta' => 'nullable|numeric|min:0|required_if:tipo_pago,mixto',
             'monto_efectivo' => 'nullable|numeric|min:0|required_if:tipo_pago,mixto',
             'cuotas' => 'nullable|integer|min:1|max:24',
+            'recargo_cuotas' => 'nullable|numeric|min:0|max:100',
             'adjuntos' => 'nullable|array',
             'adjuntos.*' => 'file|max:10240',
         ]);
@@ -130,6 +131,7 @@ class VentaController extends Controller
                 'monto_efectivo' => $montoEfectivo,
                 'cuotas' => $cuotas,
                 'monto_cuota' => $montoCuota,
+                'recargo_cuotas' => $validated['recargo_cuotas'] ?? null,
                 'estado' => 'completada',
             ]);
 

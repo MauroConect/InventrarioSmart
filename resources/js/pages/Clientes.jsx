@@ -7,7 +7,8 @@ export default function Clientes() {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [formData, setFormData] = useState({
-        nombre: '', apellido: '', dni: '', telefono: '', email: '', direccion: '', activo: true
+        nombre: '', apellido: '', dni: '', telefono: '', email: '', direccion: '', activo: true,
+        tiene_deuda: false, cuotas_originales: '', cuotas_pagadas: '', cuotas_restantes: '', monto_deuda: ''
     });
 
     useEffect(() => {
@@ -28,17 +29,45 @@ export default function Clientes() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            // Preparar datos para enviar
+            const datosEnvio = {
+                nombre: formData.nombre,
+                apellido: formData.apellido,
+                dni: formData.dni,
+                telefono: formData.telefono || null,
+                email: formData.email || null,
+                direccion: formData.direccion || null,
+                activo: formData.activo !== false,
+            };
+            
+            // Solo agregar campos de deuda si es nuevo cliente y tiene deuda
+            if (!editing && formData.tiene_deuda) {
+                datosEnvio.tiene_deuda = true;
+                datosEnvio.monto_deuda = parseFloat(formData.monto_deuda) || 0;
+                if (formData.cuotas_originales) {
+                    datosEnvio.cuotas_originales = parseInt(formData.cuotas_originales) || null;
+                }
+                if (formData.cuotas_pagadas) {
+                    datosEnvio.cuotas_pagadas = parseInt(formData.cuotas_pagadas) || 0;
+                }
+                if (formData.cuotas_restantes) {
+                    datosEnvio.cuotas_restantes = parseInt(formData.cuotas_restantes) || null;
+                }
+            }
+            
             if (editing) {
-                await axios.put(`/clientes/${editing}`, formData);
+                await axios.put(`/clientes/${editing}`, datosEnvio);
             } else {
-                await axios.post('/clientes', formData);
+                await axios.post('/clientes', datosEnvio);
             }
             fetchClientes();
             setShowModal(false);
             setEditing(null);
-            setFormData({ nombre: '', apellido: '', dni: '', telefono: '', email: '', direccion: '', activo: true });
+            setFormData({ nombre: '', apellido: '', dni: '', telefono: '', email: '', direccion: '', activo: true,
+                tiene_deuda: false, cuotas_originales: '', cuotas_pagadas: '', cuotas_restantes: '', monto_deuda: '' });
         } catch (error) {
-            alert('Error al guardar');
+            const errorMessage = error.response?.data?.message || 'Error al guardar';
+            alert(errorMessage);
         }
     };
 
@@ -81,7 +110,18 @@ export default function Clientes() {
                                     <td className="px-3 sm:px-6 py-4">
                                         <div className="flex flex-col sm:flex-row gap-2">
                                             <button 
-                                                onClick={() => { setEditing(cliente.id); setFormData(cliente); setShowModal(true); }} 
+                                                onClick={() => { 
+                                                    setEditing(cliente.id); 
+                                                    setFormData({
+                                                        ...cliente,
+                                                        tiene_deuda: false,
+                                                        cuotas_originales: '',
+                                                        cuotas_pagadas: '',
+                                                        cuotas_restantes: '',
+                                                        monto_deuda: ''
+                                                    }); 
+                                                    setShowModal(true); 
+                                                }} 
                                                 className="text-blue-600 hover:text-blue-800 text-sm"
                                             >
                                                 Editar
@@ -152,6 +192,97 @@ export default function Clientes() {
                                 className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
                                 rows="3"
                             />
+                            
+                            {/* Sección de deuda existente - Solo al crear nuevo cliente */}
+                            {!editing && (
+                                <div className="border-t pt-3 mt-3">
+                                    <div className="flex items-center mb-3">
+                                        <input 
+                                            type="checkbox" 
+                                            id="tiene_deuda"
+                                            checked={formData.tiene_deuda} 
+                                            onChange={(e) => setFormData({...formData, tiene_deuda: e.target.checked})} 
+                                            className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        />
+                                        <label htmlFor="tiene_deuda" className="text-sm font-medium text-gray-700">
+                                            Cliente tiene deuda existente
+                                        </label>
+                                    </div>
+                                
+                                {formData.tiene_deuda && (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 space-y-3">
+                                        <h4 className="font-semibold text-gray-800 text-sm mb-2">Información de Deuda</h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Monto Total de Deuda
+                                                </label>
+                                                <input 
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    placeholder="0.00"
+                                                    value={formData.monto_deuda} 
+                                                    onChange={(e) => setFormData({...formData, monto_deuda: e.target.value})} 
+                                                    className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Cuotas Originales
+                                                </label>
+                                                <input 
+                                                    type="number"
+                                                    min="1"
+                                                    placeholder="Ej: 12"
+                                                    value={formData.cuotas_originales} 
+                                                    onChange={(e) => {
+                                                        const originales = e.target.value;
+                                                        const pagadas = parseFloat(formData.cuotas_pagadas) || 0;
+                                                        const restantes = originales ? (parseFloat(originales) - pagadas) : '';
+                                                        setFormData({...formData, cuotas_originales: originales, cuotas_restantes: restantes.toString()});
+                                                    }} 
+                                                    className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Cuotas Pagadas
+                                                </label>
+                                                <input 
+                                                    type="number"
+                                                    min="0"
+                                                    placeholder="Ej: 3"
+                                                    value={formData.cuotas_pagadas} 
+                                                    onChange={(e) => {
+                                                        const pagadas = e.target.value;
+                                                        const originales = parseFloat(formData.cuotas_originales) || 0;
+                                                        const restantes = originales > 0 ? (originales - (parseFloat(pagadas) || 0)) : '';
+                                                        setFormData({...formData, cuotas_pagadas: pagadas, cuotas_restantes: restantes.toString()});
+                                                    }} 
+                                                    className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Cuotas Restantes
+                                                </label>
+                                                <input 
+                                                    type="number"
+                                                    min="0"
+                                                    placeholder="Se calcula automáticamente"
+                                                    value={formData.cuotas_restantes} 
+                                                    onChange={(e) => setFormData({...formData, cuotas_restantes: e.target.value})} 
+                                                    className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" 
+                                                    readOnly
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                </div>
+                            )}
+                            
                             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-3 border-t">
                                 <button 
                                     type="button" 

@@ -24,6 +24,7 @@ class Venta extends Model
         'monto_efectivo',
         'cuotas',
         'monto_cuota',
+        'recargo_cuotas',
         'estado',
     ];
 
@@ -35,6 +36,7 @@ class Venta extends Model
         'monto_tarjeta' => 'decimal:2',
         'monto_efectivo' => 'decimal:2',
         'monto_cuota' => 'decimal:2',
+        'recargo_cuotas' => 'decimal:2',
     ];
 
     public function caja()

@@ -501,12 +501,9 @@ export default function Ventas() {
                                                 return null;
                                             })()}
                                         </div>
-                                    </div>
-                                    {/* Campo de recargo para cuotas */}
-                                    {cuotas && parseFloat(cuotas) > 0 && (
-                                        <div className="mt-4">
+                                        <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Recargo por cuotas (%)
+                                                Interés por cuotas (%)
                                             </label>
                                             <input
                                                 type="number"
@@ -532,17 +529,17 @@ export default function Ventas() {
                                                     return (
                                                         <div className="mt-2 space-y-1">
                                                             <p className="text-xs text-gray-600">
-                                                                Recargo total: <span className="font-semibold text-orange-600">
+                                                                Interés total: <span className="font-semibold text-orange-600">
                                                                     ${recargoTotal.toFixed(2)}
                                                                 </span>
                                                             </p>
                                                             <p className="text-xs text-gray-600">
-                                                                Monto con recargo: <span className="font-semibold text-green-600">
+                                                                Monto con interés: <span className="font-semibold text-green-600">
                                                                     ${montoConRecargo.toFixed(2)}
                                                                 </span>
                                                             </p>
                                                             <p className="text-xs text-gray-600">
-                                                                Monto por cuota con recargo: <span className="font-semibold text-blue-600">
+                                                                Monto por cuota con interés: <span className="font-semibold text-blue-600">
                                                                     ${(montoConRecargo / parseFloat(cuotas)).toFixed(2)}
                                                                 </span>
                                                             </p>
@@ -552,7 +549,7 @@ export default function Ventas() {
                                                 return null;
                                             })()}
                                         </div>
-                                    )}
+                                    </div>
                                     <div className="mt-2 text-xs text-gray-600">
                                         <div className="mb-1">
                                             Total a pagar: <span className="font-semibold">${calcularTotal().toFixed(2)}</span>
