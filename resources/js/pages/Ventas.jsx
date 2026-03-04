@@ -29,6 +29,7 @@ export default function Ventas() {
         { producto_id: '', cantidad: 1 },
     ]);
     const [adjuntos, setAdjuntos] = useState([]);
+    const [busquedaProducto, setBusquedaProducto] = useState({});
 
     useEffect(() => {
         fetchVentas();
@@ -114,6 +115,18 @@ export default function Ventas() {
     };
 
     const obtenerProducto = (id) => productos.find(p => String(p.id) === String(id));
+
+    const filtrarProductos = (index) => {
+        const busqueda = busquedaProducto[index] || '';
+        if (!busqueda) return productos;
+        
+        const busquedaLower = busqueda.toLowerCase();
+        return productos.filter(p => 
+            p.nombre?.toLowerCase().includes(busquedaLower) ||
+            p.codigo?.toLowerCase().includes(busquedaLower) ||
+            p.descripcion?.toLowerCase().includes(busquedaLower)
+        );
+    };
 
     const calcularSubtotal = (item) => {
         const prod = obtenerProducto(item.producto_id);
