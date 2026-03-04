@@ -54,7 +54,7 @@ export default function Ventas() {
 
             const [clientesRes, productosRes, cajasRes] = await Promise.all([
                 axios.get('/clientes'),
-                axios.get('/productos'),
+                axios.get('/productos', { params: { all: 'true' } }),
                 axios.get('/cajas', { params: { estado: 'abierta' } }),
             ]);
 
@@ -90,6 +90,7 @@ export default function Ventas() {
         setDescuento(0);
         setItems([{ producto_id: '', cantidad: 1 }]);
         setAdjuntos([]);
+        setBusquedaProducto({});
         setError('');
     };
 
@@ -654,22 +655,48 @@ export default function Ventas() {
                                             {items.map((item, index) => {
                                                 const prod = obtenerProducto(item.producto_id);
                                                 const subtotal = calcularSubtotal(item);
+                                                const productosFiltrados = filtrarProductos(index);
                                                 return (
                                                     <tr key={index} className="border-t">
                                                         <td className="px-2 sm:px-3 py-2">
-                                                            <select
-                                                                value={item.producto_id}
-                                                                onChange={(e) => handleChangeItem(index, 'producto_id', e.target.value)}
-                                                                className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
-                                                                required
-                                                            >
-                                                                <option value="">Seleccionar...</option>
-                                                                {productos.map((producto) => (
-                                                                    <option key={producto.id} value={producto.id}>
-                                                                        {producto.nombre}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
+                                                            <div className="space-y-1">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Buscar producto..."
+                                                                    value={busquedaProducto[index] || ''}
+                                                                    onChange={(e) => {
+                                                                        setBusquedaProducto({
+                                                                            ...busquedaProducto,
+                                                                            [index]: e.target.value
+                                                                        });
+                                                                    }}
+                                                                    className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                                                />
+                                                                <select
+                                                                    value={item.producto_id}
+                                                                    onChange={(e) => {
+                                                                        handleChangeItem(index, 'producto_id', e.target.value);
+                                                                        // Limpiar búsqueda al seleccionar
+                                                                        setBusquedaProducto({
+                                                                            ...busquedaProducto,
+                                                                            [index]: ''
+                                                                        });
+                                                                    }}
+                                                                    className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                                                    required
+                                                                >
+                                                                    <option value="">Seleccionar...</option>
+                                                                    {productosFiltrados.length > 0 ? (
+                                                                        productosFiltrados.map((producto) => (
+                                                                            <option key={producto.id} value={producto.id}>
+                                                                                {producto.nombre} {producto.codigo ? `(${producto.codigo})` : ''} - ${parseFloat(producto.precio_venta || 0).toFixed(2)}
+                                                                            </option>
+                                                                        ))
+                                                                    ) : (
+                                                                        <option value="" disabled>No se encontraron productos</option>
+                                                                    )}
+                                                                </select>
+                                                            </div>
                                                             {prod && (
                                                                 <div className="text-xs text-gray-500 sm:hidden mt-1">
                                                                     ${parseFloat(prod.precio_venta || 0).toFixed(2)}
