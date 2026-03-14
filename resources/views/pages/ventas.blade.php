@@ -240,7 +240,7 @@ function ventas() {
                 const token = localStorage.getItem('token');
                 const [clientesRes, productosRes, cajasRes] = await Promise.all([
                     axios.get('/api/clientes', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    axios.get('/api/productos', { headers: { 'Authorization': `Bearer ${token}` } }),
+                    axios.get('/api/productos', { params: { all: 'true' }, headers: { 'Authorization': `Bearer ${token}` } }),
                     axios.get('/api/cajas', { params: { estado: 'abierta' }, headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
                 this.clientes = (clientesRes.data?.data || clientesRes.data || []).filter(c => c.activo !== false);
