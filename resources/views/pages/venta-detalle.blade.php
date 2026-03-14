@@ -5,9 +5,18 @@
 
 @section('content')
 <div x-data="ventaDetalle()" x-init="init()" class="space-y-6">
-    <div class="flex justify-between items-center">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 class="text-3xl font-bold">Venta #<span x-text="ventaId"></span></h1>
-        <a href="{{ route('ventas.index') }}" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Volver</a>
+        <div class="flex gap-2">
+            <button
+                @click="imprimirComprobante()"
+                x-show="venta"
+                class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2"
+            >
+                🖨️ Imprimir Comprobante
+            </button>
+            <a href="{{ route('ventas.index') }}" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Volver</a>
+        </div>
     </div>
 
     <template x-if="loading">
@@ -97,6 +106,328 @@ function ventaDetalle() {
             } finally {
                 this.loading = false;
             }
+        },
+        
+        imprimirComprobante() {
+            if (!this.venta) return;
+            
+            const fechaVenta = new Date(this.venta.created_at || this.venta.fecha).toLocaleString('es-AR');
+            const cliente = this.venta.cliente;
+            const items = this.venta.items || [];
+            const totalBruto = items.reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
+            const descuento = parseFloat(this.venta.descuento || 0);
+            const totalFinal = parseFloat(this.venta.total_final || this.venta.total || 0);
+            
+            const contenidoHTML = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Comprobante de Venta</title>
+                    <style>
+                        @media print {
+                            @page {
+                                margin: 1cm;
+                            }
+                            body {
+                                margin: 0;
+                            }
+                            .no-print {
+                                display: none;
+                            }
+                        }
+                        body {
+                            font-family: Arial, sans-serif;
+                            max-width: 800px;
+                            margin: 0 auto;
+                            padding: 20px;
+                        }
+                        .header {
+                            text-align: center;
+                            border-bottom: 3px solid #333;
+                            padding-bottom: 20px;
+                            margin-bottom: 20px;
+                        }
+                        .header h1 {
+                            margin: 0;
+                            font-size: 28px;
+                            color: #333;
+                            font-weight: bold;
+                        }
+                        .header p {
+                            margin: 5px 0;
+                            color: #666;
+                        }
+                        .info-section {
+                            margin-bottom: 20px;
+                            background-color: #f9f9f9;
+                            padding: 15px;
+                            border-radius: 5px;
+                        }
+                        .info-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-bottom: 8px;
+                            padding: 5px 0;
+                            border-bottom: 1px solid #eee;
+                        }
+                        .info-row:last-child {
+                            border-bottom: none;
+                        }
+                        .info-label {
+                            font-weight: bold;
+                            color: #333;
+                        }
+                        .info-value {
+                            color: #666;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin: 20px 0;
+                        }
+                        th {
+                            background-color: #333;
+                            color: white;
+                            padding: 12px;
+                            text-align: left;
+                            font-size: 12px;
+                        }
+                        td {
+                            padding: 10px 12px;
+                            border-bottom: 1px solid #ddd;
+                            font-size: 12px;
+                        }
+                        tr:nth-child(even) {
+                            background-color: #f9f9f9;
+                        }
+                        .text-right {
+                            text-align: right;
+                        }
+                        .totals {
+                            margin-top: 20px;
+                            padding-top: 20px;
+                            border-top: 2px solid #333;
+                        }
+                        .total-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-bottom: 10px;
+                            font-size: 14px;
+                            padding: 5px 0;
+                        }
+                        .total-final {
+                            font-size: 20px;
+                            font-weight: bold;
+                            color: #333;
+                            margin-top: 15px;
+                            padding-top: 15px;
+                            border-top: 2px solid #333;
+                        }
+                        .footer {
+                            margin-top: 40px;
+                            text-align: center;
+                            color: #666;
+                            font-size: 11px;
+                            border-top: 1px solid #ddd;
+                            padding-top: 20px;
+                        }
+                        .button-container {
+                            text-align: center;
+                            margin: 20px 0;
+                        }
+                        button {
+                            background-color: #007bff;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            font-size: 16px;
+                            cursor: pointer;
+                            border-radius: 4px;
+                        }
+                        button:hover {
+                            background-color: #0056b3;
+                        }
+                        .numero-factura {
+                            font-size: 18px;
+                            color: #007bff;
+                            font-weight: bold;
+                        }
+                        .estado-badge {
+                            display: inline-block;
+                            padding: 5px 15px;
+                            border-radius: 20px;
+                            font-size: 12px;
+                            font-weight: bold;
+                            background-color: #28a745;
+                            color: white;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>COMPROBANTE DE VENTA</h1>
+                        <p class="numero-factura">${this.venta.numero_factura || 'N/A'}</p>
+                        <p>Fecha: ${fechaVenta}</p>
+                        <p class="estado-badge">${this.venta.estado || 'Completada'}</p>
+                    </div>
+
+                    <div class="info-section">
+                        ${cliente ? `
+                            <div class="info-row">
+                                <span class="info-label">Cliente:</span>
+                                <span class="info-value">${cliente.nombre} ${cliente.apellido || ''}</span>
+                            </div>
+                            ${cliente.dni ? `
+                                <div class="info-row">
+                                    <span class="info-label">DNI:</span>
+                                    <span class="info-value">${cliente.dni}</span>
+                                </div>
+                            ` : ''}
+                            ${cliente.telefono ? `
+                                <div class="info-row">
+                                    <span class="info-label">Teléfono:</span>
+                                    <span class="info-value">${cliente.telefono}</span>
+                                </div>
+                            ` : ''}
+                            ${cliente.direccion ? `
+                                <div class="info-row">
+                                    <span class="info-label">Dirección:</span>
+                                    <span class="info-value">${cliente.direccion}</span>
+                                </div>
+                            ` : ''}
+                        ` : `
+                            <div class="info-row">
+                                <span class="info-label">Cliente:</span>
+                                <span class="info-value">Consumidor Final</span>
+                            </div>
+                        `}
+                        <div class="info-row">
+                            <span class="info-label">Tipo de Pago:</span>
+                            <span class="info-value">${this.venta.tipo_pago === 'efectivo' ? 'Efectivo' : this.venta.tipo_pago === 'tarjeta' ? 'Tarjeta' : this.venta.tipo_pago === 'cuenta_corriente' ? 'Cuenta Corriente' : 'Mixto'}</span>
+                        </div>
+                        ${this.venta.caja ? `
+                            <div class="info-row">
+                                <span class="info-label">Caja:</span>
+                                <span class="info-value">${this.venta.caja.nombre || 'Caja #' + this.venta.caja.id}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th class="text-right">Cantidad</th>
+                                <th class="text-right">Precio Unit.</th>
+                                <th class="text-right">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.map(item => `
+                                <tr>
+                                    <td>${item.producto?.codigo || '-'}</td>
+                                    <td>${item.producto?.nombre || '-'}</td>
+                                    <td class="text-right">${item.cantidad}</td>
+                                    <td class="text-right">$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
+                                    <td class="text-right">$${parseFloat(item.subtotal || 0).toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+
+                    <div class="totals">
+                        <div class="total-row">
+                            <span>Subtotal:</span>
+                            <span>$${totalBruto.toFixed(2)}</span>
+                        </div>
+                        ${descuento > 0 ? `
+                            <div class="total-row">
+                                <span>Descuento:</span>
+                                <span>-$${descuento.toFixed(2)}</span>
+                            </div>
+                        ` : ''}
+                        <div class="total-row total-final">
+                            <span>TOTAL:</span>
+                            <span>$${totalFinal.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    ${this.venta.tipo_pago === 'mixto' ? (() => {
+                        const montoTarjeta = parseFloat(this.venta.monto_tarjeta || 0);
+                        const montoEfectivo = parseFloat(this.venta.monto_efectivo || 0);
+                        const sumaMontos = montoTarjeta + montoEfectivo;
+                        const restante = totalFinal - sumaMontos;
+                        
+                        if (montoTarjeta > 0 || montoEfectivo > 0) {
+                            return `
+                                <div class="totals" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                                    <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #333;">Detalle de Pago:</h3>
+                                    ${montoEfectivo > 0 ? `
+                                        <div class="total-row">
+                                            <span>Efectivo:</span>
+                                            <span>$${montoEfectivo.toFixed(2)}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${montoTarjeta > 0 ? `
+                                        <div class="total-row">
+                                            <span>Tarjeta:</span>
+                                            <span>$${montoTarjeta.toFixed(2)}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${this.venta.cuotas && parseInt(this.venta.cuotas) > 0 ? `
+                                        <div class="total-row">
+                                            <span>Cuotas:</span>
+                                            <span>${this.venta.cuotas} cuota(s)</span>
+                                        </div>
+                                        ${restante > 0 ? `
+                                            <div class="total-row">
+                                                <span>Monto en cuotas:</span>
+                                                <span>$${restante.toFixed(2)}</span>
+                                            </div>
+                                        ` : ''}
+                                    ` : ''}
+                                </div>
+                            `;
+                        }
+                        return '';
+                    })() : ''}
+
+                    ${this.venta.tipo_pago === 'tarjeta' && this.venta.cuotas && parseInt(this.venta.cuotas) > 0 ? `
+                        <div class="totals" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                            <div class="total-row">
+                                <span>Cuotas:</span>
+                                <span>${this.venta.cuotas} cuota(s) de $${(totalFinal / parseInt(this.venta.cuotas)).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <div class="footer">
+                        <p><strong>Gracias por su compra</strong></p>
+                        <p>Este es un comprobante de venta válido.</p>
+                        <p>Conserve este documento para sus registros.</p>
+                    </div>
+
+                    <div class="button-container no-print">
+                        <button onclick="window.print()">Imprimir</button>
+                        <button onclick="window.close()" style="background-color: #6c757d; margin-left: 10px;">Cerrar</button>
+                    </div>
+                </body>
+                </html>
+            `;
+
+            // Abrir ventana de impresión
+            const ventanaImpresion = window.open('', '_blank');
+            ventanaImpresion.document.write(contenidoHTML);
+            ventanaImpresion.document.close();
+            
+            // Esperar a que se cargue el contenido y luego mostrar el diálogo de impresión
+            ventanaImpresion.onload = () => {
+                setTimeout(() => {
+                    ventanaImpresion.print();
+                }, 250);
+            };
         }
     }
 }
