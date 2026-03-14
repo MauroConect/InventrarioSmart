@@ -140,6 +140,304 @@ export default function Ventas() {
         return totalBruto - (parseFloat(descuento) || 0);
     };
 
+    const imprimirPresupuesto = () => {
+        const itemsValidos = items
+            .filter(item => item.producto_id && (parseInt(item.cantidad) || 0) > 0)
+            .map(item => {
+                const prod = obtenerProducto(item.producto_id);
+                return {
+                    producto: prod,
+                    cantidad: parseInt(item.cantidad) || 0,
+                    precio: parseFloat(prod?.precio_venta || 0),
+                    subtotal: calcularSubtotal(item)
+                };
+            });
+
+        if (itemsValidos.length === 0) {
+            setError('Debe agregar al menos un producto para imprimir el presupuesto.');
+            return;
+        }
+
+        const clienteSeleccionado = clienteId ? clientes.find(c => c.id === parseInt(clienteId)) : null;
+        const totalBruto = itemsValidos.reduce((acc, item) => acc + item.subtotal, 0);
+        const descuentoNum = parseFloat(descuento) || 0;
+        const totalFinal = totalBruto - descuentoNum;
+        const fechaActual = new Date().toLocaleString('es-AR');
+
+        // Crear contenido HTML para el presupuesto
+        const contenidoHTML = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Presupuesto</title>
+                <style>
+                    @media print {
+                        @page {
+                            margin: 1cm;
+                        }
+                        body {
+                            margin: 0;
+                        }
+                        .no-print {
+                            display: none;
+                        }
+                    }
+                    body {
+                        font-family: Arial, sans-serif;
+                        max-width: 800px;
+                        margin: 0 auto;
+                        padding: 20px;
+                    }
+                    .header {
+                        text-align: center;
+                        border-bottom: 2px solid #333;
+                        padding-bottom: 20px;
+                        margin-bottom: 20px;
+                    }
+                    .header h1 {
+                        margin: 0;
+                        font-size: 24px;
+                        color: #333;
+                    }
+                    .header p {
+                        margin: 5px 0;
+                        color: #666;
+                    }
+                    .info-section {
+                        margin-bottom: 20px;
+                    }
+                    .info-row {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-bottom: 8px;
+                    }
+                    .info-label {
+                        font-weight: bold;
+                        color: #333;
+                    }
+                    .info-value {
+                        color: #666;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 20px 0;
+                    }
+                    th {
+                        background-color: #333;
+                        color: white;
+                        padding: 10px;
+                        text-align: left;
+                        font-size: 12px;
+                    }
+                    td {
+                        padding: 8px 10px;
+                        border-bottom: 1px solid #ddd;
+                        font-size: 12px;
+                    }
+                    tr:nth-child(even) {
+                        background-color: #f9f9f9;
+                    }
+                    .text-right {
+                        text-align: right;
+                    }
+                    .totals {
+                        margin-top: 20px;
+                        padding-top: 20px;
+                        border-top: 2px solid #333;
+                    }
+                    .total-row {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-bottom: 10px;
+                        font-size: 14px;
+                    }
+                    .total-final {
+                        font-size: 18px;
+                        font-weight: bold;
+                        color: #333;
+                        margin-top: 10px;
+                        padding-top: 10px;
+                        border-top: 1px solid #ddd;
+                    }
+                    .footer {
+                        margin-top: 40px;
+                        text-align: center;
+                        color: #666;
+                        font-size: 11px;
+                        border-top: 1px solid #ddd;
+                        padding-top: 20px;
+                    }
+                    .button-container {
+                        text-align: center;
+                        margin: 20px 0;
+                    }
+                    button {
+                        background-color: #007bff;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        font-size: 16px;
+                        cursor: pointer;
+                        border-radius: 4px;
+                    }
+                    button:hover {
+                        background-color: #0056b3;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>PRESUPUESTO</h1>
+                    <p>Fecha: ${fechaActual}</p>
+                </div>
+
+                <div class="info-section">
+                    ${clienteSeleccionado ? `
+                        <div class="info-row">
+                            <span class="info-label">Cliente:</span>
+                            <span class="info-value">${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido || ''}</span>
+                        </div>
+                        ${clienteSeleccionado.dni ? `
+                            <div class="info-row">
+                                <span class="info-label">DNI:</span>
+                                <span class="info-value">${clienteSeleccionado.dni}</span>
+                            </div>
+                        ` : ''}
+                        ${clienteSeleccionado.telefono ? `
+                            <div class="info-row">
+                                <span class="info-label">Teléfono:</span>
+                                <span class="info-value">${clienteSeleccionado.telefono}</span>
+                            </div>
+                        ` : ''}
+                    ` : `
+                        <div class="info-row">
+                            <span class="info-label">Cliente:</span>
+                            <span class="info-value">Consumidor Final</span>
+                        </div>
+                    `}
+                    <div class="info-row">
+                        <span class="info-label">Tipo de Pago:</span>
+                        <span class="info-value">${tipoPago === 'efectivo' ? 'Efectivo' : tipoPago === 'tarjeta' ? 'Tarjeta' : tipoPago === 'cuenta_corriente' ? 'Cuenta Corriente' : 'Mixto'}</span>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th class="text-right">Cantidad</th>
+                            <th class="text-right">Precio Unit.</th>
+                            <th class="text-right">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsValidos.map(item => `
+                            <tr>
+                                <td>${item.producto?.codigo || '-'}</td>
+                                <td>${item.producto?.nombre || '-'}</td>
+                                <td class="text-right">${item.cantidad}</td>
+                                <td class="text-right">$${item.precio.toFixed(2)}</td>
+                                <td class="text-right">$${item.subtotal.toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+
+                <div class="totals">
+                    <div class="total-row">
+                        <span>Subtotal:</span>
+                        <span>$${totalBruto.toFixed(2)}</span>
+                    </div>
+                    ${descuentoNum > 0 ? `
+                        <div class="total-row">
+                            <span>Descuento:</span>
+                            <span>-$${descuentoNum.toFixed(2)}</span>
+                        </div>
+                    ` : ''}
+                    <div class="total-row total-final">
+                        <span>TOTAL:</span>
+                        <span>$${totalFinal.toFixed(2)}</span>
+                    </div>
+                </div>
+
+                ${tipoPago === 'mixto' ? (() => {
+                    const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
+                    const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
+                    const sumaMontos = montoTarjetaNum + montoEfectivoNum;
+                    const restante = totalFinal - sumaMontos;
+                    
+                    if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || (cuotas && parseFloat(cuotas) > 0)) {
+                        return `
+                            <div class="totals" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                                <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #333;">Detalle de Pago:</h3>
+                                ${montoEfectivoNum > 0 ? `
+                                    <div class="total-row">
+                                        <span>Efectivo:</span>
+                                        <span>$${montoEfectivoNum.toFixed(2)}</span>
+                                    </div>
+                                ` : ''}
+                                ${montoTarjetaNum > 0 ? `
+                                    <div class="total-row">
+                                        <span>Tarjeta:</span>
+                                        <span>$${montoTarjetaNum.toFixed(2)}</span>
+                                    </div>
+                                ` : ''}
+                                ${cuotas && parseFloat(cuotas) > 0 ? `
+                                    <div class="total-row">
+                                        <span>Cuotas:</span>
+                                        <span>${cuotas} cuota(s)</span>
+                                    </div>
+                                    ${restante > 0 ? `
+                                        <div class="total-row">
+                                            <span>Monto en cuotas:</span>
+                                            <span>$${restante.toFixed(2)}</span>
+                                        </div>
+                                    ` : ''}
+                                ` : ''}
+                            </div>
+                        `;
+                    }
+                    return '';
+                })() : ''}
+
+                ${tipoPago === 'tarjeta' && cuotas && parseFloat(cuotas) > 0 ? `
+                    <div class="totals" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                        <div class="total-row">
+                            <span>Cuotas:</span>
+                            <span>${cuotas} cuota(s) de $${(totalFinal / parseFloat(cuotas)).toFixed(2)}</span>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div class="footer">
+                    <p>Este es un presupuesto. Los precios pueden variar sin previo aviso.</p>
+                    <p>Válido por 30 días desde la fecha de emisión.</p>
+                </div>
+
+                <div class="button-container no-print">
+                    <button onclick="window.print()">Imprimir</button>
+                    <button onclick="window.close()" style="background-color: #6c757d; margin-left: 10px;">Cerrar</button>
+                </div>
+            </body>
+            </html>
+        `;
+
+        // Abrir ventana de impresión
+        const ventanaImpresion = window.open('', '_blank');
+        ventanaImpresion.document.write(contenidoHTML);
+        ventanaImpresion.document.close();
+        
+        // Esperar a que se cargue el contenido y luego mostrar el diálogo de impresión
+        ventanaImpresion.onload = () => {
+            setTimeout(() => {
+                ventanaImpresion.print();
+            }, 250);
+        };
+    };
+
     const handleSubmitVenta = async (e) => {
         e.preventDefault();
         try {
@@ -632,13 +930,23 @@ export default function Ventas() {
                             <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
                                 <div className="flex justify-between items-center mb-3">
                                     <h4 className="font-semibold text-gray-800">Items de la Venta</h4>
-                                    <button
-                                        type="button"
-                                        onClick={handleAddItem}
-                                        className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-                                    >
-                                        + Agregar Producto
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={imprimirPresupuesto}
+                                            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 flex items-center gap-1"
+                                            title="Imprimir presupuesto con los productos actuales"
+                                        >
+                                            🖨️ Imprimir Presupuesto
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleAddItem}
+                                            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                                        >
+                                            + Agregar Producto
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="overflow-x-auto -mx-2 sm:mx-0">
                                     <table className="min-w-full text-sm">
@@ -780,6 +1088,14 @@ export default function Ventas() {
                             </div>
 
                             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+                                <button
+                                    type="button"
+                                    onClick={imprimirPresupuesto}
+                                    className="w-full sm:w-auto px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center justify-center gap-2"
+                                    title="Imprimir presupuesto con los productos actuales"
+                                >
+                                    🖨️ Imprimir Presupuesto
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => {

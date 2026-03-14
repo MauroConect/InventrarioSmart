@@ -121,19 +121,38 @@
                 <div class="border-t pt-4">
                     <div class="flex justify-between items-center mb-4">
                         <h4 class="font-semibold">Productos</h4>
-                        <button type="button" @click="agregarItem()" class="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300">+ Agregar</button>
+                        <div class="flex gap-2">
+                            <button type="button" @click="imprimirPresupuesto()" class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1">
+                                🖨️ Imprimir Presupuesto
+                            </button>
+                            <button type="button" @click="agregarItem()" class="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300">+ Agregar</button>
+                        </div>
                     </div>
                     <div class="space-y-2">
                         <template x-for="(item, index) in items" :key="index">
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
                                 <div>
                                     <label class="block text-xs text-gray-600 mb-1">Producto</label>
-                                    <select x-model="item.producto_id" class="w-full px-2 py-1 border border-gray-300 rounded-md text-sm" required>
-                                        <option value="">Seleccionar...</option>
-                                        <template x-for="prod in productos" :key="prod.id">
-                                            <option :value="prod.id" x-text="prod.nombre"></option>
-                                        </template>
-                                    </select>
+                                    <div class="space-y-1">
+                                        <input 
+                                            type="text" 
+                                            x-model="busquedaProducto[index]"
+                                            @input="busquedaProducto[index] = $event.target.value"
+                                            placeholder="Buscar producto..."
+                                            class="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                        />
+                                        <select 
+                                            x-model="item.producto_id" 
+                                            @change="busquedaProducto[index] = ''"
+                                            class="w-full px-2 py-1 border border-gray-300 rounded-md text-sm" 
+                                            required
+                                        >
+                                            <option value="">Seleccionar...</option>
+                                            <template x-for="prod in filtrarProductos(index)" :key="prod.id">
+                                                <option :value="prod.id" x-text="(prod.nombre || '') + (prod.codigo ? ' (' + prod.codigo + ')' : '') + ' - $' + (parseFloat(prod.precio_venta || 0).toFixed(2))"></option>
+                                            </template>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-600 mb-1">Cantidad</label>
@@ -159,6 +178,9 @@
                 </div>
 
                 <div class="flex justify-end gap-2 pt-4 border-t">
+                    <button type="button" @click="imprimirPresupuesto()" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2">
+                        🖨️ Imprimir Presupuesto
+                    </button>
                     <button type="button" @click="closeModal()" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
                     <button type="submit" :disabled="loadingSubmit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
                         <span x-show="!loadingSubmit">Guardar Venta</span>
@@ -191,6 +213,7 @@ function ventas() {
         montoEfectivo: '',
         descuento: 0,
         items: [{ producto_id: '', cantidad: 1 }],
+        busquedaProducto: {},
         
         async init() {
             await Promise.all([this.fetchVentas(), this.fetchDatosFormulario()]);
@@ -252,6 +275,18 @@ function ventas() {
             return this.productos.find(p => String(p.id) === String(id));
         },
         
+        filtrarProductos(index) {
+            const busqueda = this.busquedaProducto[index] || '';
+            if (!busqueda) return this.productos;
+            
+            const busquedaLower = busqueda.toLowerCase();
+            return this.productos.filter(p => 
+                (p.nombre && p.nombre.toLowerCase().includes(busquedaLower)) ||
+                (p.codigo && p.codigo.toLowerCase().includes(busquedaLower)) ||
+                (p.descripcion && p.descripcion.toLowerCase().includes(busquedaLower))
+            );
+        },
+        
         calcularSubtotal(item) {
             const prod = this.obtenerProducto(item.producto_id);
             if (!prod) return 0;
@@ -261,6 +296,289 @@ function ventas() {
         calcularTotal() {
             const totalBruto = this.items.reduce((acc, item) => acc + this.calcularSubtotal(item), 0);
             return totalBruto - (parseFloat(this.descuento) || 0);
+        },
+        
+        imprimirPresupuesto() {
+            const itemsValidos = this.items
+                .filter(item => item.producto_id && (parseInt(item.cantidad) || 0) > 0)
+                .map(item => {
+                    const prod = this.obtenerProducto(item.producto_id);
+                    return {
+                        producto: prod,
+                        cantidad: parseInt(item.cantidad) || 0,
+                        precio: parseFloat(prod?.precio_venta || 0),
+                        subtotal: this.calcularSubtotal(item)
+                    };
+                });
+
+            if (itemsValidos.length === 0) {
+                this.error = 'Debe agregar al menos un producto para imprimir el presupuesto.';
+                return;
+            }
+
+            const clienteSeleccionado = this.clienteId ? this.clientes.find(c => c.id === parseInt(this.clienteId)) : null;
+            const totalBruto = itemsValidos.reduce((acc, item) => acc + item.subtotal, 0);
+            const descuentoNum = parseFloat(this.descuento) || 0;
+            const totalFinal = totalBruto - descuentoNum;
+            const fechaActual = new Date().toLocaleString('es-AR');
+
+            // Crear contenido HTML para el presupuesto
+            const contenidoHTML = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Presupuesto</title>
+                    <style>
+                        @media print {
+                            @page {
+                                margin: 1cm;
+                            }
+                            body {
+                                margin: 0;
+                            }
+                            .no-print {
+                                display: none;
+                            }
+                        }
+                        body {
+                            font-family: Arial, sans-serif;
+                            max-width: 800px;
+                            margin: 0 auto;
+                            padding: 20px;
+                        }
+                        .header {
+                            text-align: center;
+                            border-bottom: 2px solid #333;
+                            padding-bottom: 20px;
+                            margin-bottom: 20px;
+                        }
+                        .header h1 {
+                            margin: 0;
+                            font-size: 24px;
+                            color: #333;
+                        }
+                        .header p {
+                            margin: 5px 0;
+                            color: #666;
+                        }
+                        .info-section {
+                            margin-bottom: 20px;
+                        }
+                        .info-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-bottom: 8px;
+                        }
+                        .info-label {
+                            font-weight: bold;
+                            color: #333;
+                        }
+                        .info-value {
+                            color: #666;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin: 20px 0;
+                        }
+                        th {
+                            background-color: #333;
+                            color: white;
+                            padding: 10px;
+                            text-align: left;
+                            font-size: 12px;
+                        }
+                        td {
+                            padding: 8px 10px;
+                            border-bottom: 1px solid #ddd;
+                            font-size: 12px;
+                        }
+                        tr:nth-child(even) {
+                            background-color: #f9f9f9;
+                        }
+                        .text-right {
+                            text-align: right;
+                        }
+                        .totals {
+                            margin-top: 20px;
+                            padding-top: 20px;
+                            border-top: 2px solid #333;
+                        }
+                        .total-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-bottom: 10px;
+                            font-size: 14px;
+                        }
+                        .total-final {
+                            font-size: 18px;
+                            font-weight: bold;
+                            color: #333;
+                            margin-top: 10px;
+                            padding-top: 10px;
+                            border-top: 1px solid #ddd;
+                        }
+                        .footer {
+                            margin-top: 40px;
+                            text-align: center;
+                            color: #666;
+                            font-size: 11px;
+                            border-top: 1px solid #ddd;
+                            padding-top: 20px;
+                        }
+                        .button-container {
+                            text-align: center;
+                            margin: 20px 0;
+                        }
+                        button {
+                            background-color: #007bff;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            font-size: 16px;
+                            cursor: pointer;
+                            border-radius: 4px;
+                        }
+                        button:hover {
+                            background-color: #0056b3;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>PRESUPUESTO</h1>
+                        <p>Fecha: ${fechaActual}</p>
+                    </div>
+
+                    <div class="info-section">
+                        ${clienteSeleccionado ? `
+                            <div class="info-row">
+                                <span class="info-label">Cliente:</span>
+                                <span class="info-value">${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido || ''}</span>
+                            </div>
+                            ${clienteSeleccionado.dni ? `
+                                <div class="info-row">
+                                    <span class="info-label">DNI:</span>
+                                    <span class="info-value">${clienteSeleccionado.dni}</span>
+                                </div>
+                            ` : ''}
+                            ${clienteSeleccionado.telefono ? `
+                                <div class="info-row">
+                                    <span class="info-label">Teléfono:</span>
+                                    <span class="info-value">${clienteSeleccionado.telefono}</span>
+                                </div>
+                            ` : ''}
+                        ` : `
+                            <div class="info-row">
+                                <span class="info-label">Cliente:</span>
+                                <span class="info-value">Consumidor Final</span>
+                            </div>
+                        `}
+                        <div class="info-row">
+                            <span class="info-label">Tipo de Pago:</span>
+                            <span class="info-value">${this.tipoPago === 'efectivo' ? 'Efectivo' : this.tipoPago === 'tarjeta' ? 'Tarjeta' : this.tipoPago === 'cuenta_corriente' ? 'Cuenta Corriente' : 'Mixto'}</span>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th class="text-right">Cantidad</th>
+                                <th class="text-right">Precio Unit.</th>
+                                <th class="text-right">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsValidos.map(item => `
+                                <tr>
+                                    <td>${item.producto?.codigo || '-'}</td>
+                                    <td>${item.producto?.nombre || '-'}</td>
+                                    <td class="text-right">${item.cantidad}</td>
+                                    <td class="text-right">$${item.precio.toFixed(2)}</td>
+                                    <td class="text-right">$${item.subtotal.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+
+                    <div class="totals">
+                        <div class="total-row">
+                            <span>Subtotal:</span>
+                            <span>$${totalBruto.toFixed(2)}</span>
+                        </div>
+                        ${descuentoNum > 0 ? `
+                            <div class="total-row">
+                                <span>Descuento:</span>
+                                <span>-$${descuentoNum.toFixed(2)}</span>
+                            </div>
+                        ` : ''}
+                        <div class="total-row total-final">
+                            <span>TOTAL:</span>
+                            <span>$${totalFinal.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    ${this.tipoPago === 'mixto' ? (() => {
+                        const montoTarjetaNum = parseFloat(this.montoTarjeta) || 0;
+                        const montoEfectivoNum = parseFloat(this.montoEfectivo) || 0;
+                        const sumaMontos = montoTarjetaNum + montoEfectivoNum;
+                        const restante = totalFinal - sumaMontos;
+                        
+                        if (montoTarjetaNum > 0 || montoEfectivoNum > 0) {
+                            return `
+                                <div class="totals" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                                    <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #333;">Detalle de Pago:</h3>
+                                    ${montoEfectivoNum > 0 ? `
+                                        <div class="total-row">
+                                            <span>Efectivo:</span>
+                                            <span>$${montoEfectivoNum.toFixed(2)}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${montoTarjetaNum > 0 ? `
+                                        <div class="total-row">
+                                            <span>Tarjeta:</span>
+                                            <span>$${montoTarjetaNum.toFixed(2)}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${restante > 0 ? `
+                                        <div class="total-row">
+                                            <span>Restante:</span>
+                                            <span>$${restante.toFixed(2)}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }
+                        return '';
+                    })() : ''}
+
+                    <div class="footer">
+                        <p>Este es un presupuesto. Los precios pueden variar sin previo aviso.</p>
+                        <p>Válido por 30 días desde la fecha de emisión.</p>
+                    </div>
+
+                    <div class="button-container no-print">
+                        <button onclick="window.print()">Imprimir</button>
+                        <button onclick="window.close()" style="background-color: #6c757d; margin-left: 10px;">Cerrar</button>
+                    </div>
+                </body>
+                </html>
+            `;
+
+            // Abrir ventana de impresión
+            const ventanaImpresion = window.open('', '_blank');
+            ventanaImpresion.document.write(contenidoHTML);
+            ventanaImpresion.document.close();
+            
+            // Esperar a que se cargue el contenido y luego mostrar el diálogo de impresión
+            ventanaImpresion.onload = () => {
+                setTimeout(() => {
+                    ventanaImpresion.print();
+                }, 250);
+            };
         },
         
         openModal() {
@@ -283,6 +601,7 @@ function ventas() {
             this.montoEfectivo = '';
             this.descuento = 0;
             this.items = [{ producto_id: '', cantidad: 1 }];
+            this.busquedaProducto = {};
         },
         
         async guardarVenta() {

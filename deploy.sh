@@ -96,11 +96,16 @@ print_info "Instalando dependencias de Composer..."
 $COMPOSE_CMD exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 
 # Paso 5: Verificar que vendor/autoload.php existe
-if ! $COMPOSE_CMD exec -T app test -f /var/www/vendor/autoload.php; then
+print_info "Verificando instalación de dependencias..."
+sleep 2  # Pequeño delay para asegurar que los archivos se hayan escrito completamente
+if $COMPOSE_CMD exec -T app sh -c "test -f /var/www/vendor/autoload.php"; then
+    print_info "✓ Dependencias instaladas correctamente"
+else
     print_error "vendor/autoload.php no existe después de composer install"
+    print_info "Verificando manualmente..."
+    $COMPOSE_CMD exec -T app ls -la /var/www/vendor/ 2>&1 || true
     exit 1
 fi
-print_info "✓ Dependencias instaladas correctamente"
 
 # Paso 6: Configurar permisos
 print_info "Configurando permisos..."
