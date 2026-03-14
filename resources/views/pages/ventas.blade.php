@@ -177,6 +177,32 @@
                     </div>
                 </div>
 
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Adjuntar archivos (opcional)
+                    </label>
+                    <input
+                        type="file"
+                        multiple
+                        @change="adjuntos = Array.from($event.target.files || [])"
+                        accept="image/*,.pdf,.doc,.docx"
+                        class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    <p class="mt-1 text-xs text-gray-500">
+                        Puede seleccionar múltiples archivos (imágenes, PDFs, documentos)
+                    </p>
+                    <div x-show="adjuntos && adjuntos.length > 0" x-cloak class="mt-2">
+                        <p class="text-xs text-gray-600">
+                            <span x-text="adjuntos.length"></span> archivo(s) seleccionado(s):
+                        </p>
+                        <ul class="mt-1 text-xs text-gray-500 list-disc list-inside">
+                            <template x-for="(archivo, index) in adjuntos" :key="index">
+                                <li x-text="archivo.name"></li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-2 pt-4 border-t">
                     <button type="button" @click="imprimirPresupuesto()" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2">
                         🖨️ Imprimir Presupuesto
@@ -214,6 +240,7 @@ function ventas() {
         descuento: 0,
         items: [{ producto_id: '', cantidad: 1 }],
         busquedaProducto: {},
+        adjuntos: [],
         
         async init() {
             await Promise.all([this.fetchVentas(), this.fetchDatosFormulario()]);
@@ -602,6 +629,12 @@ function ventas() {
             this.descuento = 0;
             this.items = [{ producto_id: '', cantidad: 1 }];
             this.busquedaProducto = {};
+            this.adjuntos = [];
+            // Limpiar el input file
+            const fileInput = document.querySelector('input[type="file"]');
+            if (fileInput) {
+                fileInput.value = '';
+            }
         },
         
         async guardarVenta() {
@@ -644,6 +677,26 @@ function ventas() {
                 const response = await axios.post('/api/ventas', payload, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+                
+                // Si hay adjuntos, subirlos después de crear la venta
+                if (this.adjuntos && this.adjuntos.length > 0 && response.data?.id) {
+                    try {
+                        const formData = new FormData();
+                        this.adjuntos.forEach((file) => {
+                            formData.append('adjuntos[]', file);
+                        });
+                        
+                        await axios.post(`/api/ventas/${response.data.id}/adjuntos`, formData, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        });
+                    } catch (adjuntoError) {
+                        console.error('Error al subir adjuntos:', adjuntoError);
+                        // No fallar la venta si falla la subida de adjuntos
+                    }
+                }
                 
                 this.success = 'Venta registrada correctamente';
                 await this.fetchVentas();
