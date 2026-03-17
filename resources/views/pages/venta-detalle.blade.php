@@ -127,7 +127,8 @@ function ventaDetalle() {
                     <style>
                         @media print {
                             @page {
-                                margin: 1cm;
+                                width: 58mm;
+                                margin: 2mm;
                             }
                             body {
                                 margin: 0;
@@ -138,41 +139,36 @@ function ventaDetalle() {
                         }
                         body {
                             font-family: Arial, sans-serif;
-                            max-width: 800px;
+                            max-width: 48mm;
                             margin: 0 auto;
-                            padding: 20px;
+                            padding: 2mm;
+                            font-size: 10px;
                         }
                         .header {
                             text-align: center;
-                            border-bottom: 3px solid #333;
-                            padding-bottom: 20px;
-                            margin-bottom: 20px;
+                            border-bottom: 1px dashed #333;
+                            padding-bottom: 2mm;
+                            margin-bottom: 2mm;
                         }
                         .header h1 {
                             margin: 0;
-                            font-size: 28px;
+                            font-size: 12px;
                             color: #333;
                             font-weight: bold;
                         }
                         .header p {
-                            margin: 5px 0;
+                            margin: 2px 0;
                             color: #666;
                         }
                         .info-section {
-                            margin-bottom: 20px;
-                            background-color: #f9f9f9;
-                            padding: 15px;
-                            border-radius: 5px;
+                            margin-bottom: 2mm;
+                            padding: 2mm 0;
+                            border-bottom: 1px dashed #eee;
                         }
                         .info-row {
                             display: flex;
                             justify-content: space-between;
-                            margin-bottom: 8px;
-                            padding: 5px 0;
-                            border-bottom: 1px solid #eee;
-                        }
-                        .info-row:last-child {
-                            border-bottom: none;
+                            margin-bottom: 1mm;
                         }
                         .info-label {
                             font-weight: bold;
@@ -180,68 +176,67 @@ function ventaDetalle() {
                         }
                         .info-value {
                             color: #666;
+                            text-align: right;
+                            max-width: 26mm;
+                            overflow: hidden;
+                            white-space: nowrap;
+                            text-overflow: ellipsis;
                         }
                         table {
                             width: 100%;
                             border-collapse: collapse;
-                            margin: 20px 0;
+                            margin: 2mm 0;
                         }
                         th {
-                            background-color: #333;
-                            color: white;
-                            padding: 12px;
+                            border-bottom: 1px dashed #333;
+                            padding: 2px 0;
                             text-align: left;
-                            font-size: 12px;
+                            font-size: 9px;
                         }
                         td {
-                            padding: 10px 12px;
-                            border-bottom: 1px solid #ddd;
-                            font-size: 12px;
-                        }
-                        tr:nth-child(even) {
-                            background-color: #f9f9f9;
+                            padding: 1px 0;
+                            font-size: 9px;
                         }
                         .text-right {
                             text-align: right;
                         }
                         .totals {
-                            margin-top: 20px;
-                            padding-top: 20px;
-                            border-top: 2px solid #333;
+                            margin-top: 2mm;
+                            padding-top: 2mm;
+                            border-top: 1px dashed #333;
                         }
                         .total-row {
                             display: flex;
                             justify-content: space-between;
-                            margin-bottom: 10px;
-                            font-size: 14px;
-                            padding: 5px 0;
+                            margin-bottom: 1mm;
+                            font-size: 10px;
                         }
                         .total-final {
-                            font-size: 20px;
+                            font-size: 11px;
                             font-weight: bold;
                             color: #333;
-                            margin-top: 15px;
-                            padding-top: 15px;
-                            border-top: 2px solid #333;
+                            margin-top: 1mm;
+                            padding-top: 1mm;
+                            border-top: 1px solid #ddd;
                         }
                         .footer {
-                            margin-top: 40px;
+                            margin-top: 3mm;
                             text-align: center;
                             color: #666;
-                            font-size: 11px;
-                            border-top: 1px solid #ddd;
-                            padding-top: 20px;
+                            font-size: 8px;
+                            border-top: 1px dashed #ddd;
+                            padding-top: 2mm;
                         }
                         .button-container {
                             text-align: center;
-                            margin: 20px 0;
+                            margin: 5mm 0 0;
                         }
                         button {
                             background-color: #007bff;
                             color: white;
                             border: none;
-                            padding: 10px 20px;
-                            font-size: 16px;
+                            padding: 4px 8px;
+                            font-size: 10px;
                             cursor: pointer;
                             border-radius: 4px;
                         }
@@ -249,15 +244,15 @@ function ventaDetalle() {
                             background-color: #0056b3;
                         }
                         .numero-factura {
-                            font-size: 18px;
+                            font-size: 11px;
                             color: #007bff;
                             font-weight: bold;
                         }
                         .estado-badge {
                             display: inline-block;
-                            padding: 5px 15px;
+                            padding: 2px 6px;
                             border-radius: 20px;
-                            font-size: 12px;
+                            font-size: 9px;
                             font-weight: bold;
                             background-color: #28a745;
                             color: white;
@@ -302,6 +297,30 @@ function ventaDetalle() {
                                 <span class="info-value">Consumidor Final</span>
                             </div>
                         `}
+                        ${this.venta.vehiculo ? `
+                            <div class="info-row">
+                                <span class="info-label">Vehículo:</span>
+                                <span class="info-value">${this.venta.vehiculo}</span>
+                            </div>
+                        ` : ''}
+                        ${this.venta.dominio ? `
+                            <div class="info-row">
+                                <span class="info-label">Dominio:</span>
+                                <span class="info-value">${this.venta.dominio}</span>
+                            </div>
+                        ` : ''}
+                        ${this.venta.numero_chasis ? `
+                            <div class="info-row">
+                                <span class="info-label">Nº Chasis:</span>
+                                <span class="info-value">${this.venta.numero_chasis}</span>
+                            </div>
+                        ` : ''}
+                        ${this.venta.numero_motor ? `
+                            <div class="info-row">
+                                <span class="info-label">Nº Motor:</span>
+                                <span class="info-value">${this.venta.numero_motor}</span>
+                            </div>
+                        ` : ''}
                         <div class="info-row">
                             <span class="info-label">Tipo de Pago:</span>
                             <span class="info-value">${this.venta.tipo_pago === 'efectivo' ? 'Efectivo' : this.venta.tipo_pago === 'tarjeta' ? 'Tarjeta' : this.venta.tipo_pago === 'cuenta_corriente' ? 'Cuenta Corriente' : 'Mixto'}</span>

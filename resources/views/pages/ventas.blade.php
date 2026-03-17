@@ -102,6 +102,46 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Vehículo</label>
+                        <input
+                            type="text"
+                            x-model="vehiculo"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            placeholder="Ej: Ford Fiesta 1.6"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Dominio / Patente</label>
+                        <input
+                            type="text"
+                            x-model="dominio"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            placeholder="Ej: ABC123"
+                        >
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nº Chasis</label>
+                        <input
+                            type="text"
+                            x-model="numeroChasis"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nº Motor</label>
+                        <input
+                            type="text"
+                            x-model="numeroMotor"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        >
+                    </div>
+                </div>
+
                 <div x-show="tipoPago === 'mixto'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Monto Tarjeta</label>
@@ -238,6 +278,10 @@ function ventas() {
         montoTarjeta: '',
         montoEfectivo: '',
         descuento: 0,
+        vehiculo: '',
+        dominio: '',
+        numeroChasis: '',
+        numeroMotor: '',
         items: [{ producto_id: '', cantidad: 1 }],
         busquedaProducto: {},
         adjuntos: [],
@@ -359,7 +403,8 @@ function ventas() {
                     <style>
                         @media print {
                             @page {
-                                margin: 1cm;
+                                width: 58mm;
+                                margin: 2mm;
                             }
                             body {
                                 margin: 0;
@@ -370,32 +415,33 @@ function ventas() {
                         }
                         body {
                             font-family: Arial, sans-serif;
-                            max-width: 800px;
+                            max-width: 48mm;
                             margin: 0 auto;
-                            padding: 20px;
+                            padding: 2mm;
+                            font-size: 10px;
                         }
                         .header {
                             text-align: center;
-                            border-bottom: 2px solid #333;
-                            padding-bottom: 20px;
-                            margin-bottom: 20px;
+                            border-bottom: 1px dashed #333;
+                            padding-bottom: 2mm;
+                            margin-bottom: 2mm;
                         }
                         .header h1 {
                             margin: 0;
-                            font-size: 24px;
+                            font-size: 12px;
                             color: #333;
                         }
                         .header p {
-                            margin: 5px 0;
+                            margin: 2px 0;
                             color: #666;
                         }
                         .info-section {
-                            margin-bottom: 20px;
+                            margin-bottom: 2mm;
                         }
                         .info-row {
                             display: flex;
                             justify-content: space-between;
-                            margin-bottom: 8px;
+                            margin-bottom: 1mm;
                         }
                         .info-label {
                             font-weight: bold;
@@ -403,67 +449,67 @@ function ventas() {
                         }
                         .info-value {
                             color: #666;
+                            text-align: right;
+                            max-width: 26mm;
+                            overflow: hidden;
+                            white-space: nowrap;
+                            text-overflow: ellipsis;
                         }
                         table {
                             width: 100%;
                             border-collapse: collapse;
-                            margin: 20px 0;
+                            margin: 2mm 0;
                         }
                         th {
-                            background-color: #333;
-                            color: white;
-                            padding: 10px;
+                            border-bottom: 1px dashed #333;
+                            padding: 2px 0;
                             text-align: left;
-                            font-size: 12px;
+                            font-size: 9px;
                         }
                         td {
-                            padding: 8px 10px;
-                            border-bottom: 1px solid #ddd;
-                            font-size: 12px;
-                        }
-                        tr:nth-child(even) {
-                            background-color: #f9f9f9;
+                            padding: 1px 0;
+                            font-size: 9px;
                         }
                         .text-right {
                             text-align: right;
                         }
                         .totals {
-                            margin-top: 20px;
-                            padding-top: 20px;
-                            border-top: 2px solid #333;
+                            margin-top: 2mm;
+                            padding-top: 2mm;
+                            border-top: 1px dashed #333;
                         }
                         .total-row {
                             display: flex;
                             justify-content: space-between;
-                            margin-bottom: 10px;
-                            font-size: 14px;
+                            margin-bottom: 1mm;
+                            font-size: 10px;
                         }
                         .total-final {
-                            font-size: 18px;
+                            font-size: 11px;
                             font-weight: bold;
                             color: #333;
-                            margin-top: 10px;
-                            padding-top: 10px;
+                            margin-top: 1mm;
+                            padding-top: 1mm;
                             border-top: 1px solid #ddd;
                         }
                         .footer {
-                            margin-top: 40px;
+                            margin-top: 3mm;
                             text-align: center;
                             color: #666;
-                            font-size: 11px;
-                            border-top: 1px solid #ddd;
-                            padding-top: 20px;
+                            font-size: 8px;
+                            border-top: 1px dashed #ddd;
+                            padding-top: 2mm;
                         }
                         .button-container {
                             text-align: center;
-                            margin: 20px 0;
+                            margin: 5mm 0 0;
                         }
                         button {
                             background-color: #007bff;
                             color: white;
                             border: none;
-                            padding: 10px 20px;
-                            font-size: 16px;
+                            padding: 4px 8px;
+                            font-size: 10px;
                             cursor: pointer;
                             border-radius: 4px;
                         }
@@ -502,6 +548,30 @@ function ventas() {
                                 <span class="info-value">Consumidor Final</span>
                             </div>
                         `}
+                        ${this.vehiculo ? `
+                            <div class="info-row">
+                                <span class="info-label">Vehículo:</span>
+                                <span class="info-value">${this.vehiculo}</span>
+                            </div>
+                        ` : ''}
+                        ${this.dominio ? `
+                            <div class="info-row">
+                                <span class="info-label">Dominio:</span>
+                                <span class="info-value">${this.dominio}</span>
+                            </div>
+                        ` : ''}
+                        ${this.numeroChasis ? `
+                            <div class="info-row">
+                                <span class="info-label">Nº Chasis:</span>
+                                <span class="info-value">${this.numeroChasis}</span>
+                            </div>
+                        ` : ''}
+                        ${this.numeroMotor ? `
+                            <div class="info-row">
+                                <span class="info-label">Nº Motor:</span>
+                                <span class="info-value">${this.numeroMotor}</span>
+                            </div>
+                        ` : ''}
                         <div class="info-row">
                             <span class="info-label">Tipo de Pago:</span>
                             <span class="info-value">${this.tipoPago === 'efectivo' ? 'Efectivo' : this.tipoPago === 'tarjeta' ? 'Tarjeta' : this.tipoPago === 'cuenta_corriente' ? 'Cuenta Corriente' : 'Mixto'}</span>
@@ -630,6 +700,10 @@ function ventas() {
             this.items = [{ producto_id: '', cantidad: 1 }];
             this.busquedaProducto = {};
             this.adjuntos = [];
+            this.vehiculo = '';
+            this.dominio = '';
+            this.numeroChasis = '';
+            this.numeroMotor = '';
             // Limpiar el input file
             const fileInput = document.querySelector('input[type="file"]');
             if (fileInput) {
@@ -667,6 +741,10 @@ function ventas() {
                     tipo_pago: this.tipoPago,
                     descuento: parseFloat(this.descuento) || 0,
                     items: itemsValidos,
+                    vehiculo: this.vehiculo || null,
+                    dominio: this.dominio || null,
+                    numero_chasis: this.numeroChasis || null,
+                    numero_motor: this.numeroMotor || null,
                 };
                 
                 if (this.tipoPago === 'mixto') {
