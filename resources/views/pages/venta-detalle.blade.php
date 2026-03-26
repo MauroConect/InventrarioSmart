@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Detalle de Venta - Inventario Inteligente')
+@section('title', 'Detalle de Venta - Heladeria Smart')
 @section('page-title', 'Detalle de Venta')
 
 @section('content')
@@ -297,30 +297,6 @@ function ventaDetalle() {
                                 <span class="info-value">Consumidor Final</span>
                             </div>
                         `}
-                        ${this.venta.vehiculo ? `
-                            <div class="info-row">
-                                <span class="info-label">Vehículo:</span>
-                                <span class="info-value">${this.venta.vehiculo}</span>
-                            </div>
-                        ` : ''}
-                        ${this.venta.dominio ? `
-                            <div class="info-row">
-                                <span class="info-label">Dominio:</span>
-                                <span class="info-value">${this.venta.dominio}</span>
-                            </div>
-                        ` : ''}
-                        ${this.venta.numero_chasis ? `
-                            <div class="info-row">
-                                <span class="info-label">Nº Chasis:</span>
-                                <span class="info-value">${this.venta.numero_chasis}</span>
-                            </div>
-                        ` : ''}
-                        ${this.venta.numero_motor ? `
-                            <div class="info-row">
-                                <span class="info-label">Nº Motor:</span>
-                                <span class="info-value">${this.venta.numero_motor}</span>
-                            </div>
-                        ` : ''}
                         <div class="info-row">
                             <span class="info-label">Tipo de Pago:</span>
                             <span class="info-value">${this.venta.tipo_pago === 'efectivo' ? 'Efectivo' : this.venta.tipo_pago === 'tarjeta' ? 'Tarjeta' : this.venta.tipo_pago === 'cuenta_corriente' ? 'Cuenta Corriente' : 'Mixto'}</span>

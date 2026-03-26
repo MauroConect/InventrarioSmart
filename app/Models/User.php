@@ -11,10 +11,14 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_VENDEDOR = 'vendedor';
+
     protected $fillable = [
         'name',
         'email',
         'password',
+        'role',
     ];
 
     protected $hidden = [
@@ -26,4 +30,19 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        $rolePermissions = config('permissions.roles.' . $this->role, []);
+        return in_array($permission, $rolePermissions, true);
+    }
 }

@@ -35,13 +35,15 @@ require '/var/www/vendor/autoload.php';
 
 if (\$user) {
     \$user->password = \Illuminate\Support\Facades\Hash::make(\$password);
+    \$user->role = 'admin';
     \$user->save();
     echo '✅ Usuario actualizado\n';
 } else {
     \$user = \App\Models\User::create([
         'name' => 'Administrador',
         'email' => \$email,
-        'password' => \Illuminate\Support\Facades\Hash::make(\$password)
+        'password' => \Illuminate\Support\Facades\Hash::make(\$password),
+        'role' => 'admin'
     ]);
     echo '✅ Usuario creado\n';
 }

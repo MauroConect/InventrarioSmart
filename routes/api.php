@@ -23,66 +23,75 @@ Route::middleware('auth:web')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Dashboard
-    Route::get('/dashboard/estadisticas', [DashboardController::class, 'estadisticas']);
-    Route::get('/dashboard/ventas-por-dia', [DashboardController::class, 'ventasPorDia']);
-    Route::get('/dashboard/productos-mas-vendidos', [DashboardController::class, 'productosMasVendidos']);
-    Route::get('/dashboard/resumen-cajas', [DashboardController::class, 'resumenCajas']);
-    Route::get('/dashboard/ventas-por-tipo-pago', [DashboardController::class, 'ventasPorTipoPago']);
+    Route::middleware('permission:dashboard.view')->group(function () {
+        Route::get('/dashboard/estadisticas', [DashboardController::class, 'estadisticas']);
+        Route::get('/dashboard/ventas-por-dia', [DashboardController::class, 'ventasPorDia']);
+        Route::get('/dashboard/productos-mas-vendidos', [DashboardController::class, 'productosMasVendidos']);
+        Route::get('/dashboard/resumen-cajas', [DashboardController::class, 'resumenCajas']);
+        Route::get('/dashboard/ventas-por-tipo-pago', [DashboardController::class, 'ventasPorTipoPago']);
+    });
 
-    // Categorías
-    Route::apiResource('categorias', CategoriaController::class);
+    Route::middleware('permission:ventas.view')->group(function () {
+        Route::get('ventas', [VentaController::class, 'index']);
+        Route::get('ventas/{id}', [VentaController::class, 'show']);
+    });
 
-    // Productos
-    Route::apiResource('productos', ProductoController::class);
-    Route::get('productos/proveedor/{proveedorId}', [ProductoController::class, 'getByProveedor']);
-    Route::post('productos/aumento-masivo', [ProductoController::class, 'aumentoMasivo']);
+    Route::post('ventas', [VentaController::class, 'store'])->middleware('permission:ventas.create');
+    Route::post('ventas/{id}/adjuntos', [VentaController::class, 'agregarAdjuntos'])->middleware('permission:ventas.create');
 
-    // Proveedores
-    Route::apiResource('proveedores', ProveedorController::class);
+    Route::middleware('permission:clientes.view')->group(function () {
+        Route::apiResource('clientes', ClienteController::class);
+    });
 
-    // Clientes
-    Route::apiResource('clientes', ClienteController::class);
+    Route::middleware('permission:productos.view')->group(function () {
+        Route::get('productos', [ProductoController::class, 'index']);
+        Route::get('productos/{producto}', [ProductoController::class, 'show']);
+        Route::get('productos/proveedor/{proveedorId}', [ProductoController::class, 'getByProveedor']);
+    });
 
-    // Cajas
-    Route::get('cajas', [CajaController::class, 'index']);
-    Route::post('cajas', [CajaController::class, 'store']);
-    Route::get('cajas/{id}', [CajaController::class, 'show']);
-    Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre']);
-    Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar']);
+    Route::middleware('permission:cajas.view')->group(function () {
+        Route::get('cajas', [CajaController::class, 'index']);
+        Route::get('cajas/{id}', [CajaController::class, 'show']);
+        Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre']);
+    });
 
-    // Movimientos de Caja
-    Route::get('movimientos-caja', [MovimientoCajaController::class, 'index']);
-    Route::post('movimientos-caja', [MovimientoCajaController::class, 'store']);
-    Route::get('movimientos-caja/{id}', [MovimientoCajaController::class, 'show']);
+    Route::middleware('permission:cajas.manage')->group(function () {
+        Route::post('cajas', [CajaController::class, 'store']);
+        Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar']);
+    });
 
-    // Cuentas Corrientes
-    Route::get('cuentas-corrientes', [CuentaCorrienteController::class, 'index']);
-    Route::post('cuentas-corrientes', [CuentaCorrienteController::class, 'store']);
-    Route::get('cuentas-corrientes/{id}', [CuentaCorrienteController::class, 'show']);
-    Route::post('cuentas-corrientes/{id}/movimiento', [CuentaCorrienteController::class, 'agregarMovimiento']);
+    Route::middleware('permission:admin')->group(function () {
+        Route::apiResource('categorias', CategoriaController::class);
+        Route::post('productos', [ProductoController::class, 'store']);
+        Route::put('productos/{producto}', [ProductoController::class, 'update']);
+        Route::patch('productos/{producto}', [ProductoController::class, 'update']);
+        Route::delete('productos/{producto}', [ProductoController::class, 'destroy']);
+        Route::post('productos/aumento-masivo', [ProductoController::class, 'aumentoMasivo']);
+        Route::apiResource('proveedores', ProveedorController::class);
 
-    // Deudas de Clientes
-    Route::get('deudas-clientes', [DeudaClienteController::class, 'index']);
-    Route::post('deudas-clientes', [DeudaClienteController::class, 'store']);
-    Route::get('deudas-clientes/{id}', [DeudaClienteController::class, 'show']);
-    Route::post('deudas-clientes/{id}/pago', [DeudaClienteController::class, 'registrarPago']);
+        Route::get('movimientos-caja', [MovimientoCajaController::class, 'index']);
+        Route::post('movimientos-caja', [MovimientoCajaController::class, 'store']);
+        Route::get('movimientos-caja/{id}', [MovimientoCajaController::class, 'show']);
 
-    // Movimientos de Stock
-    Route::get('movimientos-stock', [MovimientoStockController::class, 'index']);
-    Route::post('movimientos-stock', [MovimientoStockController::class, 'store']);
-    Route::get('movimientos-stock/{id}', [MovimientoStockController::class, 'show']);
+        Route::get('cuentas-corrientes', [CuentaCorrienteController::class, 'index']);
+        Route::post('cuentas-corrientes', [CuentaCorrienteController::class, 'store']);
+        Route::get('cuentas-corrientes/{id}', [CuentaCorrienteController::class, 'show']);
+        Route::post('cuentas-corrientes/{id}/movimiento', [CuentaCorrienteController::class, 'agregarMovimiento']);
 
-    // Ventas
-    Route::get('ventas', [VentaController::class, 'index']);
-    Route::post('ventas', [VentaController::class, 'store']);
-    Route::get('ventas/{id}', [VentaController::class, 'show']);
-    Route::post('ventas/{id}/adjuntos', [VentaController::class, 'agregarAdjuntos']);
+        Route::get('deudas-clientes', [DeudaClienteController::class, 'index']);
+        Route::post('deudas-clientes', [DeudaClienteController::class, 'store']);
+        Route::get('deudas-clientes/{id}', [DeudaClienteController::class, 'show']);
+        Route::post('deudas-clientes/{id}/pago', [DeudaClienteController::class, 'registrarPago']);
 
-    // Cheques
-    Route::apiResource('cheques', ChequeController::class);
-    Route::get('cheques-proximos-vencer', [ChequeController::class, 'proximosAVencer']);
-    Route::get('cheques-por-mes', [ChequeController::class, 'porMes']);
-    Route::get('cheques-por-fecha', [ChequeController::class, 'porFecha']);
-    Route::get('cheques-estadisticas', [ChequeController::class, 'estadisticas']);
-    Route::post('cheques/{id}/marcar-cobrado', [ChequeController::class, 'marcarCobrado']);
+        Route::get('movimientos-stock', [MovimientoStockController::class, 'index']);
+        Route::post('movimientos-stock', [MovimientoStockController::class, 'store']);
+        Route::get('movimientos-stock/{id}', [MovimientoStockController::class, 'show']);
+
+        Route::apiResource('cheques', ChequeController::class);
+        Route::get('cheques-proximos-vencer', [ChequeController::class, 'proximosAVencer']);
+        Route::get('cheques-por-mes', [ChequeController::class, 'porMes']);
+        Route::get('cheques-por-fecha', [ChequeController::class, 'porFecha']);
+        Route::get('cheques-estadisticas', [ChequeController::class, 'estadisticas']);
+        Route::post('cheques/{id}/marcar-cobrado', [ChequeController::class, 'marcarCobrado']);
+    });
 });

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ventas - Inventario Inteligente')
+@section('title', 'Ventas de Helado - Heladeria Smart')
 @section('page-title', 'Ventas')
 
 @section('content')
@@ -13,7 +13,7 @@
             :class="cajasAbiertas.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'"
             class="w-full sm:w-auto px-4 py-2 rounded text-white"
         >
-            + Nueva Venta
+            + Nueva Venta de Helado
         </button>
     </div>
 
@@ -102,46 +102,6 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Vehículo</label>
-                        <input
-                            type="text"
-                            x-model="vehiculo"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md"
-                            placeholder="Ej: Ford Fiesta 1.6"
-                        >
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Dominio / Patente</label>
-                        <input
-                            type="text"
-                            x-model="dominio"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md"
-                            placeholder="Ej: ABC123"
-                        >
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nº Chasis</label>
-                        <input
-                            type="text"
-                            x-model="numeroChasis"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md"
-                        >
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nº Motor</label>
-                        <input
-                            type="text"
-                            x-model="numeroMotor"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md"
-                        >
-                    </div>
-                </div>
-
                 <div x-show="tipoPago === 'mixto'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Monto Tarjeta</label>
@@ -160,7 +120,7 @@
 
                 <div class="border-t pt-4">
                     <div class="flex justify-between items-center mb-4">
-                        <h4 class="font-semibold">Productos</h4>
+                        <h4 class="font-semibold">Helados</h4>
                         <div class="flex gap-2">
                             <button type="button" @click="imprimirPresupuesto()" class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1">
                                 🖨️ Imprimir Presupuesto
@@ -278,10 +238,6 @@ function ventas() {
         montoTarjeta: '',
         montoEfectivo: '',
         descuento: 0,
-        vehiculo: '',
-        dominio: '',
-        numeroChasis: '',
-        numeroMotor: '',
         items: [{ producto_id: '', cantidad: 1 }],
         busquedaProducto: {},
         adjuntos: [],
@@ -548,30 +504,6 @@ function ventas() {
                                 <span class="info-value">Consumidor Final</span>
                             </div>
                         `}
-                        ${this.vehiculo ? `
-                            <div class="info-row">
-                                <span class="info-label">Vehículo:</span>
-                                <span class="info-value">${this.vehiculo}</span>
-                            </div>
-                        ` : ''}
-                        ${this.dominio ? `
-                            <div class="info-row">
-                                <span class="info-label">Dominio:</span>
-                                <span class="info-value">${this.dominio}</span>
-                            </div>
-                        ` : ''}
-                        ${this.numeroChasis ? `
-                            <div class="info-row">
-                                <span class="info-label">Nº Chasis:</span>
-                                <span class="info-value">${this.numeroChasis}</span>
-                            </div>
-                        ` : ''}
-                        ${this.numeroMotor ? `
-                            <div class="info-row">
-                                <span class="info-label">Nº Motor:</span>
-                                <span class="info-value">${this.numeroMotor}</span>
-                            </div>
-                        ` : ''}
                         <div class="info-row">
                             <span class="info-label">Tipo de Pago:</span>
                             <span class="info-value">${this.tipoPago === 'efectivo' ? 'Efectivo' : this.tipoPago === 'tarjeta' ? 'Tarjeta' : this.tipoPago === 'cuenta_corriente' ? 'Cuenta Corriente' : 'Mixto'}</span>
@@ -700,10 +632,6 @@ function ventas() {
             this.items = [{ producto_id: '', cantidad: 1 }];
             this.busquedaProducto = {};
             this.adjuntos = [];
-            this.vehiculo = '';
-            this.dominio = '';
-            this.numeroChasis = '';
-            this.numeroMotor = '';
             // Limpiar el input file
             const fileInput = document.querySelector('input[type="file"]');
             if (fileInput) {
@@ -741,10 +669,6 @@ function ventas() {
                     tipo_pago: this.tipoPago,
                     descuento: parseFloat(this.descuento) || 0,
                     items: itemsValidos,
-                    vehiculo: this.vehiculo || null,
-                    dominio: this.dominio || null,
-                    numero_chasis: this.numeroChasis || null,
-                    numero_motor: this.numeroMotor || null,
                 };
                 
                 if (this.tipoPago === 'mixto') {

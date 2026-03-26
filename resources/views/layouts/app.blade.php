@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Inventario Inteligente')</title>
+    <title>@yield('title', 'Heladeria Smart')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -29,7 +29,7 @@
                 x-cloak
             >
                 <div class="flex items-center justify-between h-16 px-6 border-b border-gray-700">
-                    <h1 class="text-xl font-bold">Inventario</h1>
+                    <h1 class="text-xl font-bold">Heladeria Smart</h1>
                     <button @click="sidebarOpen = false" class="lg:hidden text-gray-400 hover:text-white">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -38,42 +38,66 @@
                 </div>
                 
                 <nav class="flex-1 overflow-y-auto py-4">
-                    <a href="{{ route('dashboard') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('dashboard') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">📊</span> Dashboard
-                    </a>
-                    <a href="{{ route('categorias.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('categorias.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">📁</span> Categorías
-                    </a>
-                    <a href="{{ route('productos.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('productos.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">📦</span> Productos
-                    </a>
-                    <a href="{{ route('aumento-masivo.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('aumento-masivo.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">📈</span> Aumento Masivo
-                    </a>
-                    <a href="{{ route('proveedores.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('proveedores.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">🚚</span> Proveedores
-                    </a>
-                    <a href="{{ route('clientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('clientes.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">👥</span> Clientes
-                    </a>
-                    <a href="{{ route('cajas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cajas.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">💰</span> Cajas
-                    </a>
-                    <a href="{{ route('cuentas-corrientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cuentas-corrientes.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">💳</span> Cuentas Corrientes
-                    </a>
-                    <a href="{{ route('deudas-clientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('deudas-clientes.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">📋</span> Deudas
-                    </a>
-                    <a href="{{ route('movimientos-stock.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('movimientos-stock.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">📊</span> Stock
-                    </a>
-                    <a href="{{ route('ventas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('ventas.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">🛒</span> Ventas
-                    </a>
-                    <a href="{{ route('cheques.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cheques.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">💵</span> Cheques
-                    </a>
+                    @if(Auth::user()->hasPermission('dashboard.view'))
+                        <a href="{{ route('dashboard') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('dashboard') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">📊</span> Dashboard
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('categorias.view'))
+                        <a href="{{ route('categorias.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('categorias.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">📁</span> Categorias
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('productos.view'))
+                        <a href="{{ route('productos.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('productos.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">🍨</span> Sabores y Productos
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('productos.manage'))
+                        <a href="{{ route('aumento-masivo.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('aumento-masivo.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">📈</span> Aumento Masivo
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('proveedores.view'))
+                        <a href="{{ route('proveedores.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('proveedores.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">🚚</span> Proveedores
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('clientes.view'))
+                        <a href="{{ route('clientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('clientes.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">👥</span> Clientes
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('cajas.view'))
+                        <a href="{{ route('cajas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cajas.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">💰</span> Cajas
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('cuentas_corrientes.view'))
+                        <a href="{{ route('cuentas-corrientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cuentas-corrientes.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">💳</span> Cuentas Corrientes
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('deudas.view'))
+                        <a href="{{ route('deudas-clientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('deudas-clientes.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">📋</span> Deudas
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('stock.view'))
+                        <a href="{{ route('movimientos-stock.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('movimientos-stock.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">📦</span> Stock
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('ventas.view'))
+                        <a href="{{ route('ventas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('ventas.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">🛒</span> Ventas de Helado
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('cheques.view'))
+                        <a href="{{ route('cheques.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cheques.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">💵</span> Cheques
+                        </a>
+                    @endif
                 </nav>
                 
                 <div class="border-t border-gray-700 p-4">
@@ -112,7 +136,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
-                    <h2 class="text-xl font-semibold text-gray-800">@yield('page-title', 'Inventario Inteligente')</h2>
+                    <h2 class="text-xl font-semibold text-gray-800">@yield('page-title', 'Heladeria Smart')</h2>
                 </header>
 
                 <!-- Page Content -->
