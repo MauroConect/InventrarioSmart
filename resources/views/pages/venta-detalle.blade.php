@@ -9,6 +9,15 @@
         <h1 class="text-3xl font-bold">Venta #<span x-text="ventaId"></span></h1>
         <div class="flex gap-2">
             <button
+                @click="facturarAfip()"
+                x-show="venta && venta.estado_facturacion !== 'facturada'"
+                :disabled="facturando"
+                class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+            >
+                <span x-show="!facturando">Facturar AFIP/ARCA</span>
+                <span x-show="facturando" x-cloak>Facturando...</span>
+            </button>
+            <button
                 @click="imprimirComprobante()"
                 x-show="venta"
                 class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2"
@@ -18,6 +27,9 @@
             <a href="{{ route('ventas.index') }}" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Volver</a>
         </div>
     </div>
+
+    <div x-show="error" x-cloak class="p-4 bg-red-100 border border-red-400 text-red-700 rounded" x-text="error"></div>
+    <div x-show="success" x-cloak class="p-4 bg-green-100 border border-green-400 text-green-700 rounded" x-text="success"></div>
 
     <template x-if="loading">
         <div class="p-8 text-center text-gray-500">
@@ -47,7 +59,63 @@
                         <p class="text-sm text-gray-600">Total</p>
                         <p class="font-medium text-xl" x-text="'$' + parseFloat(venta.total || 0).toFixed(2)"></p>
                     </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Estado facturacion</p>
+                        <span
+                            class="inline-block px-2 py-1 rounded text-sm font-medium"
+                            :class="{
+                                'bg-green-100 text-green-800': (venta.estado_facturacion || 'pendiente') === 'facturada',
+                                'bg-yellow-100 text-yellow-800': (venta.estado_facturacion || 'pendiente') === 'pendiente',
+                                'bg-red-100 text-red-800': venta.estado_facturacion === 'error'
+                            }"
+                            x-text="venta.estado_facturacion || 'pendiente'"
+                        ></span>
+                    </div>
+                    <div x-show="venta.cae">
+                        <p class="text-sm text-gray-600">CAE</p>
+                        <p class="font-medium" x-text="venta.cae"></p>
+                    </div>
+                    <div x-show="venta.cae_vencimiento">
+                        <p class="text-sm text-gray-600">Vencimiento CAE</p>
+                        <p class="font-medium" x-text="venta.cae_vencimiento"></p>
+                    </div>
+                    <div x-show="venta.comprobante_tipo && venta.comprobante_numero">
+                        <p class="text-sm text-gray-600">Comprobante AFIP</p>
+                        <p class="font-medium">
+                            Factura <span x-text="venta.comprobante_tipo"></span>
+                            <span x-text="fiscal && fiscal.punto_venta != null ? String(fiscal.punto_venta).padStart(4, '0') : '----'"></span>
+                            -
+                            <span x-text="venta.comprobante_numero != null ? String(venta.comprobante_numero).padStart(8, '0') : ''"></span>
+                        </p>
+                    </div>
                 </div>
+            </div>
+
+            <div x-show="fiscal && (fiscal.razon_social || fiscal.cuit_emisor)" class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold mb-4">Emisor (AFIP/ARCA)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div x-show="fiscal.razon_social">
+                        <p class="text-gray-600">Razon social</p>
+                        <p class="font-medium" x-text="fiscal.razon_social"></p>
+                    </div>
+                    <div x-show="fiscal.cuit_emisor">
+                        <p class="text-gray-600">CUIT</p>
+                        <p class="font-medium" x-text="fiscal.cuit_emisor"></p>
+                    </div>
+                    <div x-show="fiscal.condicion_iva">
+                        <p class="text-gray-600">Condicion IVA</p>
+                        <p class="font-medium" x-text="fiscal.condicion_iva"></p>
+                    </div>
+                    <div x-show="fiscal.ambiente">
+                        <p class="text-gray-600">Ambiente</p>
+                        <p class="font-medium" x-text="fiscal.ambiente"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div x-show="venta.estado_facturacion === 'error' && venta.afip_observaciones" class="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p class="text-sm font-semibold text-red-800">Error al facturar</p>
+                <p class="text-sm text-red-700 mt-1" x-text="venta.afip_observaciones"></p>
             </div>
 
             <div class="bg-white rounded-lg shadow p-6">
@@ -84,39 +152,85 @@
 function ventaDetalle() {
     return {
         venta: null,
+        fiscal: null,
         ventaId: @json($id ?? null),
         loading: true,
+        facturando: false,
+        error: '',
+        success: '',
         
         async init() {
             if (this.ventaId) {
-                await this.fetch();
+                await Promise.all([this.fetch(), this.fetchFiscal()]);
+            }
+        },
+
+        async fetchFiscal() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await axios.get('/api/configuracion-fiscal-comprobante', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                this.fiscal = response.data;
+            } catch (e) {
+                this.fiscal = null;
             }
         },
         
         async fetch() {
             try {
                 this.loading = true;
+                this.error = '';
                 const token = localStorage.getItem('token');
                 const response = await axios.get(`/api/ventas/${this.ventaId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 this.venta = response.data;
             } catch (error) {
-                console.error('Error:', error);
+                this.error = error.response?.data?.message || 'Error al cargar la venta.';
             } finally {
                 this.loading = false;
+            }
+        },
+
+        async facturarAfip() {
+            try {
+                this.facturando = true;
+                this.error = '';
+                this.success = '';
+                const token = localStorage.getItem('token');
+                const response = await axios.post(`/api/ventas/${this.ventaId}/facturar-afip`, {}, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                this.success = response.data?.message || 'Venta facturada correctamente.';
+                await this.fetch();
+                await this.fetchFiscal();
+            } catch (error) {
+                this.error = error.response?.data?.error || error.response?.data?.message || 'No se pudo facturar la venta.';
+            } finally {
+                this.facturando = false;
             }
         },
         
         imprimirComprobante() {
             if (!this.venta) return;
-            
+
+            const f = this.fiscal || {};
             const fechaVenta = new Date(this.venta.created_at || this.venta.fecha).toLocaleString('es-AR');
             const cliente = this.venta.cliente;
             const items = this.venta.items || [];
             const totalBruto = items.reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
             const descuento = parseFloat(this.venta.descuento || 0);
             const totalFinal = parseFloat(this.venta.total_final || this.venta.total || 0);
+            const tipoLetra = this.venta.comprobante_tipo || 'B';
+            const ptoFmt = f.punto_venta != null ? String(f.punto_venta).padStart(4, '0') : '----';
+            const nroFmt = this.venta.comprobante_numero != null ? String(this.venta.comprobante_numero).padStart(8, '0') : '--------';
+            const vtoCae = this.venta.cae_vencimiento
+                ? new Date(this.venta.cae_vencimiento).toLocaleDateString('es-AR')
+                : '';
+            const tituloComp = this.venta.estado_facturacion === 'facturada' && this.venta.cae
+                ? `FACTURA ${tipoLetra}`
+                : 'COMPROBANTE DE VENTA';
             
             const contenidoHTML = `
                 <!DOCTYPE html>
@@ -261,8 +375,14 @@ function ventaDetalle() {
                 </head>
                 <body>
                     <div class="header">
-                        <h1>COMPROBANTE DE VENTA</h1>
+                        ${f.razon_social ? `<p style="font-weight:bold;font-size:11px;margin:0 0 2px;">${f.razon_social}</p>` : ''}
+                        ${f.cuit_emisor ? `<p style="margin:0;font-size:9px;">CUIT: ${f.cuit_emisor}</p>` : ''}
+                        ${f.condicion_iva ? `<p style="margin:2px 0 0;font-size:8px;">${f.condicion_iva}</p>` : ''}
+                        <h1 style="margin-top:4px;">${tituloComp}</h1>
                         <p class="numero-factura">${this.venta.numero_factura || 'N/A'}</p>
+                        ${this.venta.estado_facturacion === 'facturada' && this.venta.cae ? `
+                            <p style="font-size:10px;margin:2px 0;">${tipoLetra} ${ptoFmt}-${nroFmt}</p>
+                        ` : ''}
                         <p>Fecha: ${fechaVenta}</p>
                         <p class="estado-badge">${this.venta.estado || 'Completada'}</p>
                     </div>
@@ -348,6 +468,22 @@ function ventaDetalle() {
                             <span>$${totalFinal.toFixed(2)}</span>
                         </div>
                     </div>
+
+                    ${this.venta.estado_facturacion === 'facturada' && this.venta.cae ? `
+                        <div class="info-section" style="border-top:1px dashed #333;padding-top:3mm;">
+                            <div class="info-row">
+                                <span class="info-label">CAE:</span>
+                                <span class="info-value" style="white-space:normal;word-break:break-all;">${this.venta.cae}</span>
+                            </div>
+                            ${vtoCae ? `
+                                <div class="info-row">
+                                    <span class="info-label">Vto CAE:</span>
+                                    <span class="info-value">${vtoCae}</span>
+                                </div>
+                            ` : ''}
+                            <p style="font-size:7px;margin-top:2mm;text-align:center;color:#444;">Comprobante autorizado por AFIP/ARCA</p>
+                        </div>
+                    ` : ''}
 
                     ${this.venta.tipo_pago === 'mixto' ? (() => {
                         const montoTarjeta = parseFloat(this.venta.monto_tarjeta || 0);

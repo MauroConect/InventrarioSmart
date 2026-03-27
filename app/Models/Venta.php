@@ -26,6 +26,13 @@ class Venta extends Model
         'monto_cuota',
         'recargo_cuotas',
         'estado',
+        'estado_facturacion',
+        'comprobante_tipo',
+        'comprobante_numero',
+        'cae',
+        'cae_vencimiento',
+        'afip_observaciones',
+        'facturada_at',
     ];
 
     protected $casts = [
@@ -37,6 +44,8 @@ class Venta extends Model
         'monto_efectivo' => 'decimal:2',
         'monto_cuota' => 'decimal:2',
         'recargo_cuotas' => 'decimal:2',
+        'cae_vencimiento' => 'date',
+        'facturada_at' => 'datetime',
     ];
 
     public function caja()

@@ -15,6 +15,7 @@ use App\Http\Controllers\MovimientoStockController;
 use App\Http\Controllers\VentaController;
 use App\Http\Controllers\ChequeController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ConfiguracionFiscalController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -34,13 +35,17 @@ Route::middleware('auth:web')->group(function () {
     Route::middleware('permission:ventas.view')->group(function () {
         Route::get('ventas', [VentaController::class, 'index']);
         Route::get('ventas/{id}', [VentaController::class, 'show']);
+        Route::get('configuracion-fiscal-comprobante', [ConfiguracionFiscalController::class, 'paraComprobante']);
     });
 
     Route::post('ventas', [VentaController::class, 'store'])->middleware('permission:ventas.create');
     Route::post('ventas/{id}/adjuntos', [VentaController::class, 'agregarAdjuntos'])->middleware('permission:ventas.create');
+    Route::post('ventas/{id}/facturar-afip', [VentaController::class, 'facturarAfip'])->middleware('permission:ventas.facturar');
+    Route::get('ventas-pendientes-facturacion', [VentaController::class, 'pendientesFacturacion'])->middleware('permission:ventas.facturar');
+    Route::post('ventas-facturar-lote', [VentaController::class, 'facturarLote'])->middleware('permission:ventas.facturar');
 
     Route::middleware('permission:clientes.view')->group(function () {
-        Route::apiResource('clientes', ClienteController::class);
+        Route::apiResource('clientes', ClienteController::class)->names('api.clientes');
     });
 
     Route::middleware('permission:productos.view')->group(function () {
@@ -61,13 +66,16 @@ Route::middleware('auth:web')->group(function () {
     });
 
     Route::middleware('permission:admin')->group(function () {
-        Route::apiResource('categorias', CategoriaController::class);
+        Route::get('configuracion-fiscal', [ConfiguracionFiscalController::class, 'show']);
+        Route::post('configuracion-fiscal', [ConfiguracionFiscalController::class, 'update']);
+
+        Route::apiResource('categorias', CategoriaController::class)->names('api.categorias');
         Route::post('productos', [ProductoController::class, 'store']);
         Route::put('productos/{producto}', [ProductoController::class, 'update']);
         Route::patch('productos/{producto}', [ProductoController::class, 'update']);
         Route::delete('productos/{producto}', [ProductoController::class, 'destroy']);
         Route::post('productos/aumento-masivo', [ProductoController::class, 'aumentoMasivo']);
-        Route::apiResource('proveedores', ProveedorController::class);
+        Route::apiResource('proveedores', ProveedorController::class)->names('api.proveedores');
 
         Route::get('movimientos-caja', [MovimientoCajaController::class, 'index']);
         Route::post('movimientos-caja', [MovimientoCajaController::class, 'store']);
@@ -87,7 +95,7 @@ Route::middleware('auth:web')->group(function () {
         Route::post('movimientos-stock', [MovimientoStockController::class, 'store']);
         Route::get('movimientos-stock/{id}', [MovimientoStockController::class, 'show']);
 
-        Route::apiResource('cheques', ChequeController::class);
+        Route::apiResource('cheques', ChequeController::class)->names('api.cheques');
         Route::get('cheques-proximos-vencer', [ChequeController::class, 'proximosAVencer']);
         Route::get('cheques-por-mes', [ChequeController::class, 'porMes']);
         Route::get('cheques-por-fecha', [ChequeController::class, 'porFecha']);

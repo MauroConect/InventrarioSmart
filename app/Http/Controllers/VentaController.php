@@ -7,12 +7,17 @@ use App\Models\ItemVenta;
 use App\Models\Producto;
 use App\Models\Caja;
 use App\Models\VentaAdjunto;
+use App\Services\AfipFacturacionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class VentaController extends Controller
 {
+    public function __construct(private AfipFacturacionService $afipFacturacionService)
+    {
+    }
+
     public function index(Request $request)
     {
         $query = Venta::with(['caja', 'cliente', 'items.producto']);
@@ -23,6 +28,10 @@ class VentaController extends Controller
 
         if ($request->has('cliente_id')) {
             $query->where('cliente_id', $request->cliente_id);
+        }
+
+        if ($request->filled('estado_facturacion')) {
+            $query->where('estado_facturacion', $request->estado_facturacion);
         }
 
         return response()->json($query->orderBy('fecha', 'desc')->paginate(15));
@@ -207,5 +216,123 @@ class VentaController extends Controller
             'venta' => $venta->load('adjuntos'),
             'adjuntos' => $adjuntosCreados,
         ], 201);
+    }
+
+    public function facturarAfip($id)
+    {
+        $venta = Venta::with(['cliente', 'items.producto'])->findOrFail($id);
+
+        if ($venta->estado_facturacion === 'facturada') {
+            return response()->json([
+                'message' => 'La venta ya se encuentra facturada.',
+                'venta' => $venta,
+            ]);
+        }
+
+        try {
+            $resultado = $this->afipFacturacionService->facturarVenta($venta);
+
+            $venta->update([
+                'estado_facturacion' => 'facturada',
+                'comprobante_tipo' => $resultado['comprobante_tipo'],
+                'comprobante_numero' => $resultado['comprobante_numero'],
+                'cae' => $resultado['cae'],
+                'cae_vencimiento' => $resultado['cae_vencimiento'],
+                'afip_observaciones' => null,
+                'facturada_at' => now(),
+            ]);
+
+            return response()->json([
+                'message' => 'Venta facturada correctamente en AFIP/ARCA.',
+                'venta' => $venta->fresh(['cliente', 'items.producto']),
+                'afip' => $resultado['afip_response'],
+            ]);
+        } catch (\Throwable $e) {
+            $venta->update([
+                'estado_facturacion' => 'error',
+                'afip_observaciones' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'No se pudo facturar la venta en AFIP/ARCA.',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function pendientesFacturacion(Request $request)
+    {
+        $estado = $request->query('estado_facturacion', 'todos');
+
+        $query = Venta::with(['cliente']);
+
+        if ($estado === 'pendiente') {
+            $query->where('estado_facturacion', 'pendiente');
+        } elseif ($estado === 'error') {
+            $query->where('estado_facturacion', 'error');
+        } else {
+            $query->whereIn('estado_facturacion', ['pendiente', 'error']);
+        }
+
+        return response()->json($query->orderBy('fecha', 'desc')->paginate(30));
+    }
+
+    public function facturarLote(Request $request)
+    {
+        $validated = $request->validate([
+            'venta_ids' => 'required|array|min:1',
+            'venta_ids.*' => 'integer|exists:ventas,id',
+        ]);
+
+        $resultados = [];
+
+        foreach ($validated['venta_ids'] as $ventaId) {
+            $venta = Venta::with(['cliente', 'items.producto'])->findOrFail($ventaId);
+
+            if ($venta->estado_facturacion === 'facturada') {
+                $resultados[] = [
+                    'venta_id' => $ventaId,
+                    'ok' => true,
+                    'message' => 'Ya estaba facturada.',
+                ];
+                continue;
+            }
+
+            try {
+                $resultado = $this->afipFacturacionService->facturarVenta($venta);
+
+                $venta->update([
+                    'estado_facturacion' => 'facturada',
+                    'comprobante_tipo' => $resultado['comprobante_tipo'],
+                    'comprobante_numero' => $resultado['comprobante_numero'],
+                    'cae' => $resultado['cae'],
+                    'cae_vencimiento' => $resultado['cae_vencimiento'],
+                    'afip_observaciones' => null,
+                    'facturada_at' => now(),
+                ]);
+
+                $resultados[] = [
+                    'venta_id' => $ventaId,
+                    'ok' => true,
+                    'message' => 'Facturada correctamente.',
+                ];
+            } catch (\Throwable $e) {
+                $venta->update([
+                    'estado_facturacion' => 'error',
+                    'afip_observaciones' => $e->getMessage(),
+                ]);
+
+                $resultados[] = [
+                    'venta_id' => $ventaId,
+                    'ok' => false,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return response()->json([
+            'message' => 'Proceso de facturacion por lote finalizado.',
+            'resultados' => $resultados,
+        ]);
     }
 }

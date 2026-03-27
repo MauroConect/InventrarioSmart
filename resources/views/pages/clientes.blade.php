@@ -30,6 +30,7 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">DNI</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">CUIT</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Teléfono</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
                         </tr>
@@ -43,6 +44,7 @@
                                     <div class="text-sm text-gray-500 sm:hidden md:hidden" x-text="'Tel: ' + (cliente.telefono || '-')"></div>
                                 </td>
                                 <td class="px-6 py-4 hidden sm:table-cell" x-text="cliente.dni"></td>
+                                <td class="px-6 py-4 hidden lg:table-cell text-sm" x-text="cliente.cuit || '-'"></td>
                                 <td class="px-6 py-4 hidden md:table-cell" x-text="cliente.telefono || '-'"></td>
                                 <td class="px-6 py-4">
                                     <div class="flex flex-col sm:flex-row gap-2">
@@ -71,6 +73,7 @@
                 <input type="text" x-model="formData.nombre" placeholder="Nombre" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                 <input type="text" x-model="formData.apellido" placeholder="Apellido" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                 <input type="text" x-model="formData.dni" placeholder="DNI" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                <input type="text" x-model="formData.cuit" placeholder="CUIT (11 digitos, opcional - Factura A)" maxlength="11" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <input type="text" x-model="formData.telefono" placeholder="Teléfono" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <input type="email" x-model="formData.email" placeholder="Email" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <textarea x-model="formData.direccion" placeholder="Dirección" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
@@ -91,7 +94,7 @@ function clientes() {
         loading: true,
         showModal: false,
         editing: null,
-        formData: { nombre: '', apellido: '', dni: '', telefono: '', email: '', direccion: '', activo: true },
+        formData: { nombre: '', apellido: '', dni: '', cuit: '', telefono: '', email: '', direccion: '', activo: true },
         
         async init() {
             await this.fetch();
@@ -114,7 +117,7 @@ function clientes() {
         
         openModal() {
             this.editing = null;
-            this.formData = { nombre: '', apellido: '', dni: '', telefono: '', email: '', direccion: '', activo: true };
+            this.formData = { nombre: '', apellido: '', dni: '', cuit: '', telefono: '', email: '', direccion: '', activo: true };
             this.showModal = true;
         },
         

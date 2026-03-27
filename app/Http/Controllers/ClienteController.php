@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\DeudaCliente;
+use App\Support\CuitValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -18,7 +19,8 @@ class ClienteController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('nombre', 'like', "%{$search}%")
                   ->orWhere('apellido', 'like', "%{$search}%")
-                  ->orWhere('dni', 'like', "%{$search}%");
+                  ->orWhere('dni', 'like', "%{$search}%")
+                  ->orWhere('cuit', 'like', "%{$search}%");
             });
         }
 
@@ -31,6 +33,11 @@ class ClienteController extends Controller
             'nombre' => 'required|string|max:255',
             'apellido' => 'required|string|max:255',
             'dni' => 'required|string|unique:clientes,dni|max:20',
+            'cuit' => ['nullable', 'string', 'regex:/^[0-9]{11}$/', function ($attribute, $value, $fail) {
+                if ($value !== null && $value !== '' && ! CuitValidator::isValid($value)) {
+                    $fail('El CUIT del cliente no es valido.');
+                }
+            }],
             'telefono' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'direccion' => 'nullable|string',
@@ -44,11 +51,16 @@ class ClienteController extends Controller
 
         DB::beginTransaction();
         try {
+            $cuitCliente = isset($validated['cuit']) && $validated['cuit'] !== ''
+                ? CuitValidator::normalize($validated['cuit'])
+                : null;
+
             // Crear cliente
             $clienteData = [
                 'nombre' => $validated['nombre'],
                 'apellido' => $validated['apellido'],
                 'dni' => $validated['dni'],
+                'cuit' => $cuitCliente,
                 'telefono' => $validated['telefono'] ?? null,
                 'email' => $validated['email'] ?? null,
                 'direccion' => $validated['direccion'] ?? null,
@@ -122,11 +134,22 @@ class ClienteController extends Controller
             'nombre' => 'required|string|max:255',
             'apellido' => 'required|string|max:255',
             'dni' => 'required|string|unique:clientes,dni,' . $id . '|max:20',
+            'cuit' => ['nullable', 'string', 'regex:/^[0-9]{11}$/', function ($attribute, $value, $fail) {
+                if ($value !== null && $value !== '' && ! CuitValidator::isValid($value)) {
+                    $fail('El CUIT del cliente no es valido.');
+                }
+            }],
             'telefono' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'direccion' => 'nullable|string',
             'activo' => 'boolean',
         ]);
+
+        if (isset($validated['cuit'])) {
+            $validated['cuit'] = ($validated['cuit'] !== null && $validated['cuit'] !== '')
+                ? CuitValidator::normalize($validated['cuit'])
+                : null;
+        }
 
         $cliente->update($validated);
         return response()->json($cliente);
