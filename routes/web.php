@@ -11,7 +11,25 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Rutas protegidas
 Route::middleware('auth')->group(function () {
-    Route::get('/', [DashboardController::class, 'index'])->middleware('permission:dashboard.view')->name('dashboard');
+    Route::get('/', function () {
+        $user = request()->user();
+
+        if ($user && $user->hasPermission('dashboard.view')) {
+            return redirect()->route('dashboard');
+        }
+
+        if ($user && $user->hasPermission('ventas.view')) {
+            return redirect()->route('ventas.index');
+        }
+
+        if ($user && $user->hasPermission('cajas.view')) {
+            return redirect()->route('cajas.index');
+        }
+
+        abort(403, 'No tienes permisos para acceder al sistema.');
+    })->name('home');
+
+    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('permission:dashboard.view')->name('dashboard');
     
     Route::get('/categorias', function() { return view('pages.categorias'); })->middleware('permission:categorias.view')->name('categorias.index');
     Route::get('/productos', function() { return view('pages.productos'); })->middleware('permission:productos.view')->name('productos.index');
