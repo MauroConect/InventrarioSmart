@@ -194,8 +194,9 @@ class DashboardController extends Controller
         $nombres = [
             'efectivo' => 'Efectivo',
             'tarjeta' => 'Tarjeta',
+            'transferencia' => 'Transferencia',
             'cuenta_corriente' => 'Cuenta Corriente',
-            'mixto' => 'Mixto'
+            'mixto' => 'Mixto',
         ];
         
         $datosFormateados = $ventas->map(function($item) use ($nombres) {

@@ -53,7 +53,7 @@
                     </div>
                     <div>
                         <p class="text-sm text-gray-600">Tipo de Pago</p>
-                        <p class="font-medium" x-text="venta.tipo_pago"></p>
+                        <p class="font-medium" x-text="etiquetaTipoPago(venta.tipo_pago)"></p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-600">Total</p>
@@ -88,6 +88,16 @@
                             <span x-text="venta.comprobante_numero != null ? String(venta.comprobante_numero).padStart(8, '0') : ''"></span>
                         </p>
                     </div>
+                </div>
+                <div class="mt-4 pt-4 border-t space-y-2 text-sm" x-show="venta.tipo_pago === 'mixto'">
+                    <p class="font-medium text-gray-800">Detalle del pago</p>
+                    <p x-show="parseFloat(venta.monto_efectivo || 0) > 0"><span class="text-gray-600">Efectivo:</span> <span class="font-medium" x-text="'$' + parseFloat(venta.monto_efectivo || 0).toFixed(2)"></span></p>
+                    <p x-show="parseFloat(venta.monto_tarjeta || 0) > 0"><span class="text-gray-600">Tarjeta:</span> <span class="font-medium" x-text="'$' + parseFloat(venta.monto_tarjeta || 0).toFixed(2)"></span></p>
+                    <p x-show="parseFloat(venta.monto_transferencia || 0) > 0"><span class="text-gray-600">Transferencia:</span> <span class="font-medium" x-text="'$' + parseFloat(venta.monto_transferencia || 0).toFixed(2)"></span></p>
+                </div>
+                <div class="mt-4 pt-4 border-t text-sm" x-show="venta.tipo_pago === 'transferencia'">
+                    <p class="text-gray-600">Monto transferencia</p>
+                    <p class="font-medium" x-text="'$' + parseFloat(venta.monto_transferencia || venta.total_final || 0).toFixed(2)"></p>
                 </div>
             </div>
 
@@ -159,6 +169,11 @@ function ventaDetalle() {
         error: '',
         success: '',
         
+        etiquetaTipoPago(tipo) {
+            const m = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', cuenta_corriente: 'Cuenta Corriente', mixto: 'Mixto' };
+            return m[tipo] || tipo || '-';
+        },
+
         async init() {
             if (this.ventaId) {
                 await Promise.all([this.fetch(), this.fetchFiscal()]);
@@ -419,7 +434,7 @@ function ventaDetalle() {
                         `}
                         <div class="info-row">
                             <span class="info-label">Tipo de Pago:</span>
-                            <span class="info-value">${this.venta.tipo_pago === 'efectivo' ? 'Efectivo' : this.venta.tipo_pago === 'tarjeta' ? 'Tarjeta' : this.venta.tipo_pago === 'cuenta_corriente' ? 'Cuenta Corriente' : 'Mixto'}</span>
+                            <span class="info-value">${this.etiquetaTipoPago(this.venta.tipo_pago)}</span>
                         </div>
                         ${this.venta.caja ? `
                             <div class="info-row">
@@ -488,10 +503,11 @@ function ventaDetalle() {
                     ${this.venta.tipo_pago === 'mixto' ? (() => {
                         const montoTarjeta = parseFloat(this.venta.monto_tarjeta || 0);
                         const montoEfectivo = parseFloat(this.venta.monto_efectivo || 0);
-                        const sumaMontos = montoTarjeta + montoEfectivo;
+                        const montoTransferencia = parseFloat(this.venta.monto_transferencia || 0);
+                        const sumaMontos = montoTarjeta + montoEfectivo + montoTransferencia;
                         const restante = totalFinal - sumaMontos;
                         
-                        if (montoTarjeta > 0 || montoEfectivo > 0) {
+                        if (montoTarjeta > 0 || montoEfectivo > 0 || montoTransferencia > 0) {
                             return `
                                 <div class="totals" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
                                     <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #333;">Detalle de Pago:</h3>
@@ -505,6 +521,12 @@ function ventaDetalle() {
                                         <div class="total-row">
                                             <span>Tarjeta:</span>
                                             <span>$${montoTarjeta.toFixed(2)}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${montoTransferencia > 0 ? `
+                                        <div class="total-row">
+                                            <span>Transferencia:</span>
+                                            <span>$${montoTransferencia.toFixed(2)}</span>
                                         </div>
                                     ` : ''}
                                     ${this.venta.cuotas && parseInt(this.venta.cuotas) > 0 ? `

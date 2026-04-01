@@ -62,7 +62,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="new Date(venta.created_at).toLocaleString()"></td>
                                 <td class="px-6 py-4 text-sm" x-text="venta.cliente ? (venta.cliente.nombre + ' ' + venta.cliente.apellido) : 'Cliente General'"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" x-text="'$' + parseFloat(venta.total || 0).toFixed(2)"></td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm" x-text="venta.tipo_pago"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm" x-text="etiquetaTipoPago(venta.tipo_pago)"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <a :href="'/ventas/' + venta.id" class="text-blue-600 hover:text-blue-900">Ver Detalle</a>
                                 </td>
@@ -96,13 +96,14 @@
                         <select x-model="tipoPago" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                             <option value="efectivo">Efectivo</option>
                             <option value="tarjeta">Tarjeta</option>
+                            <option value="transferencia">Transferencia</option>
                             <option value="mixto">Mixto</option>
                             <option value="cuenta_corriente" x-show="canCuentaCorriente">Cuenta Corriente</option>
                         </select>
                     </div>
                 </div>
 
-                <div x-show="tipoPago === 'mixto'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div x-show="tipoPago === 'mixto'" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Monto Tarjeta</label>
                         <input type="number" step="0.01" x-model.number="montoTarjeta" class="w-full px-3 py-2 border border-gray-300 rounded-md">
@@ -110,6 +111,10 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Monto Efectivo</label>
                         <input type="number" step="0.01" x-model.number="montoEfectivo" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Monto Transferencia</label>
+                        <input type="number" step="0.01" x-model.number="montoTransferencia" class="w-full px-3 py-2 border border-gray-300 rounded-md">
                     </div>
                 </div>
 
@@ -238,6 +243,7 @@ function ventas(canCuentaCorriente) {
         tipoPago: 'efectivo',
         montoTarjeta: '',
         montoEfectivo: '',
+        montoTransferencia: '',
         descuento: 0,
         items: [{ producto_id: '', cantidad: 1 }],
         busquedaProducto: {},
@@ -337,6 +343,11 @@ function ventas(canCuentaCorriente) {
         calcularTotal() {
             const totalBruto = this.items.reduce((acc, item) => acc + this.calcularSubtotal(item), 0);
             return totalBruto - (parseFloat(this.descuento) || 0);
+        },
+
+        etiquetaTipoPago(tipo) {
+            const m = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', cuenta_corriente: 'Cuenta Corriente', mixto: 'Mixto' };
+            return m[tipo] || tipo || '-';
         },
         
         imprimirPresupuesto() {
@@ -520,7 +531,7 @@ function ventas(canCuentaCorriente) {
                         `}
                         <div class="info-row">
                             <span class="info-label">Tipo de Pago:</span>
-                            <span class="info-value">${this.tipoPago === 'efectivo' ? 'Efectivo' : this.tipoPago === 'tarjeta' ? 'Tarjeta' : this.tipoPago === 'cuenta_corriente' ? 'Cuenta Corriente' : 'Mixto'}</span>
+                            <span class="info-value">${this.etiquetaTipoPago(this.tipoPago)}</span>
                         </div>
                     </div>
 
@@ -567,10 +578,11 @@ function ventas(canCuentaCorriente) {
                     ${this.tipoPago === 'mixto' ? (() => {
                         const montoTarjetaNum = parseFloat(this.montoTarjeta) || 0;
                         const montoEfectivoNum = parseFloat(this.montoEfectivo) || 0;
-                        const sumaMontos = montoTarjetaNum + montoEfectivoNum;
+                        const montoTransferenciaNum = parseFloat(this.montoTransferencia) || 0;
+                        const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
                         const restante = totalFinal - sumaMontos;
                         
-                        if (montoTarjetaNum > 0 || montoEfectivoNum > 0) {
+                        if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || montoTransferenciaNum > 0) {
                             return `
                                 <div class="totals" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
                                     <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #333;">Detalle de Pago:</h3>
@@ -586,7 +598,13 @@ function ventas(canCuentaCorriente) {
                                             <span>$${montoTarjetaNum.toFixed(2)}</span>
                                         </div>
                                     ` : ''}
-                                    ${restante > 0 ? `
+                                    ${montoTransferenciaNum > 0 ? `
+                                        <div class="total-row">
+                                            <span>Transferencia:</span>
+                                            <span>$${montoTransferenciaNum.toFixed(2)}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${restante > 0.01 ? `
                                         <div class="total-row">
                                             <span>Restante:</span>
                                             <span>$${restante.toFixed(2)}</span>
@@ -642,6 +660,7 @@ function ventas(canCuentaCorriente) {
             this.tipoPago = 'efectivo';
             this.montoTarjeta = '';
             this.montoEfectivo = '';
+            this.montoTransferencia = '';
             this.descuento = 0;
             this.items = [{ producto_id: '', cantidad: 1 }];
             this.busquedaProducto = {};
@@ -670,6 +689,17 @@ function ventas(canCuentaCorriente) {
                 this.error = 'Debe agregar al menos un producto';
                 return;
             }
+
+            const totalVenta = this.calcularTotal();
+            if (this.tipoPago === 'mixto') {
+                const mt = parseFloat(this.montoTarjeta) || 0;
+                const me = parseFloat(this.montoEfectivo) || 0;
+                const mtr = parseFloat(this.montoTransferencia) || 0;
+                if (Math.abs(mt + me + mtr - totalVenta) > 0.01) {
+                    this.error = 'La suma de efectivo, tarjeta y transferencia debe ser igual al total de la venta.';
+                    return;
+                }
+            }
             
             try {
                 this.loadingSubmit = true;
@@ -688,6 +718,7 @@ function ventas(canCuentaCorriente) {
                 if (this.tipoPago === 'mixto') {
                     payload.monto_tarjeta = parseFloat(this.montoTarjeta) || 0;
                     payload.monto_efectivo = parseFloat(this.montoEfectivo) || 0;
+                    payload.monto_transferencia = parseFloat(this.montoTransferencia) || 0;
                 }
                 
                 const response = await axios.post('/api/ventas', payload, {

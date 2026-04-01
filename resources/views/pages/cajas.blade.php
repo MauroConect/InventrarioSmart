@@ -111,6 +111,28 @@
                                 <p class="text-xl font-bold" x-text="'$' + parseFloat(resumenCierre.resumen.monto_apertura || 0).toFixed(2)"></p>
                             </div>
                         </div>
+                        <div class="border rounded-lg p-4 bg-slate-50" x-show="resumenCierre.resumen.por_medio_pago">
+                            <p class="text-sm font-semibold text-gray-800 mb-3">Ventas por medio de pago</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                <div class="flex justify-between gap-2"><span class="text-gray-600">Efectivo</span><span class="font-medium" x-text="'$' + parseFloat(resumenCierre.resumen.por_medio_pago?.efectivo || 0).toFixed(2)"></span></div>
+                                <div class="flex justify-between gap-2"><span class="text-gray-600">Tarjeta</span><span class="font-medium" x-text="'$' + parseFloat(resumenCierre.resumen.por_medio_pago?.tarjeta || 0).toFixed(2)"></span></div>
+                                <div class="flex justify-between gap-2"><span class="text-gray-600">Transferencia</span><span class="font-medium" x-text="'$' + parseFloat(resumenCierre.resumen.por_medio_pago?.transferencia || 0).toFixed(2)"></span></div>
+                                <div class="flex justify-between gap-2"><span class="text-gray-600">Cuenta corriente</span><span class="font-medium" x-text="'$' + parseFloat(resumenCierre.resumen.por_medio_pago?.cuenta_corriente || 0).toFixed(2)"></span></div>
+                            </div>
+                        </div>
+                        <div class="border border-gray-200 rounded-lg p-4 bg-white" x-show="resumenCierre.resumen.por_medio_pago">
+                            <p class="text-sm font-semibold text-gray-800 mb-3">Ventas por medio de pago</p>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                <span class="text-gray-600">Efectivo</span>
+                                <span class="text-right font-medium" x-text="'$' + parseFloat(resumenCierre.resumen.por_medio_pago?.efectivo || 0).toFixed(2)"></span>
+                                <span class="text-gray-600">Tarjeta</span>
+                                <span class="text-right font-medium" x-text="'$' + parseFloat(resumenCierre.resumen.por_medio_pago?.tarjeta || 0).toFixed(2)"></span>
+                                <span class="text-gray-600">Transferencia</span>
+                                <span class="text-right font-medium" x-text="'$' + parseFloat(resumenCierre.resumen.por_medio_pago?.transferencia || 0).toFixed(2)"></span>
+                                <span class="text-gray-600">Cuenta corriente</span>
+                                <span class="text-right font-medium" x-text="'$' + parseFloat(resumenCierre.resumen.por_medio_pago?.cuenta_corriente || 0).toFixed(2)"></span>
+                            </div>
+                        </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Monto Real *</label>
                             <input type="number" step="0.01" x-model.number="montoReal" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>

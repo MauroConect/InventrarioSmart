@@ -2,6 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
+const TIPO_PAGO_LABELS = {
+    efectivo: 'Efectivo',
+    tarjeta: 'Tarjeta',
+    transferencia: 'Transferencia',
+    cuenta_corriente: 'Cuenta Corriente',
+    mixto: 'Mixto',
+};
+
+function etiquetaTipoPago(tipo) {
+    return TIPO_PAGO_LABELS[tipo] ?? tipo ?? '-';
+}
+
 export default function VentaDetalle() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -207,12 +219,12 @@ export default function VentaDetalle() {
                         <p className="flex justify-between mt-2">
                             <span className="text-gray-600">Tipo de pago:</span>
                             <span className="font-medium text-gray-900">
-                                {venta.tipo_pago}
+                                {etiquetaTipoPago(venta.tipo_pago)}
                             </span>
                         </p>
                         {venta.tipo_pago === 'mixto' && (
                             <>
-                                {venta.monto_tarjeta && (
+                                {parseFloat(venta.monto_tarjeta || 0) > 0 && (
                                     <p className="flex justify-between">
                                         <span className="text-gray-600">Monto en tarjeta:</span>
                                         <span className="font-medium text-gray-900">
@@ -220,7 +232,7 @@ export default function VentaDetalle() {
                                         </span>
                                     </p>
                                 )}
-                                {venta.monto_efectivo && (
+                                {parseFloat(venta.monto_efectivo || 0) > 0 && (
                                     <p className="flex justify-between">
                                         <span className="text-gray-600">Monto en efectivo:</span>
                                         <span className="font-medium text-gray-900">
@@ -228,7 +240,28 @@ export default function VentaDetalle() {
                                         </span>
                                     </p>
                                 )}
+                                {parseFloat(venta.monto_transferencia || 0) > 0 && (
+                                    <p className="flex justify-between">
+                                        <span className="text-gray-600">Monto en transferencia:</span>
+                                        <span className="font-medium text-gray-900">
+                                            ${parseFloat(venta.monto_transferencia || 0).toFixed(2)}
+                                        </span>
+                                    </p>
+                                )}
                             </>
+                        )}
+                        {venta.tipo_pago === 'transferencia' && (
+                            <p className="flex justify-between">
+                                <span className="text-gray-600">Monto transferencia:</span>
+                                <span className="font-medium text-gray-900">
+                                    $
+                                    {parseFloat(
+                                        venta.monto_transferencia ??
+                                            venta.total_final ??
+                                            0
+                                    ).toFixed(2)}
+                                </span>
+                            </p>
                         )}
                         {(venta.cuotas && (venta.tipo_pago === 'mixto' || venta.tipo_pago === 'tarjeta')) && (
                             <>

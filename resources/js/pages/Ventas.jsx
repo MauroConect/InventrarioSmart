@@ -4,6 +4,18 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { canAccess } from '../utils/permissions';
 
+const TIPO_PAGO_LABELS = {
+    efectivo: 'Efectivo',
+    tarjeta: 'Tarjeta',
+    transferencia: 'Transferencia',
+    cuenta_corriente: 'Cuenta Corriente',
+    mixto: 'Mixto',
+};
+
+function etiquetaTipoPago(tipo) {
+    return TIPO_PAGO_LABELS[tipo] ?? tipo ?? '-';
+}
+
 export default function Ventas() {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -26,6 +38,7 @@ export default function Ventas() {
     const [tipoPago, setTipoPago] = useState('efectivo');
     const [montoTarjeta, setMontoTarjeta] = useState('');
     const [montoEfectivo, setMontoEfectivo] = useState('');
+    const [montoTransferencia, setMontoTransferencia] = useState('');
     const [cuotas, setCuotas] = useState('');
     const [recargoCuotas, setRecargoCuotas] = useState('');
     const [descuento, setDescuento] = useState(0);
@@ -101,6 +114,7 @@ export default function Ventas() {
         setTipoPago('efectivo');
         setMontoTarjeta('');
         setMontoEfectivo('');
+        setMontoTransferencia('');
         setCuotas('');
         setRecargoCuotas('');
         setDescuento(0);
@@ -335,7 +349,7 @@ export default function Ventas() {
                     `}
                     <div class="info-row">
                         <span class="info-label">Tipo de Pago:</span>
-                        <span class="info-value">${tipoPago === 'efectivo' ? 'Efectivo' : tipoPago === 'tarjeta' ? 'Tarjeta' : tipoPago === 'cuenta_corriente' ? 'Cuenta Corriente' : 'Mixto'}</span>
+                        <span class="info-value">${etiquetaTipoPago(tipoPago)}</span>
                     </div>
                 </div>
 
@@ -382,10 +396,11 @@ export default function Ventas() {
                 ${tipoPago === 'mixto' ? (() => {
                     const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
                     const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
-                    const sumaMontos = montoTarjetaNum + montoEfectivoNum;
+                    const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
+                    const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
                     const restante = totalFinal - sumaMontos;
                     
-                    if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || (cuotas && parseFloat(cuotas) > 0)) {
+                    if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || montoTransferenciaNum > 0 || (cuotas && parseFloat(cuotas) > 0)) {
                         return `
                             <div class="totals" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
                                 <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #333;">Detalle de Pago:</h3>
@@ -399,6 +414,12 @@ export default function Ventas() {
                                     <div class="total-row">
                                         <span>Tarjeta:</span>
                                         <span>$${montoTarjetaNum.toFixed(2)}</span>
+                                    </div>
+                                ` : ''}
+                                ${montoTransferenciaNum > 0 ? `
+                                    <div class="total-row">
+                                        <span>Transferencia:</span>
+                                        <span>$${montoTransferenciaNum.toFixed(2)}</span>
                                     </div>
                                 ` : ''}
                                 ${cuotas && parseFloat(cuotas) > 0 ? `
@@ -479,24 +500,14 @@ export default function Ventas() {
 
             setLoadingSubmit(true);
 
-            // Validar montos mixtos si es necesario
+            const totalFinal = calcularTotal();
             if (tipoPago === 'mixto') {
                 const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
                 const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
-                const totalFinal = calcularTotal();
-                const tieneCuotas = cuotas && parseFloat(cuotas) > 0;
-                
-                // Debe tener al menos un monto o cuotas
-                if (montoTarjetaNum <= 0 && montoEfectivoNum <= 0 && !tieneCuotas) {
-                    setError('Debe especificar al menos un monto en tarjeta, efectivo o cuotas.');
-                    setLoadingSubmit(false);
-                    return;
-                }
-                
-                // Si hay montos, validar que no excedan el total
-                const sumaMontos = montoTarjetaNum + montoEfectivoNum;
-                if (sumaMontos > 0 && sumaMontos > totalFinal + 0.01) {
-                    setError(`La suma de monto en tarjeta ($${montoTarjetaNum.toFixed(2)}) y monto en efectivo ($${montoEfectivoNum.toFixed(2)}) no puede exceder el total final ($${totalFinal.toFixed(2)}).`);
+                const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
+                const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
+                if (Math.abs(sumaMontos - totalFinal) > 0.01) {
+                    setError('La suma de efectivo, tarjeta y transferencia debe ser igual al total de la venta.');
                     setLoadingSubmit(false);
                     return;
                 }
@@ -515,6 +526,7 @@ export default function Ventas() {
             if (tipoPago === 'mixto') {
                 payload.monto_tarjeta = parseFloat(montoTarjeta) || 0;
                 payload.monto_efectivo = parseFloat(montoEfectivo) || 0;
+                payload.monto_transferencia = parseFloat(montoTransferencia) || 0;
                 if (cuotas) {
                     payload.cuotas = parseInt(cuotas) || null;
                 }
@@ -657,7 +669,7 @@ export default function Ventas() {
                                         <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">{new Date(venta.fecha).toLocaleString()}</td>
                                         <td className="px-3 sm:px-6 py-4 text-sm hidden md:table-cell">{venta.cliente ? `${venta.cliente.nombre} ${venta.cliente.apellido}` : 'Sin cliente'}</td>
                                         <td className="px-3 sm:px-6 py-4 font-bold text-sm">${parseFloat(venta.total_final || 0).toFixed(2)}</td>
-                                        <td className="px-3 sm:px-6 py-4 text-sm hidden lg:table-cell">{venta.tipo_pago}</td>
+                                        <td className="px-3 sm:px-6 py-4 text-sm hidden lg:table-cell">{etiquetaTipoPago(venta.tipo_pago)}</td>
                                         <td className="px-3 sm:px-6 py-4">
                                             <button
                                                 onClick={() => navigate(`/ventas/${venta.id}`)}
@@ -748,6 +760,7 @@ export default function Ventas() {
                                             if (e.target.value !== 'mixto') {
                                                 setMontoTarjeta('');
                                                 setMontoEfectivo('');
+                                                setMontoTransferencia('');
                                                 setRecargoCuotas('');
                                             }
                                             if (e.target.value !== 'mixto' && e.target.value !== 'tarjeta') {
@@ -758,6 +771,7 @@ export default function Ventas() {
                                     >
                                         <option value="efectivo">Efectivo</option>
                                         <option value="tarjeta">Tarjeta</option>
+                                        <option value="transferencia">Transferencia</option>
                                         {canCuentaCorriente && (
                                             <option value="cuenta_corriente">Cuenta Corriente</option>
                                         )}
@@ -801,6 +815,20 @@ export default function Ventas() {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Monto en Transferencia (opcional)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={montoTransferencia}
+                                                onChange={(e) => setMontoTransferencia(e.target.value)}
+                                                placeholder="0.00"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 Cuotas (opcional)
                                             </label>
                                             <input
@@ -815,8 +843,9 @@ export default function Ventas() {
                                             {cuotas && parseFloat(cuotas) > 0 && (() => {
                                                 const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
                                                 const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
+                                                const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
                                                 const totalFinal = calcularTotal();
-                                                const montoRestante = totalFinal - montoEfectivoNum - montoTarjetaNum;
+                                                const montoRestante = totalFinal - montoEfectivoNum - montoTarjetaNum - montoTransferenciaNum;
                                                 const montoCuotas = montoTarjetaNum > 0 ? montoTarjetaNum : (montoRestante > 0 ? montoRestante : 0);
                                                 
                                                 if (montoCuotas > 0) {
@@ -848,8 +877,9 @@ export default function Ventas() {
                                             {recargoCuotas && parseFloat(recargoCuotas) > 0 && cuotas && parseFloat(cuotas) > 0 && (() => {
                                                 const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
                                                 const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
+                                                const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
                                                 const totalFinal = calcularTotal();
-                                                const montoRestante = totalFinal - montoEfectivoNum - montoTarjetaNum;
+                                                const montoRestante = totalFinal - montoEfectivoNum - montoTarjetaNum - montoTransferenciaNum;
                                                 const montoCuotas = montoTarjetaNum > 0 ? montoTarjetaNum : (montoRestante > 0 ? montoRestante : 0);
                                                 
                                                 if (montoCuotas > 0) {
@@ -887,17 +917,19 @@ export default function Ventas() {
                                         {(() => {
                                             const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
                                             const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
-                                            const sumaMontos = montoTarjetaNum + montoEfectivoNum;
+                                            const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
+                                            const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
                                             const totalFinal = calcularTotal();
                                             const restante = totalFinal - sumaMontos;
                                             
-                                            if (montoTarjetaNum > 0 || montoEfectivoNum > 0) {
+                                            if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || montoTransferenciaNum > 0) {
                                                 return (
                                                     <div className="space-y-1">
                                                         <div>
                                                             Suma pagada: <span className="font-semibold">${sumaMontos.toFixed(2)}</span>
                                                             {montoTarjetaNum > 0 && <span className="ml-2 text-gray-500">(Tarjeta: ${montoTarjetaNum.toFixed(2)})</span>}
                                                             {montoEfectivoNum > 0 && <span className="ml-2 text-gray-500">(Efectivo: ${montoEfectivoNum.toFixed(2)})</span>}
+                                                            {montoTransferenciaNum > 0 && <span className="ml-2 text-gray-500">(Transferencia: ${montoTransferenciaNum.toFixed(2)})</span>}
                                                         </div>
                                                         {restante > 0 && (
                                                             <div className="text-blue-600">

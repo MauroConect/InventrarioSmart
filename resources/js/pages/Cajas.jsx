@@ -442,6 +442,30 @@ export default function Cajas() {
                                     </div>
                                 </div>
 
+                                {resumenCierre.resumen.por_medio_pago && (
+                                    <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                        <h4 className="font-semibold text-lg mb-3 text-gray-800">Ventas por medio de pago</h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                            <div className="flex justify-between gap-2">
+                                                <span className="text-gray-600">Efectivo</span>
+                                                <span className="font-medium">${parseFloat(resumenCierre.resumen.por_medio_pago.efectivo || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between gap-2">
+                                                <span className="text-gray-600">Tarjeta</span>
+                                                <span className="font-medium">${parseFloat(resumenCierre.resumen.por_medio_pago.tarjeta || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between gap-2">
+                                                <span className="text-gray-600">Transferencia</span>
+                                                <span className="font-medium">${parseFloat(resumenCierre.resumen.por_medio_pago.transferencia || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between gap-2">
+                                                <span className="text-gray-600">Cuenta corriente</span>
+                                                <span className="font-medium">${parseFloat(resumenCierre.resumen.por_medio_pago.cuenta_corriente || 0).toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Lista de Ventas */}
                                 {resumenCierre.ventas && resumenCierre.ventas.length > 0 && (
                                     <div className="mb-6">

@@ -46,9 +46,10 @@ class VentaController extends Controller
             'items.*.producto_id' => 'required|exists:productos,id',
             'items.*.cantidad' => 'required|integer|min:1',
             'descuento' => 'nullable|numeric|min:0',
-            'tipo_pago' => 'required|in:efectivo,tarjeta,cuenta_corriente,mixto',
-            'monto_tarjeta' => 'nullable|numeric|min:0|required_if:tipo_pago,mixto',
-            'monto_efectivo' => 'nullable|numeric|min:0|required_if:tipo_pago,mixto',
+            'tipo_pago' => 'required|in:efectivo,tarjeta,transferencia,cuenta_corriente,mixto',
+            'monto_tarjeta' => 'nullable|numeric|min:0',
+            'monto_efectivo' => 'nullable|numeric|min:0',
+            'monto_transferencia' => 'nullable|numeric|min:0',
             'cuotas' => 'nullable|integer|min:1|max:24',
             'recargo_cuotas' => 'nullable|numeric|min:0|max:100',
             'adjuntos' => 'nullable|array',
@@ -100,24 +101,25 @@ class VentaController extends Controller
             // Validar que la suma de montos mixtos sea igual al total final
             $montoTarjeta = null;
             $montoEfectivo = null;
+            $montoTransferencia = null;
             $cuotas = null;
             $montoCuota = null;
 
             if ($validated['tipo_pago'] === 'mixto') {
-                $montoTarjeta = $validated['monto_tarjeta'] ?? 0;
-                $montoEfectivo = $validated['monto_efectivo'] ?? 0;
-                $sumaMontos = $montoTarjeta + $montoEfectivo;
-                
+                $montoTarjeta = (float) ($validated['monto_tarjeta'] ?? 0);
+                $montoEfectivo = (float) ($validated['monto_efectivo'] ?? 0);
+                $montoTransferencia = (float) ($validated['monto_transferencia'] ?? 0);
+                $sumaMontos = $montoTarjeta + $montoEfectivo + $montoTransferencia;
+
                 if (abs($sumaMontos - $totalFinal) > 0.01) {
                     return response()->json([
-                        'message' => 'La suma de monto en tarjeta y monto en efectivo debe ser igual al total final de la venta.'
+                        'message' => 'La suma de efectivo, tarjeta y transferencia debe ser igual al total final de la venta.'
                     ], 400);
                 }
 
-                // Calcular monto por cuota si hay cuotas (solo para el monto de tarjeta)
                 if (isset($validated['cuotas']) && $validated['cuotas'] > 0) {
                     $cuotas = $validated['cuotas'];
-                    $montoCuota = $montoTarjeta / $cuotas;
+                    $montoCuota = $montoTarjeta > 0 ? $montoTarjeta / $cuotas : null;
                 }
             } elseif ($validated['tipo_pago'] === 'tarjeta') {
                 // Para pago con tarjeta, las cuotas se aplican al total final
@@ -125,6 +127,8 @@ class VentaController extends Controller
                     $cuotas = $validated['cuotas'];
                     $montoCuota = $totalFinal / $cuotas;
                 }
+            } elseif ($validated['tipo_pago'] === 'transferencia') {
+                $montoTransferencia = $totalFinal;
             }
 
             $venta = Venta::create([
@@ -138,6 +142,7 @@ class VentaController extends Controller
                 'tipo_pago' => $validated['tipo_pago'],
                 'monto_tarjeta' => $montoTarjeta,
                 'monto_efectivo' => $montoEfectivo,
+                'monto_transferencia' => $montoTransferencia,
                 'cuotas' => $cuotas,
                 'monto_cuota' => $montoCuota,
                 'recargo_cuotas' => $validated['recargo_cuotas'] ?? null,

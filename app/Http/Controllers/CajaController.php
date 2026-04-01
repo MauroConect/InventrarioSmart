@@ -77,6 +77,38 @@ class CajaController extends Controller
         // Obtener ventas detalladas
         $ventas = $caja->ventas()->with('cliente')->orderBy('fecha', 'desc')->get();
 
+        $porMedioPago = [
+            'efectivo' => 0.0,
+            'tarjeta' => 0.0,
+            'transferencia' => 0.0,
+            'cuenta_corriente' => 0.0,
+        ];
+        foreach ($ventas as $v) {
+            $tf = (float) $v->total_final;
+            switch ($v->tipo_pago) {
+                case 'efectivo':
+                    $porMedioPago['efectivo'] += $tf;
+                    break;
+                case 'tarjeta':
+                    $porMedioPago['tarjeta'] += $tf;
+                    break;
+                case 'transferencia':
+                    $porMedioPago['transferencia'] += $tf;
+                    break;
+                case 'cuenta_corriente':
+                    $porMedioPago['cuenta_corriente'] += $tf;
+                    break;
+                case 'mixto':
+                    $porMedioPago['efectivo'] += (float) ($v->monto_efectivo ?? 0);
+                    $porMedioPago['tarjeta'] += (float) ($v->monto_tarjeta ?? 0);
+                    $porMedioPago['transferencia'] += (float) ($v->monto_transferencia ?? 0);
+                    break;
+            }
+        }
+        foreach ($porMedioPago as $k => $val) {
+            $porMedioPago[$k] = round($val, 2);
+        }
+
         return response()->json([
             'caja' => $caja,
             'resumen' => [
@@ -88,6 +120,7 @@ class CajaController extends Controller
                 'total_egresos' => (float) $totalEgresos,
                 'cantidad_egresos' => $caja->movimientos()->where('tipo', 'egreso')->count(),
                 'monto_esperado' => round($montoEsperado, 2),
+                'por_medio_pago' => $porMedioPago,
             ],
             'movimientos' => $movimientos,
             'ventas' => $ventas,
