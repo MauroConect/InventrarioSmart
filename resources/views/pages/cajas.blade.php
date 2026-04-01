@@ -4,7 +4,7 @@
 @section('page-title', 'Cajas')
 
 @section('content')
-<div x-data="cajas({{ auth()->user()->hasPermission('cajas.manage') ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
+<div x-data="initCajasPage(@json(auth()->user()->hasPermission('cajas.manage')))" x-init="init()" class="space-y-6">
     <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold">Cajas</h1>
         <button x-show="canManage" @click="openModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
@@ -36,7 +36,7 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        <template x-for="caja in cajas" :key="caja.id">
+                        <template x-for="caja in listaCajas" :key="caja.id">
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="caja.id"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="new Date(caja.fecha_apertura).toLocaleString()"></td>
@@ -129,10 +129,10 @@
 
 @push('scripts')
 <script>
-function cajas(canManage) {
+function initCajasPage(canManage) {
     return {
-        canManage: !!canManage,
-        cajas: [],
+        canManage: Boolean(canManage),
+        listaCajas: [],
         loading: true,
         showModal: false,
         showCerrarModal: false,
@@ -158,7 +158,7 @@ function cajas(canManage) {
                 const response = await axios.get('/api/cajas', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                this.cajas = response.data?.data || response.data || [];
+                this.listaCajas = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error:', error);
                 this.error = 'Error al cargar las cajas';

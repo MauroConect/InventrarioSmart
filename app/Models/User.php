@@ -37,7 +37,17 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return $this->normalizedRoleKey() === self::ROLE_ADMIN;
+    }
+
+    public function isVendedor(): bool
+    {
+        return $this->normalizedRoleKey() === self::ROLE_VENDEDOR;
+    }
+
+    protected function normalizedRoleKey(): string
+    {
+        return strtolower(trim((string) $this->role));
     }
 
     public function hasPermission(string $permission): bool
@@ -47,11 +57,14 @@ class User extends Authenticatable
         }
 
         // Vendedor: operación de mostrador — siempre puede ver y abrir/cerrar caja.
-        if ($this->role === self::ROLE_VENDEDOR && in_array($permission, ['cajas.view', 'cajas.manage'], true)) {
+        if ($this->isVendedor() && in_array($permission, ['cajas.view', 'cajas.manage'], true)) {
             return true;
         }
 
-        $rolePermissions = config('permissions.roles.' . $this->role, []);
+        $roleKey = $this->normalizedRoleKey();
+        $rolePermissions = $roleKey === ''
+            ? []
+            : config('permissions.roles.' . $roleKey, []);
         if (in_array('*', $rolePermissions, true)) {
             return true;
         }
@@ -70,9 +83,12 @@ class User extends Authenticatable
             return ['*'];
         }
 
-        $list = array_values(config('permissions.roles.' . $this->role, []));
+        $roleKey = $this->normalizedRoleKey();
+        $list = $roleKey === ''
+            ? []
+            : array_values(config('permissions.roles.' . $roleKey, []));
 
-        if ($this->role === self::ROLE_VENDEDOR) {
+        if ($this->isVendedor()) {
             foreach (['cajas.view', 'cajas.manage'] as $p) {
                 if (!in_array($p, $list, true)) {
                     $list[] = $p;
