@@ -61,7 +61,7 @@ export default function Layout() {
                             >
                                 <span className="text-xl">☰</span>
                             </button>
-                            <h1 className="ml-2 sm:ml-4 text-base sm:text-xl font-bold truncate">Inventario Inteligente</h1>
+                            <h1 className="ml-2 sm:ml-4 text-base sm:text-xl font-bold truncate">Danielles</h1>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-4">
                             <span className="hidden sm:inline text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">{user?.name}</span>

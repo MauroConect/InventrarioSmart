@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Proveedores - Inventario Inteligente')
+@section('title', 'Proveedores - Danielles')
 @section('page-title', 'Proveedores')
 
 @section('content')

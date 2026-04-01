@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Movimientos de Stock - Inventario Inteligente')
+@section('title', 'Movimientos de Stock - Danielles')
 @section('page-title', 'Movimientos de Stock')
 
 @section('content')

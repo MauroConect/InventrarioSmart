@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Sabores - Heladeria Smart')
+@section('title', 'Sabores - Danielles')
 @section('page-title', auth()->user()->role === 'vendedor' ? 'Sabores' : 'Categorías')
 
 @section('content')

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ventas de Helado - Heladeria Smart')
+@section('title', 'Ventas de Helado - Danielles')
 @section('page-title', 'Ventas')
 
 @section('content')

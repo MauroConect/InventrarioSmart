@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Cuentas Corrientes - Inventario Inteligente')
+@section('title', 'Cuentas Corrientes - Danielles')
 @section('page-title', 'Cuentas Corrientes')
 
 @section('content')
