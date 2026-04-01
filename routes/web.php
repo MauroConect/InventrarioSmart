@@ -22,7 +22,7 @@ Route::middleware('auth')->group(function () {
             return redirect()->route('ventas.index');
         }
 
-        if ($user && $user->hasPermission('cajas.view')) {
+        if ($user) {
             return redirect()->route('cajas.index');
         }
 
@@ -36,7 +36,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/aumento-masivo-precios', function() { return view('pages.aumento-masivo'); })->middleware('permission:productos.manage')->name('aumento-masivo.index');
     Route::get('/proveedores', function() { return view('pages.proveedores'); })->middleware('permission:proveedores.view')->name('proveedores.index');
     Route::get('/clientes', function() { return view('pages.clientes'); })->middleware('permission:clientes.view')->name('clientes.index');
-    Route::get('/cajas', function() { return view('pages.cajas'); })->middleware('permission:cajas.view')->name('cajas.index');
+    Route::get('/cajas', function() { return view('pages.cajas'); })->middleware('auth')->name('cajas.index');
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');
     Route::get('/deudas-clientes', function() { return view('pages.deudas-clientes'); })->middleware('permission:deudas.view')->name('deudas-clientes.index');
     Route::get('/movimientos-stock', function() { return view('pages.movimientos-stock'); })->middleware('permission:stock.view')->name('movimientos-stock.index');

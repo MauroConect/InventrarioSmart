@@ -10,7 +10,7 @@ const ALL_MENU_ITEMS = [
     { path: '/aumento-masivo-precios', label: 'Aumento Masivo', icon: '📈', permission: 'productos.manage' },
     { path: '/proveedores', label: 'Proveedores', icon: '🚚', permission: 'proveedores.view' },
     { path: '/clientes', label: 'Clientes', icon: '👥', permission: 'clientes.view' },
-    { path: '/cajas', label: 'Cajas', icon: '💰', permission: 'cajas.view' },
+    { path: '/cajas', label: 'Cajas', icon: '💰', permission: null },
     { path: '/cuentas-corrientes', label: 'Cuentas Corrientes', icon: '💳', permission: 'cuentas_corrientes.view' },
     { path: '/deudas-clientes', label: 'Deudas', icon: '📋', permission: 'deudas.view' },
     { path: '/movimientos-stock', label: 'Stock', icon: '📊', permission: 'stock.view' },
@@ -44,7 +44,10 @@ export default function Layout() {
     };
 
     const menuItems = useMemo(
-        () => ALL_MENU_ITEMS.filter((item) => canAccess(user, item.permission)),
+        () =>
+            ALL_MENU_ITEMS.filter(
+                (item) => !item.permission || canAccess(user, item.permission)
+            ),
         [user]
     );
 

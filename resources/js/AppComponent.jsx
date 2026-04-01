@@ -26,7 +26,7 @@ function HomeRoute() {
     if (canAccess(user, 'ventas.view')) {
         return <Navigate to="/ventas" replace />;
     }
-    if (canAccess(user, 'cajas.view')) {
+    if (user) {
         return <Navigate to="/cajas" replace />;
     }
     return (

@@ -67,14 +67,12 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
         Route::delete('categorias/{id}', [CategoriaController::class, 'destroy']);
     });
 
-    // Abrir/cerrar caja usa el mismo permiso que ver el listado: operación de mostrador (vendedor).
-    Route::middleware('permission:cajas.view')->group(function () {
-        Route::get('cajas', [CajaController::class, 'index']);
-        Route::get('cajas/{id}', [CajaController::class, 'show']);
-        Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre']);
-        Route::post('cajas', [CajaController::class, 'store']);
-        Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar']);
-    });
+    // Cajas: solo usuario autenticado (sin middleware permission). El cierre ya valida dueño en CajaController.
+    Route::get('cajas', [CajaController::class, 'index']);
+    Route::get('cajas/{id}', [CajaController::class, 'show']);
+    Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre']);
+    Route::post('cajas', [CajaController::class, 'store']);
+    Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar']);
 
     Route::middleware('permission:productos.manage')->group(function () {
         Route::post('productos', [ProductoController::class, 'store']);

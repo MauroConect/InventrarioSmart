@@ -5,8 +5,8 @@
 
 @section('content')
 @php
-    /** En /cajas el middleware ya exige cajas.view; la UI usa eso para no depender solo de Alpine/x-show. */
-    $puedeUsarCajasUi = auth()->user()->hasPermission('cajas.view');
+    /** Ruta /cajas solo exige login; cualquier usuario autenticado puede operar la UI (API igual). */
+    $puedeUsarCajasUi = auth()->check();
 @endphp
 <div x-data="initCajasPage(@json($puedeUsarCajasUi))" x-init="init()" class="space-y-6">
     <div class="flex justify-between items-center">
