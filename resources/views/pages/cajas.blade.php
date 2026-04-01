@@ -157,15 +157,8 @@
 
 @push('scripts')
 <script>
-function apiAuthHeadersBlade() {
-    const raw = localStorage.getItem('token');
-    const token = raw && raw !== 'null' && raw !== 'undefined' ? raw : '';
-    const h = {};
-    if (token) {
-        h['Authorization'] = 'Bearer ' + token;
-    }
-    return h;
-}
+/** Rutas /web-api/* = grupo web (sesión del login Blade + CSRF). No /api ni Bearer. */
+const WEB_CAJA_BASE = '/web-api/cajas';
 function initCajasPage(puedeOperarCaja) {
     return {
         puedeOperarCaja: Boolean(puedeOperarCaja),
@@ -191,9 +184,7 @@ function initCajasPage(puedeOperarCaja) {
         async fetch() {
             try {
                 this.loading = true;
-                const response = await axios.get('/api/cajas', {
-                    headers: apiAuthHeadersBlade()
-                });
+                const response = await axios.get(WEB_CAJA_BASE);
                 this.listaCajas = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error:', error);
@@ -226,9 +217,7 @@ function initCajasPage(puedeOperarCaja) {
         async fetchResumenCierre(cajaId) {
             try {
                 this.cargandoResumen = true;
-                const response = await axios.get(`/api/cajas/${cajaId}/resumen-cierre`, {
-                    headers: apiAuthHeadersBlade()
-                });
+                const response = await axios.get(`${WEB_CAJA_BASE}/${cajaId}/resumen-cierre`);
                 this.resumenCierre = response.data;
                 this.montoReal = response.data.resumen.monto_esperado.toFixed(2);
             } catch (error) {
@@ -252,11 +241,9 @@ function initCajasPage(puedeOperarCaja) {
             try {
                 this.error = '';
                 this.success = '';
-                await axios.post('/api/cajas', {
+                await axios.post(WEB_CAJA_BASE, {
                     nombre: this.nombreCaja || null,
                     monto_apertura: this.montoApertura
-                }, {
-                    headers: apiAuthHeadersBlade()
                 });
                 this.success = 'Caja abierta correctamente';
                 await this.fetch();
@@ -276,11 +263,9 @@ function initCajasPage(puedeOperarCaja) {
                 this.cerrando = true;
                 this.error = '';
                 this.success = '';
-                await axios.post(`/api/cajas/${this.cajaSeleccionada.id}/cerrar`, {
+                await axios.post(`${WEB_CAJA_BASE}/${this.cajaSeleccionada.id}/cerrar`, {
                     monto_real: parseFloat(this.montoReal),
                     observaciones: this.observaciones
-                }, {
-                    headers: apiAuthHeadersBlade()
                 });
                 this.success = 'Caja cerrada correctamente';
                 await this.fetch();
