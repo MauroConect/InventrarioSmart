@@ -19,8 +19,8 @@ use App\Http\Controllers\ConfiguracionFiscalController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
-// Sanctum: acepta sesión (Blade + cookies) y Bearer token (SPA). auth:web solo veía sesión y ignoraba el token.
-Route::middleware('auth:sanctum')->group(function () {
+// Sanctum: sesión + Bearer. prefer.web.user: Blade manda sobre token en localStorage.
+Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 

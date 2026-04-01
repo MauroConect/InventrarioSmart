@@ -40,6 +40,9 @@ class Kernel extends HttpKernel
 
         'api' => [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            // Sin esto, en /api la cookie de sesión no se descifra si Sanctum no entra en modo “stateful”
+            // (Referer vacío o dominio fuera de SANCTUM_STATEFUL_DOMAINS). Blade usa sesión web; el POST fallaba.
+            \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
             'throttle:api',
@@ -66,5 +69,6 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'permission' => \App\Http\Middleware\CheckPermission::class,
+        'prefer.web.user' => \App\Http\Middleware\PreferWebSessionUser::class,
     ];
 }
