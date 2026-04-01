@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { canAccess } from '../utils/permissions';
@@ -12,7 +12,16 @@ export default function Productos() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [search, setSearch] = useState('');
+    const [searchInput, setSearchInput] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [page, setPage] = useState(1);
+    const [pagination, setPagination] = useState({
+        current_page: 1,
+        last_page: 1,
+        total: 0,
+        from: 0,
+        to: 0,
+    });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [formData, setFormData] = useState({
@@ -33,33 +42,64 @@ export default function Productos() {
         if (canManage) {
             fetchProveedores();
         }
-        fetchProductos();
     }, [canManage]);
 
     useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            fetchProductos();
-        }, 500);
+        const timeoutId = setTimeout(() => setDebouncedSearch(searchInput), 500);
         return () => clearTimeout(timeoutId);
-    }, [search]);
+    }, [searchInput]);
 
-    const fetchProductos = async () => {
+    const loadProductos = useCallback(async () => {
         try {
             setLoading(true);
             setError('');
-            const params = search ? { search } : {};
+            const params = { page };
+            if (debouncedSearch) {
+                params.search = debouncedSearch;
+            }
             const response = await axios.get('/productos', { params });
-            // Manejar respuesta paginada o simple array
-            const productosData = response.data?.data || response.data || [];
-            setProductos(Array.isArray(productosData) ? productosData : []);
-        } catch (error) {
-            console.error('Error al cargar productos:', error);
+            const body = response.data;
+            let rows = [];
+            if (body && Array.isArray(body.data) && body.last_page !== undefined) {
+                rows = body.data;
+                setProductos(rows);
+                setPagination({
+                    current_page: body.current_page || 1,
+                    last_page: body.last_page || 1,
+                    total: body.total || 0,
+                    from: body.from ?? 0,
+                    to: body.to ?? 0,
+                });
+            } else {
+                rows = Array.isArray(body?.data)
+                    ? body.data
+                    : Array.isArray(body)
+                      ? body
+                      : [];
+                setProductos(rows);
+                setPagination({
+                    current_page: 1,
+                    last_page: 1,
+                    total: rows.length,
+                    from: rows.length ? 1 : 0,
+                    to: rows.length,
+                });
+            }
+            return rows;
+        } catch (err) {
+            console.error('Error al cargar productos:', err);
             setError('Error al cargar los productos. Por favor, intenta nuevamente.');
             setProductos([]);
+            setPagination({ current_page: 1, last_page: 1, total: 0, from: 0, to: 0 });
+            return [];
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, debouncedSearch]);
+
+    useEffect(() => {
+        loadProductos();
+    }, [loadProductos]);
 
     const fetchCategorias = async () => {
         try {
@@ -97,7 +137,7 @@ export default function Productos() {
                 setSuccess('Producto creado correctamente');
             }
             
-            fetchProductos();
+            loadProductos();
             setShowModal(false);
             setEditing(null);
             resetForm();
@@ -153,7 +193,10 @@ export default function Productos() {
             setSuccess('');
             await axios.delete(`/productos/${id}`);
             setSuccess('Producto eliminado correctamente');
-            fetchProductos();
+            const rows = await loadProductos();
+            if (rows.length === 0 && page > 1) {
+                setPage((p) => p - 1);
+            }
             setTimeout(() => setSuccess(''), 3000);
         } catch (error) {
             console.error('Error al eliminar producto:', error);
@@ -174,8 +217,11 @@ export default function Productos() {
                     <input
                         type="text"
                         placeholder="Buscar por nombre o código..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        value={searchInput}
+                        onChange={(e) => {
+                            setSearchInput(e.target.value);
+                            setPage(1);
+                        }}
                         className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     {canManage && (
@@ -302,6 +348,44 @@ export default function Productos() {
                                 ))}
                             </tbody>
                         </table>
+                        {pagination.last_page > 1 && (
+                            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-4 py-3 bg-gray-50 border-t border-gray-200">
+                                <p className="text-sm text-gray-600">
+                                    {pagination.total > 0
+                                        ? `Mostrando ${pagination.from}–${pagination.to} de ${pagination.total}`
+                                        : ''}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        disabled={page <= 1}
+                                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                        className={`px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white ${
+                                            page <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        Anterior
+                                    </button>
+                                    <span className="text-sm text-gray-700 tabular-nums">
+                                        Página {pagination.current_page} de {pagination.last_page}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        disabled={page >= pagination.last_page}
+                                        onClick={() =>
+                                            setPage((p) => Math.min(pagination.last_page, p + 1))
+                                        }
+                                        className={`px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white ${
+                                            page >= pagination.last_page
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        Siguiente
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

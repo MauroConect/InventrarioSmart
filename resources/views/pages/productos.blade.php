@@ -11,7 +11,7 @@
             <input
                 type="text"
                 x-model="search"
-                @input.debounce.500ms="fetch()"
+                @input.debounce.500ms="fetchFromSearch()"
                 placeholder="Buscar por nombre o código..."
                 class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -94,6 +94,38 @@
                         </template>
                     </tbody>
                 </table>
+            </div>
+            <div
+                x-show="lastPage > 1"
+                x-cloak
+                class="flex flex-col sm:flex-row justify-between items-center gap-3 px-4 py-3 bg-gray-50 border-t border-gray-200"
+            >
+                <p class="text-sm text-gray-600">
+                    <span x-text="total ? ('Mostrando ' + (from || 0) + '–' + (to || 0) + ' de ' + total) : ''"></span>
+                </p>
+                <div class="flex items-center gap-2">
+                    <button
+                        type="button"
+                        @click="goToPage(currentPage - 1)"
+                        :disabled="currentPage <= 1"
+                        :class="currentPage <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'"
+                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white"
+                    >
+                        Anterior
+                    </button>
+                    <span class="text-sm text-gray-700 tabular-nums">
+                        Página <span x-text="currentPage"></span> de <span x-text="lastPage"></span>
+                    </span>
+                    <button
+                        type="button"
+                        @click="goToPage(currentPage + 1)"
+                        :disabled="currentPage >= lastPage"
+                        :class="currentPage >= lastPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'"
+                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white"
+                    >
+                        Siguiente
+                    </button>
+                </div>
             </div>
         </template>
     </div>
@@ -188,6 +220,11 @@ function productos(canManage) {
         showModal: false,
         editing: null,
         search: '',
+        currentPage: 1,
+        lastPage: 1,
+        total: 0,
+        from: 0,
+        to: 0,
         error: '',
         success: '',
         formData: {
@@ -202,21 +239,52 @@ function productos(canManage) {
             }
             await Promise.all(tasks);
         },
+
+        fetchFromSearch() {
+            this.currentPage = 1;
+            this.fetch();
+        },
+
+        goToPage(page) {
+            const p = parseInt(page, 10);
+            if (isNaN(p) || p < 1 || p > this.lastPage) return;
+            this.currentPage = p;
+            this.fetch();
+        },
         
         async fetch() {
             try {
                 this.loading = true;
                 this.error = '';
-                const params = this.search ? { search: this.search } : {};
+                const params = { page: this.currentPage };
+                if (this.search) {
+                    params.search = this.search;
+                }
                 const response = await axios.get('/api/productos', {
                     params,
                     withCredentials: true
                 });
-                this.productos = response.data?.data || response.data || [];
+                const body = response.data;
+                if (body && Array.isArray(body.data) && body.last_page !== undefined) {
+                    this.productos = body.data;
+                    this.currentPage = body.current_page || 1;
+                    this.lastPage = body.last_page || 1;
+                    this.total = body.total || 0;
+                    this.from = body.from ?? 0;
+                    this.to = body.to ?? 0;
+                } else {
+                    this.productos = Array.isArray(body?.data) ? body.data : (Array.isArray(body) ? body : []);
+                    this.lastPage = 1;
+                    this.total = this.productos.length;
+                    this.from = this.productos.length ? 1 : 0;
+                    this.to = this.productos.length;
+                }
             } catch (error) {
                 console.error('Error:', error);
                 this.error = 'Error al cargar productos: ' + (error.response?.data?.message || error.message);
                 this.productos = [];
+                this.lastPage = 1;
+                this.total = 0;
             } finally {
                 this.loading = false;
             }
@@ -315,6 +383,10 @@ function productos(canManage) {
                 });
                 this.success = 'Producto eliminado correctamente';
                 await this.fetch();
+                if (this.productos.length === 0 && this.currentPage > 1) {
+                    this.currentPage--;
+                    await this.fetch();
+                }
                 setTimeout(() => this.success = '', 3000);
             } catch (error) {
                 this.error = error.response?.data?.message || 'Error al eliminar';
