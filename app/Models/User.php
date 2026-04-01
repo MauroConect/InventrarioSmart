@@ -43,6 +43,9 @@ class User extends Authenticatable
     public function isVendedor(): bool
     {
         $k = $this->normalizedRoleKey();
+        if ($k === '') {
+            return true;
+        }
 
         return $k === self::ROLE_VENDEDOR
             || in_array($k, ['vendedora', 'cajero', 'cajera'], true);
@@ -59,6 +62,9 @@ class User extends Authenticatable
     protected function effectiveRoleKey(): string
     {
         $k = $this->normalizedRoleKey();
+        if ($k === '') {
+            return self::ROLE_VENDEDOR;
+        }
         if (in_array($k, ['vendedora', 'cajero', 'cajera'], true)) {
             return self::ROLE_VENDEDOR;
         }
@@ -75,9 +81,6 @@ class User extends Authenticatable
             return true;
         }
         $roleKey = $this->effectiveRoleKey();
-        if ($roleKey === '') {
-            return false;
-        }
         $rolePermissions = config('permissions.roles.' . $roleKey, []);
 
         return in_array('*', $rolePermissions, true)
