@@ -37,21 +37,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/aumento-masivo-precios', function() { return view('pages.aumento-masivo'); })->middleware('permission:productos.manage')->name('aumento-masivo.index');
     Route::get('/proveedores', function() { return view('pages.proveedores'); })->middleware('permission:proveedores.view')->name('proveedores.index');
     Route::get('/clientes', function() { return view('pages.clientes'); })->middleware('permission:clientes.view')->name('clientes.index');
+    /*
+     * JSON de cajas para Blade: bajo /cajas/ajax (mismo prefijo que la pantalla /cajas).
+     * Evita /web-api: en nginx/Docker a veces solo pasan / y /api a Laravel.
+     */
+    Route::prefix('cajas/ajax')->group(function () {
+        Route::get('{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id');
+        Route::post('{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id');
+        Route::get('{id}', [CajaController::class, 'show'])->whereNumber('id');
+        Route::get('/', [CajaController::class, 'index']);
+        Route::post('/', [CajaController::class, 'store']);
+    });
+
     Route::get('/cajas', function () {
         return view('pages.cajas');
     })->name('cajas.index');
-
-    /*
-     * Cajas vía sesión web (Blade + axios mismo sitio): sin /api, sin Sanctum, sin middleware permission.
-     * El SPA/React sigue usando /api/cajas.
-     */
-    Route::prefix('web-api')->group(function () {
-        Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id');
-        Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id');
-        Route::get('cajas/{id}', [CajaController::class, 'show'])->whereNumber('id');
-        Route::get('cajas', [CajaController::class, 'index']);
-        Route::post('cajas', [CajaController::class, 'store']);
-    });
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');
     Route::get('/deudas-clientes', function() { return view('pages.deudas-clientes'); })->middleware('permission:deudas.view')->name('deudas-clientes.index');
     Route::get('/movimientos-stock', function() { return view('pages.movimientos-stock'); })->middleware('permission:stock.view')->name('movimientos-stock.index');

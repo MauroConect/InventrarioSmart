@@ -157,8 +157,8 @@
 
 @push('scripts')
 <script>
-/** Rutas /web-api/* = grupo web (sesión del login Blade + CSRF). No /api ni Bearer. */
-const WEB_CAJA_BASE = '/web-api/cajas';
+/** JSON vía rutas web (sesión + CSRF). Misma rama que /cajas para que nginx llegue a Laravel. */
+const WEB_CAJA_BASE = '/cajas/ajax';
 function initCajasPage(puedeOperarCaja) {
     return {
         puedeOperarCaja: Boolean(puedeOperarCaja),
