@@ -46,6 +46,11 @@ class User extends Authenticatable
             return true;
         }
 
+        // Vendedor: operación de mostrador — siempre puede ver y abrir/cerrar caja.
+        if ($this->role === self::ROLE_VENDEDOR && in_array($permission, ['cajas.view', 'cajas.manage'], true)) {
+            return true;
+        }
+
         $rolePermissions = config('permissions.roles.' . $this->role, []);
         if (in_array('*', $rolePermissions, true)) {
             return true;
@@ -65,6 +70,16 @@ class User extends Authenticatable
             return ['*'];
         }
 
-        return array_values(config('permissions.roles.' . $this->role, []));
+        $list = array_values(config('permissions.roles.' . $this->role, []));
+
+        if ($this->role === self::ROLE_VENDEDOR) {
+            foreach (['cajas.view', 'cajas.manage'] as $p) {
+                if (!in_array($p, $list, true)) {
+                    $list[] = $p;
+                }
+            }
+        }
+
+        return $list;
     }
 }
