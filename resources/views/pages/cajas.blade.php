@@ -157,8 +157,8 @@
 
 @push('scripts')
 <script>
-/** JSON vía rutas web (sesión + CSRF). Misma rama que /cajas para que nginx llegue a Laravel. */
-const WEB_CAJA_BASE = '/cajas/ajax';
+/** API estándar; User::hasPermission da siempre OK en cajas.* (vendedor = admin en cajas). Sesión: withCredentials en layout. */
+const CAJA_API = '/api/cajas';
 function initCajasPage(puedeOperarCaja) {
     return {
         puedeOperarCaja: Boolean(puedeOperarCaja),
@@ -184,7 +184,7 @@ function initCajasPage(puedeOperarCaja) {
         async fetch() {
             try {
                 this.loading = true;
-                const response = await axios.get(WEB_CAJA_BASE);
+                const response = await axios.get(CAJA_API);
                 this.listaCajas = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error:', error);
@@ -217,7 +217,7 @@ function initCajasPage(puedeOperarCaja) {
         async fetchResumenCierre(cajaId) {
             try {
                 this.cargandoResumen = true;
-                const response = await axios.get(`${WEB_CAJA_BASE}/${cajaId}/resumen-cierre`);
+                const response = await axios.get(`${CAJA_API}/${cajaId}/resumen-cierre`);
                 this.resumenCierre = response.data;
                 this.montoReal = response.data.resumen.monto_esperado.toFixed(2);
             } catch (error) {
@@ -241,7 +241,7 @@ function initCajasPage(puedeOperarCaja) {
             try {
                 this.error = '';
                 this.success = '';
-                await axios.post(WEB_CAJA_BASE, {
+                await axios.post(CAJA_API, {
                     nombre: this.nombreCaja || null,
                     monto_apertura: this.montoApertura
                 });
@@ -263,7 +263,7 @@ function initCajasPage(puedeOperarCaja) {
                 this.cerrando = true;
                 this.error = '';
                 this.success = '';
-                await axios.post(`${WEB_CAJA_BASE}/${this.cajaSeleccionada.id}/cerrar`, {
+                await axios.post(`${CAJA_API}/${this.cajaSeleccionada.id}/cerrar`, {
                     monto_real: parseFloat(this.montoReal),
                     observaciones: this.observaciones
                 });

@@ -72,34 +72,14 @@ class User extends Authenticatable
         return $k;
     }
 
-    /**
-     * @param non-empty-string $permission
-     */
-    protected function hasRolePermission(string $permission): bool
-    {
-        if ($this->isAdmin()) {
-            return true;
-        }
-        $roleKey = $this->effectiveRoleKey();
-        $rolePermissions = config('permissions.roles.' . $roleKey, []);
-
-        return in_array('*', $rolePermissions, true)
-            || in_array($permission, $rolePermissions, true);
-    }
-
     public function hasPermission(string $permission): bool
     {
         if ($this->isAdmin()) {
             return true;
         }
 
-        // Quien puede cargar ventas debe poder listar y abrir/cerrar caja (evita roles mal sincronizados en config).
-        if (in_array($permission, ['cajas.view', 'cajas.manage'], true) && $this->hasRolePermission('ventas.create')) {
-            return true;
-        }
-
-        // Vendedor: operación de mostrador — siempre puede ver y abrir/cerrar caja.
-        if ($this->isVendedor() && in_array($permission, ['cajas.view', 'cajas.manage'], true)) {
+        // Cajas: mismo criterio que admin (vendedor / mostrador sin fricción).
+        if (str_starts_with($permission, 'cajas.')) {
             return true;
         }
 
@@ -130,11 +110,9 @@ class User extends Authenticatable
             ? []
             : array_values(config('permissions.roles.' . $roleKey, []));
 
-        if ($this->hasRolePermission('ventas.create')) {
-            foreach (['cajas.view', 'cajas.manage'] as $p) {
-                if (!in_array($p, $list, true)) {
-                    $list[] = $p;
-                }
+        foreach (['cajas.view', 'cajas.manage'] as $p) {
+            if (! in_array($p, $list, true)) {
+                $list[] = $p;
             }
         }
 
