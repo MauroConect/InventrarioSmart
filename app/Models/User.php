@@ -93,13 +93,13 @@ class User extends Authenticatable
             return true;
         }
 
-        // Vendedor: operación de mostrador — siempre puede ver y abrir/cerrar caja.
-        if ($this->isVendedor() && in_array($permission, ['cajas.view', 'cajas.manage'], true)) {
+        // Quien puede cargar ventas debe poder listar y abrir/cerrar caja (evita roles mal sincronizados en config).
+        if (in_array($permission, ['cajas.view', 'cajas.manage'], true) && $this->hasRolePermission('ventas.create')) {
             return true;
         }
 
-        // Quien puede registrar ventas en mostrador debe poder operar caja (aunque el rol no sea exactamente "vendedor").
-        if ($permission === 'cajas.manage' && $this->hasRolePermission('ventas.create')) {
+        // Vendedor: operación de mostrador — siempre puede ver y abrir/cerrar caja.
+        if ($this->isVendedor() && in_array($permission, ['cajas.view', 'cajas.manage'], true)) {
             return true;
         }
 

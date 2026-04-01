@@ -157,6 +157,15 @@
 
 @push('scripts')
 <script>
+function apiAuthHeadersBlade() {
+    const raw = localStorage.getItem('token');
+    const token = raw && raw !== 'null' && raw !== 'undefined' ? raw : '';
+    const h = {};
+    if (token) {
+        h['Authorization'] = 'Bearer ' + token;
+    }
+    return h;
+}
 function initCajasPage(puedeOperarCaja) {
     return {
         puedeOperarCaja: Boolean(puedeOperarCaja),
@@ -182,9 +191,8 @@ function initCajasPage(puedeOperarCaja) {
         async fetch() {
             try {
                 this.loading = true;
-                const token = localStorage.getItem('token');
                 const response = await axios.get('/api/cajas', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: apiAuthHeadersBlade()
                 });
                 this.listaCajas = response.data?.data || response.data || [];
             } catch (error) {
@@ -218,9 +226,8 @@ function initCajasPage(puedeOperarCaja) {
         async fetchResumenCierre(cajaId) {
             try {
                 this.cargandoResumen = true;
-                const token = localStorage.getItem('token');
                 const response = await axios.get(`/api/cajas/${cajaId}/resumen-cierre`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: apiAuthHeadersBlade()
                 });
                 this.resumenCierre = response.data;
                 this.montoReal = response.data.resumen.monto_esperado.toFixed(2);
@@ -245,12 +252,11 @@ function initCajasPage(puedeOperarCaja) {
             try {
                 this.error = '';
                 this.success = '';
-                const token = localStorage.getItem('token');
                 await axios.post('/api/cajas', {
                     nombre: this.nombreCaja || null,
                     monto_apertura: this.montoApertura
                 }, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: apiAuthHeadersBlade()
                 });
                 this.success = 'Caja abierta correctamente';
                 await this.fetch();
@@ -270,12 +276,11 @@ function initCajasPage(puedeOperarCaja) {
                 this.cerrando = true;
                 this.error = '';
                 this.success = '';
-                const token = localStorage.getItem('token');
                 await axios.post(`/api/cajas/${this.cajaSeleccionada.id}/cerrar`, {
                     monto_real: parseFloat(this.montoReal),
                     observaciones: this.observaciones
                 }, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: apiAuthHeadersBlade()
                 });
                 this.success = 'Caja cerrada correctamente';
                 await this.fetch();
