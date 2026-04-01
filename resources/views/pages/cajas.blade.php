@@ -4,12 +4,18 @@
 @section('page-title', 'Cajas')
 
 @section('content')
-<div x-data="initCajasPage(@json(auth()->user()->hasPermission('cajas.manage')))" x-init="init()" class="space-y-6">
+@php
+    /** En /cajas el middleware ya exige cajas.view; la UI usa eso para no depender solo de Alpine/x-show. */
+    $puedeUsarCajasUi = auth()->user()->hasPermission('cajas.view');
+@endphp
+<div x-data="initCajasPage(@json($puedeUsarCajasUi))" x-init="init()" class="space-y-6">
     <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold">Cajas</h1>
-        <button x-show="canManage" @click="openModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-            Abrir Caja
-        </button>
+        @if($puedeUsarCajasUi)
+            <button type="button" @click="openModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                Abrir Caja
+            </button>
+        @endif
     </div>
 
     <div x-show="error" x-cloak class="p-4 bg-red-100 border border-red-400 text-red-700 rounded" x-text="error"></div>
@@ -47,7 +53,7 @@
                                           x-text="caja.estado === 'abierta' ? 'Abierta' : 'Cerrada'"></span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button x-show="canManage && caja.estado === 'abierta'" @click="openCerrarModal(caja)" class="text-orange-600 hover:text-orange-900">Cerrar</button>
+                                    <button type="button" x-show="puedeOperarCaja && caja.estado === 'abierta'" @click="openCerrarModal(caja)" class="text-orange-600 hover:text-orange-900">Cerrar</button>
                                 </td>
                             </tr>
                         </template>
@@ -58,7 +64,7 @@
     </div>
 
     <!-- Modal Abrir Caja -->
-    <div x-show="showModal && canManage" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" @click.away="closeModal()">
+    <div x-show="showModal && puedeOperarCaja" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" @click.away="closeModal()">
         <div class="bg-white rounded-lg w-full max-w-md" @click.stop>
             <div class="px-6 py-4 border-b">
                 <h3 class="text-lg font-bold">Abrir Caja</h3>
@@ -81,7 +87,7 @@
     </div>
 
     <!-- Modal Cerrar Caja -->
-    <div x-show="showCerrarModal && canManage" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" @click.away="closeCerrarModal()">
+    <div x-show="showCerrarModal && puedeOperarCaja" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" @click.away="closeCerrarModal()">
         <div class="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="px-6 py-4 border-b">
                 <h3 class="text-lg font-bold">Cerrar Caja #<span x-text="cajaSeleccionada?.id"></span></h3>
@@ -129,9 +135,9 @@
 
 @push('scripts')
 <script>
-function initCajasPage(canManage) {
+function initCajasPage(puedeOperarCaja) {
     return {
-        canManage: Boolean(canManage),
+        puedeOperarCaja: Boolean(puedeOperarCaja),
         listaCajas: [],
         loading: true,
         showModal: false,
@@ -168,7 +174,7 @@ function initCajasPage(canManage) {
         },
         
         openModal() {
-            if (!this.canManage) return;
+            if (!this.puedeOperarCaja) return;
             this.showModal = true;
             this.montoApertura = 0;
             this.nombreCaja = '';
@@ -179,7 +185,7 @@ function initCajasPage(canManage) {
         },
         
         async openCerrarModal(caja) {
-            if (!this.canManage) return;
+            if (!this.puedeOperarCaja) return;
             this.cajaSeleccionada = caja;
             this.showCerrarModal = true;
             this.error = '';
