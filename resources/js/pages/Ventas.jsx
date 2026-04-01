@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { canAccess } from '../utils/permissions';
 
 export default function Ventas() {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const canCuentaCorriente = canAccess(user, 'cuentas_corrientes.view');
     const [ventas, setVentas] = useState([]);
     const [clientes, setClientes] = useState([]);
     const [productos, setProductos] = useState([]);
@@ -36,6 +40,12 @@ export default function Ventas() {
         fetchDatosFormulario();
     }, []);
 
+    useEffect(() => {
+        if (!canCuentaCorriente && tipoPago === 'cuenta_corriente') {
+            setTipoPago('efectivo');
+        }
+    }, [canCuentaCorriente, tipoPago]);
+
     const fetchVentas = async () => {
         try {
             setLoadingLista(true);
@@ -52,13 +62,19 @@ export default function Ventas() {
         try {
             setLoadingFormDatos(true);
 
-            const [clientesRes, productosRes, cajasRes] = await Promise.all([
-                axios.get('/clientes'),
+            const [productosRes, cajasRes] = await Promise.all([
                 axios.get('/productos', { params: { all: 'true' } }),
                 axios.get('/cajas', { params: { estado: 'abierta' } }),
             ]);
 
-            const clientesData = clientesRes.data?.data || clientesRes.data || [];
+            let clientesData = [];
+            try {
+                const clientesRes = await axios.get('/clientes');
+                clientesData = clientesRes.data?.data || clientesRes.data || [];
+            } catch {
+                clientesData = [];
+            }
+
             const productosData = productosRes.data?.data || productosRes.data || [];
             const cajasData = cajasRes.data?.data || cajasRes.data || [];
 
@@ -742,7 +758,9 @@ export default function Ventas() {
                                     >
                                         <option value="efectivo">Efectivo</option>
                                         <option value="tarjeta">Tarjeta</option>
-                                        <option value="cuenta_corriente">Cuenta Corriente</option>
+                                        {canCuentaCorriente && (
+                                            <option value="cuenta_corriente">Cuenta Corriente</option>
+                                        )}
                                         <option value="mixto">Mixto</option>
                                     </select>
                                 </div>

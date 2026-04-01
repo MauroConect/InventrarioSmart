@@ -2,14 +2,15 @@
 
 return [
     'roles' => [
+        // Incluye categorias.manage, productos.manage, etc. (vía isAdmin en User::hasPermission).
         'admin' => ['*'],
+        // Solo operación de mostrador: caja, venta de helado, consulta de sabores (categorías) y productos (solo lectura en UI).
         'vendedor' => [
             'ventas.view',
             'ventas.create',
             'cajas.view',
             'cajas.manage',
-            // Permisos de soporte para poder operar una venta
-            'clientes.view',
+            'categorias.view',
             'productos.view',
         ],
     ],

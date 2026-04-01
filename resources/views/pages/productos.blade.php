@@ -4,9 +4,9 @@
 @section('page-title', 'Productos')
 
 @section('content')
-<div x-data="productos()" x-init="init()" class="space-y-6">
+<div x-data="productos({{ auth()->user()->hasPermission('productos.manage') ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Productos</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Sabores y productos</h1>
         <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <input
                 type="text"
@@ -16,10 +16,11 @@
                 class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
             <button
+                x-show="canManage"
                 @click="openModal()"
                 class="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
             >
-                + Nuevo Producto
+                + Nuevo producto
             </button>
         </div>
     </div>
@@ -43,6 +44,7 @@
         <template x-if="!loading && productos.length === 0">
             <div class="p-8 text-center text-gray-500">
                 <p class="text-lg">No hay productos registrados</p>
+                <p class="text-sm mt-2" x-show="canManage">Usá &quot;Nuevo producto&quot; para agregar uno.</p>
             </div>
         </template>
         
@@ -58,7 +60,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Categoría</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Estado</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase" x-show="canManage">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -84,7 +86,7 @@
                                           :class="producto.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
                                           x-text="producto.activo ? 'Activo' : 'Inactivo'"></span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" x-show="canManage">
                                     <button @click="edit(producto)" class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
                                     <button @click="remove(producto.id)" class="text-red-600 hover:text-red-900">Eliminar</button>
                                 </td>
@@ -97,7 +99,7 @@
     </div>
 
     <!-- Modal -->
-    <div x-show="showModal" 
+    <div x-show="showModal && canManage" 
          x-cloak
          class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
          @click.away="closeModal()">
@@ -176,8 +178,9 @@
 
 @push('scripts')
 <script>
-function productos() {
+function productos(canManage) {
     return {
+        canManage: !!canManage,
         productos: [],
         categorias: [],
         proveedores: [],
@@ -193,7 +196,11 @@ function productos() {
         },
         
         async init() {
-            await Promise.all([this.fetch(), this.fetchCategorias(), this.fetchProveedores()]);
+            const tasks = [this.fetch(), this.fetchCategorias()];
+            if (this.canManage) {
+                tasks.push(this.fetchProveedores());
+            }
+            await Promise.all(tasks);
         },
         
         async fetch() {
@@ -238,6 +245,7 @@ function productos() {
         },
         
         openModal() {
+            if (!this.canManage) return;
             this.editing = null;
             this.formData = {
                 codigo: '', nombre: '', descripcion: '', precio_compra: 0, precio_venta: 0,
@@ -249,6 +257,7 @@ function productos() {
         },
         
         edit(producto) {
+            if (!this.canManage) return;
             this.editing = producto.id;
             this.formData = {
                 codigo: producto.codigo || '',

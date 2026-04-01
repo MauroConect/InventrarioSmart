@@ -45,7 +45,7 @@
                     @endif
                     @if(Auth::user()->hasPermission('categorias.view'))
                         <a href="{{ route('categorias.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('categorias.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">📁</span> Categorias
+                            <span class="mr-3">📁</span> Sabores
                         </a>
                     @endif
                     @if(Auth::user()->hasPermission('productos.view'))

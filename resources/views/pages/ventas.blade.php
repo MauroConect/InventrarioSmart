@@ -4,7 +4,7 @@
 @section('page-title', 'Ventas')
 
 @section('content')
-<div x-data="ventas()" x-init="init()" class="space-y-6">
+<div x-data="ventas({{ auth()->user()->hasPermission('cuentas_corrientes.view') ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 class="text-2xl sm:text-3xl font-bold">Ventas</h1>
         <button
@@ -97,7 +97,7 @@
                             <option value="efectivo">Efectivo</option>
                             <option value="tarjeta">Tarjeta</option>
                             <option value="mixto">Mixto</option>
-                            <option value="cuenta_corriente">Cuenta Corriente</option>
+                            <option value="cuenta_corriente" x-show="canCuentaCorriente">Cuenta Corriente</option>
                         </select>
                     </div>
                 </div>
@@ -220,8 +220,9 @@
 
 @push('scripts')
 <script>
-function ventas() {
+function ventas(canCuentaCorriente) {
     return {
+        canCuentaCorriente: !!canCuentaCorriente,
         ventas: [],
         clientes: [],
         productos: [],
@@ -265,16 +266,29 @@ function ventas() {
             try {
                 this.loadingFormDatos = true;
                 const token = localStorage.getItem('token');
-                const [clientesRes, productosRes, cajasRes] = await Promise.all([
-                    axios.get('/api/clientes', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    axios.get('/api/productos', { params: { all: 'true' }, headers: { 'Authorization': `Bearer ${token}` } }),
-                    axios.get('/api/cajas', { params: { estado: 'abierta' }, headers: { 'Authorization': `Bearer ${token}` } })
+                const headers = { 'Authorization': `Bearer ${token}` };
+
+                const [productosRes, cajasRes] = await Promise.all([
+                    axios.get('/api/productos', { params: { all: 'true' }, headers }),
+                    axios.get('/api/cajas', { params: { estado: 'abierta' }, headers })
                 ]);
-                this.clientes = (clientesRes.data?.data || clientesRes.data || []).filter(c => c.activo !== false);
+
+                let clientes = [];
+                try {
+                    const clientesRes = await axios.get('/api/clientes', { headers });
+                    clientes = (clientesRes.data?.data || clientesRes.data || []).filter(c => c.activo !== false);
+                } catch (e) {
+                    clientes = [];
+                }
+
+                this.clientes = clientes;
                 this.productos = (productosRes.data?.data || productosRes.data || []).filter(p => p.activo !== false);
                 this.cajasAbiertas = (cajasRes.data?.data || cajasRes.data || []).filter(c => c.estado === 'abierta');
                 if (this.cajasAbiertas.length > 0) {
                     this.cajaSeleccionada = this.cajasAbiertas[0].id;
+                }
+                if (!this.canCuentaCorriente && this.tipoPago === 'cuenta_corriente') {
+                    this.tipoPago = 'efectivo';
                 }
             } catch (error) {
                 console.error('Error:', error);

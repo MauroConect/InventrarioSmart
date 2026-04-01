@@ -31,6 +31,10 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
+    protected $appends = [
+        'permissions',
+    ];
+
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
@@ -43,6 +47,24 @@ class User extends Authenticatable
         }
 
         $rolePermissions = config('permissions.roles.' . $this->role, []);
+        if (in_array('*', $rolePermissions, true)) {
+            return true;
+        }
+
         return in_array($permission, $rolePermissions, true);
+    }
+
+    /**
+     * Lista de permisos del rol (para el front SPA). El admin se expone como ['*'].
+     *
+     * @return array<int, string>
+     */
+    public function getPermissionsAttribute(): array
+    {
+        if ($this->isAdmin()) {
+            return ['*'];
+        }
+
+        return array_values(config('permissions.roles.' . $this->role, []));
     }
 }

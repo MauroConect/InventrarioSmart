@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { canAccess } from './utils/permissions';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -17,6 +18,24 @@ import AumentoMasivoPrecios from './pages/AumentoMasivoPrecios';
 import Cheques from './pages/Cheques';
 import VentaDetalle from './pages/VentaDetalle';
 
+function HomeRoute() {
+    const { user } = useAuth();
+    if (canAccess(user, 'dashboard.view')) {
+        return <Dashboard />;
+    }
+    if (canAccess(user, 'ventas.view')) {
+        return <Navigate to="/ventas" replace />;
+    }
+    if (canAccess(user, 'cajas.view')) {
+        return <Navigate to="/cajas" replace />;
+    }
+    return (
+        <div className="p-6 text-center text-gray-600">
+            No tenés permisos para acceder al panel.
+        </div>
+    );
+}
+
 function AppRoutes() {
     const { user, loading } = useAuth();
 
@@ -31,7 +50,7 @@ function AppRoutes() {
                 path="/*"
                 element={user ? <Layout /> : <Navigate to="/login" />}
             >
-                <Route index element={<Dashboard />} />
+                <Route index element={<HomeRoute />} />
                 <Route path="categorias" element={<Categorias />} />
                 <Route path="productos" element={<Productos />} />
                 <Route path="proveedores" element={<Proveedores />} />

@@ -4,10 +4,10 @@
 @section('page-title', 'Cajas')
 
 @section('content')
-<div x-data="cajas()" x-init="init()" class="space-y-6">
+<div x-data="cajas({{ auth()->user()->hasPermission('cajas.manage') ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
     <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold">Cajas</h1>
-        <button @click="openModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        <button x-show="canManage" @click="openModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
             Abrir Caja
         </button>
     </div>
@@ -47,7 +47,7 @@
                                           x-text="caja.estado === 'abierta' ? 'Abierta' : 'Cerrada'"></span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button x-show="caja.estado === 'abierta'" @click="openCerrarModal(caja)" class="text-orange-600 hover:text-orange-900">Cerrar</button>
+                                    <button x-show="canManage && caja.estado === 'abierta'" @click="openCerrarModal(caja)" class="text-orange-600 hover:text-orange-900">Cerrar</button>
                                 </td>
                             </tr>
                         </template>
@@ -58,7 +58,7 @@
     </div>
 
     <!-- Modal Abrir Caja -->
-    <div x-show="showModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" @click.away="closeModal()">
+    <div x-show="showModal && canManage" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" @click.away="closeModal()">
         <div class="bg-white rounded-lg w-full max-w-md" @click.stop>
             <div class="px-6 py-4 border-b">
                 <h3 class="text-lg font-bold">Abrir Caja</h3>
@@ -81,7 +81,7 @@
     </div>
 
     <!-- Modal Cerrar Caja -->
-    <div x-show="showCerrarModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" @click.away="closeCerrarModal()">
+    <div x-show="showCerrarModal && canManage" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" @click.away="closeCerrarModal()">
         <div class="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="px-6 py-4 border-b">
                 <h3 class="text-lg font-bold">Cerrar Caja #<span x-text="cajaSeleccionada?.id"></span></h3>
@@ -129,8 +129,9 @@
 
 @push('scripts')
 <script>
-function cajas() {
+function cajas(canManage) {
     return {
+        canManage: !!canManage,
         cajas: [],
         loading: true,
         showModal: false,
@@ -167,6 +168,7 @@ function cajas() {
         },
         
         openModal() {
+            if (!this.canManage) return;
             this.showModal = true;
             this.montoApertura = 0;
             this.nombreCaja = '';
@@ -177,6 +179,7 @@ function cajas() {
         },
         
         async openCerrarModal(caja) {
+            if (!this.canManage) return;
             this.cajaSeleccionada = caja;
             this.showCerrarModal = true;
             this.error = '';

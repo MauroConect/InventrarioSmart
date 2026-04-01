@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { canAccess } from '../utils/permissions';
 
 export default function Categorias() {
+    const { user } = useAuth();
+    const canManage = canAccess(user, 'categorias.manage');
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -15,7 +19,8 @@ export default function Categorias() {
     const fetchCategorias = async () => {
         try {
             const response = await axios.get('/categorias');
-            setCategorias(response.data);
+            const data = response.data?.data ?? response.data;
+            setCategorias(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Error al cargar categorías:', error);
         } finally {
@@ -63,17 +68,19 @@ export default function Categorias() {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">Categorías</h1>
-                <button
-                    onClick={() => {
-                        setEditing(null);
-                        setFormData({ nombre: '', descripcion: '', activa: true });
-                        setShowModal(true);
-                    }}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                >
-                    Nueva Categoría
-                </button>
+                <h1 className="text-3xl font-bold">{user?.role === 'vendedor' ? 'Sabores' : 'Categorías'}</h1>
+                {canManage && (
+                    <button
+                        onClick={() => {
+                            setEditing(null);
+                            setFormData({ nombre: '', descripcion: '', activa: true });
+                            setShowModal(true);
+                        }}
+                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    >
+                        Nueva categoría
+                    </button>
+                )}
             </div>
 
             <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -83,7 +90,9 @@ export default function Categorias() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                            {canManage && (
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                            )}
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -100,27 +109,29 @@ export default function Categorias() {
                                         {categoria.activa ? 'Activa' : 'Inactiva'}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button
-                                        onClick={() => handleEdit(categoria)}
-                                        className="text-blue-600 hover:text-blue-900 mr-3"
-                                    >
-                                        Editar
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(categoria.id)}
-                                        className="text-red-600 hover:text-red-900"
-                                    >
-                                        Eliminar
-                                    </button>
-                                </td>
+                                {canManage && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <button
+                                            onClick={() => handleEdit(categoria)}
+                                            className="text-blue-600 hover:text-blue-900 mr-3"
+                                        >
+                                            Editar
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(categoria.id)}
+                                            className="text-red-600 hover:text-red-900"
+                                        >
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                )}
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
 
-            {showModal && (
+            {showModal && canManage && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
                     <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
                         <h3 className="text-lg font-bold mb-4">{editing ? 'Editar' : 'Nueva'} Categoría</h3>

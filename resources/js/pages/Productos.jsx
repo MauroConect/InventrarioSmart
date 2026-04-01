@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { canAccess } from '../utils/permissions';
 
 export default function Productos() {
+    const { user } = useAuth();
+    const canManage = canAccess(user, 'productos.manage');
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [proveedores, setProveedores] = useState([]);
@@ -26,9 +30,11 @@ export default function Productos() {
 
     useEffect(() => {
         fetchCategorias();
-        fetchProveedores();
+        if (canManage) {
+            fetchProveedores();
+        }
         fetchProductos();
-    }, []);
+    }, [canManage]);
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -163,7 +169,7 @@ export default function Productos() {
     return (
         <div className="p-3 sm:p-4 lg:p-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Productos</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Sabores y productos</h1>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <input
                         type="text"
@@ -172,16 +178,18 @@ export default function Productos() {
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <button
-                        onClick={() => {
-                            setEditing(null);
-                            resetForm();
-                            setShowModal(true);
-                        }}
-                        className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
-                    >
-                        + Nuevo Producto
-                    </button>
+                    {canManage && (
+                        <button
+                            onClick={() => {
+                                setEditing(null);
+                                resetForm();
+                                setShowModal(true);
+                            }}
+                            className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
+                        >
+                            + Nuevo producto
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -220,7 +228,9 @@ export default function Productos() {
                                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Categoría</th>
                                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Estado</th>
-                                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                    {canManage && (
+                                        <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
@@ -270,22 +280,24 @@ export default function Productos() {
                                                 {producto.activo ? 'Activo' : 'Inactivo'}
                                             </span>
                                         </td>
-                                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <div className="flex flex-col sm:flex-row gap-2">
-                                                <button
-                                                    onClick={() => handleEdit(producto)}
-                                                    className="text-blue-600 hover:text-blue-900 focus:outline-none text-left sm:text-center"
-                                                >
-                                                    Editar
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(producto.id)}
-                                                    className="text-red-600 hover:text-red-900 focus:outline-none text-left sm:text-center"
-                                                >
-                                                    Eliminar
-                                                </button>
-                                            </div>
-                                        </td>
+                                        {canManage && (
+                                            <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div className="flex flex-col sm:flex-row gap-2">
+                                                    <button
+                                                        onClick={() => handleEdit(producto)}
+                                                        className="text-blue-600 hover:text-blue-900 focus:outline-none text-left sm:text-center"
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(producto.id)}
+                                                        className="text-red-600 hover:text-red-900 focus:outline-none text-left sm:text-center"
+                                                    >
+                                                        Eliminar
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
@@ -294,7 +306,7 @@ export default function Productos() {
                 )}
             </div>
 
-            {showModal && (
+            {showModal && canManage && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-3 sm:p-4">
                     <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4">

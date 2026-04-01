@@ -1,17 +1,18 @@
 @extends('layouts.app')
 
-@section('title', 'Categorías - Inventario Inteligente')
-@section('page-title', 'Categorías')
+@section('title', 'Sabores - Heladeria Smart')
+@section('page-title', auth()->user()->role === 'vendedor' ? 'Sabores' : 'Categorías')
 
 @section('content')
-<div x-data="categorias()" x-init="init()" class="space-y-6">
+<div x-data="categorias({{ auth()->user()->hasPermission('categorias.manage') ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
     <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold">Categorías</h1>
+        <h1 class="text-3xl font-bold">{{ auth()->user()->role === 'vendedor' ? 'Sabores' : 'Categorías' }}</h1>
         <button
+            x-show="canManage"
             @click="openModal()"
             class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
-            Nueva Categoría
+            Nueva categoría
         </button>
     </div>
 
@@ -31,7 +32,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase" x-show="canManage">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -44,7 +45,7 @@
                                           :class="categoria.activa ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
                                           x-text="categoria.activa ? 'Activa' : 'Inactiva'"></span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" x-show="canManage">
                                     <button @click="edit(categoria)" class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
                                     <button @click="remove(categoria.id)" class="text-red-600 hover:text-red-900">Eliminar</button>
                                 </td>
@@ -57,7 +58,7 @@
     </div>
 
     <!-- Modal -->
-    <div x-show="showModal" 
+    <div x-show="showModal && canManage" 
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
@@ -95,8 +96,9 @@
 
 @push('scripts')
 <script>
-function categorias() {
+function categorias(canManage) {
     return {
+        canManage: !!canManage,
         categorias: [],
         loading: true,
         showModal: false,
@@ -123,12 +125,14 @@ function categorias() {
         },
         
         openModal() {
+            if (!this.canManage) return;
             this.editing = null;
             this.formData = { nombre: '', descripcion: '', activa: true };
             this.showModal = true;
         },
         
         edit(categoria) {
+            if (!this.canManage) return;
             this.editing = categoria.id;
             this.formData = { ...categoria };
             this.showModal = true;

@@ -1,6 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { canAccess } from '../utils/permissions';
+
+const ALL_MENU_ITEMS = [
+    { path: '/', label: 'Dashboard', icon: '📊', permission: 'dashboard.view' },
+    { path: '/categorias', label: 'Sabores', icon: '📁', permission: 'categorias.view' },
+    { path: '/productos', label: 'Sabores y productos', icon: '📦', permission: 'productos.view' },
+    { path: '/aumento-masivo-precios', label: 'Aumento Masivo', icon: '📈', permission: 'productos.manage' },
+    { path: '/proveedores', label: 'Proveedores', icon: '🚚', permission: 'proveedores.view' },
+    { path: '/clientes', label: 'Clientes', icon: '👥', permission: 'clientes.view' },
+    { path: '/cajas', label: 'Cajas', icon: '💰', permission: 'cajas.view' },
+    { path: '/cuentas-corrientes', label: 'Cuentas Corrientes', icon: '💳', permission: 'cuentas_corrientes.view' },
+    { path: '/deudas-clientes', label: 'Deudas', icon: '📋', permission: 'deudas.view' },
+    { path: '/movimientos-stock', label: 'Stock', icon: '📊', permission: 'stock.view' },
+    { path: '/ventas', label: 'Venta helados', icon: '🛒', permission: 'ventas.view' },
+    { path: '/cheques', label: 'Cheques', icon: '💵', permission: 'cheques.view' },
+];
 
 export default function Layout() {
     const { user, logout } = useAuth();
@@ -27,20 +43,10 @@ export default function Layout() {
         navigate('/login');
     };
 
-    const menuItems = [
-        { path: '/', label: 'Dashboard', icon: '📊' },
-        { path: '/categorias', label: 'Categorías', icon: '📁' },
-        { path: '/productos', label: 'Productos', icon: '📦' },
-        { path: '/aumento-masivo-precios', label: 'Aumento Masivo', icon: '📈' },
-        { path: '/proveedores', label: 'Proveedores', icon: '🚚' },
-        { path: '/clientes', label: 'Clientes', icon: '👥' },
-        { path: '/cajas', label: 'Cajas', icon: '💰' },
-        { path: '/cuentas-corrientes', label: 'Cuentas Corrientes', icon: '💳' },
-        { path: '/deudas-clientes', label: 'Deudas', icon: '📋' },
-        { path: '/movimientos-stock', label: 'Stock', icon: '📊' },
-        { path: '/ventas', label: 'Ventas', icon: '🛒' },
-        { path: '/cheques', label: 'Cheques', icon: '💵' },
-    ];
+    const menuItems = useMemo(
+        () => ALL_MENU_ITEMS.filter((item) => canAccess(user, item.permission)),
+        [user]
+    );
 
     return (
         <div className="min-h-screen bg-gray-100">

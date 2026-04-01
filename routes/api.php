@@ -54,6 +54,18 @@ Route::middleware('auth:web')->group(function () {
         Route::get('productos/proveedor/{proveedorId}', [ProductoController::class, 'getByProveedor']);
     });
 
+    Route::middleware('permission:categorias.view')->group(function () {
+        Route::get('categorias', [CategoriaController::class, 'index']);
+        Route::get('categorias/{id}', [CategoriaController::class, 'show']);
+    });
+
+    Route::middleware('permission:categorias.manage')->group(function () {
+        Route::post('categorias', [CategoriaController::class, 'store']);
+        Route::put('categorias/{id}', [CategoriaController::class, 'update']);
+        Route::patch('categorias/{id}', [CategoriaController::class, 'update']);
+        Route::delete('categorias/{id}', [CategoriaController::class, 'destroy']);
+    });
+
     Route::middleware('permission:cajas.view')->group(function () {
         Route::get('cajas', [CajaController::class, 'index']);
         Route::get('cajas/{id}', [CajaController::class, 'show']);
@@ -65,16 +77,18 @@ Route::middleware('auth:web')->group(function () {
         Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar']);
     });
 
-    Route::middleware('permission:admin')->group(function () {
-        Route::get('configuracion-fiscal', [ConfiguracionFiscalController::class, 'show']);
-        Route::post('configuracion-fiscal', [ConfiguracionFiscalController::class, 'update']);
-
-        Route::apiResource('categorias', CategoriaController::class)->names('api.categorias');
+    Route::middleware('permission:productos.manage')->group(function () {
         Route::post('productos', [ProductoController::class, 'store']);
         Route::put('productos/{producto}', [ProductoController::class, 'update']);
         Route::patch('productos/{producto}', [ProductoController::class, 'update']);
         Route::delete('productos/{producto}', [ProductoController::class, 'destroy']);
         Route::post('productos/aumento-masivo', [ProductoController::class, 'aumentoMasivo']);
+    });
+
+    Route::middleware('permission:admin')->group(function () {
+        Route::get('configuracion-fiscal', [ConfiguracionFiscalController::class, 'show']);
+        Route::post('configuracion-fiscal', [ConfiguracionFiscalController::class, 'update']);
+
         Route::apiResource('proveedores', ProveedorController::class)->names('api.proveedores');
 
         Route::get('movimientos-caja', [MovimientoCajaController::class, 'index']);
