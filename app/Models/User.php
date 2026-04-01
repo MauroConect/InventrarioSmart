@@ -42,12 +42,46 @@ class User extends Authenticatable
 
     public function isVendedor(): bool
     {
-        return $this->normalizedRoleKey() === self::ROLE_VENDEDOR;
+        $k = $this->normalizedRoleKey();
+
+        return $k === self::ROLE_VENDEDOR
+            || in_array($k, ['vendedora', 'cajero', 'cajera'], true);
     }
 
     protected function normalizedRoleKey(): string
     {
         return strtolower(trim((string) $this->role));
+    }
+
+    /**
+     * Rol lógico para permisos en config (alias de mostrador → vendedor).
+     */
+    protected function effectiveRoleKey(): string
+    {
+        $k = $this->normalizedRoleKey();
+        if (in_array($k, ['vendedora', 'cajero', 'cajera'], true)) {
+            return self::ROLE_VENDEDOR;
+        }
+
+        return $k;
+    }
+
+    /**
+     * @param non-empty-string $permission
+     */
+    protected function hasRolePermission(string $permission): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+        $roleKey = $this->effectiveRoleKey();
+        if ($roleKey === '') {
+            return false;
+        }
+        $rolePermissions = config('permissions.roles.' . $roleKey, []);
+
+        return in_array('*', $rolePermissions, true)
+            || in_array($permission, $rolePermissions, true);
     }
 
     public function hasPermission(string $permission): bool
@@ -61,7 +95,12 @@ class User extends Authenticatable
             return true;
         }
 
-        $roleKey = $this->normalizedRoleKey();
+        // Quien puede registrar ventas en mostrador debe poder operar caja (aunque el rol no sea exactamente "vendedor").
+        if ($permission === 'cajas.manage' && $this->hasRolePermission('ventas.create')) {
+            return true;
+        }
+
+        $roleKey = $this->effectiveRoleKey();
         $rolePermissions = $roleKey === ''
             ? []
             : config('permissions.roles.' . $roleKey, []);
@@ -83,12 +122,12 @@ class User extends Authenticatable
             return ['*'];
         }
 
-        $roleKey = $this->normalizedRoleKey();
+        $roleKey = $this->effectiveRoleKey();
         $list = $roleKey === ''
             ? []
             : array_values(config('permissions.roles.' . $roleKey, []));
 
-        if ($this->isVendedor()) {
+        if ($this->hasRolePermission('ventas.create')) {
             foreach (['cajas.view', 'cajas.manage'] as $p) {
                 if (!in_array($p, $list, true)) {
                     $list[] = $p;

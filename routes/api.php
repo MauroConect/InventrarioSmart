@@ -66,13 +66,11 @@ Route::middleware('auth:web')->group(function () {
         Route::delete('categorias/{id}', [CategoriaController::class, 'destroy']);
     });
 
+    // Abrir/cerrar caja usa el mismo permiso que ver el listado: operación de mostrador (vendedor).
     Route::middleware('permission:cajas.view')->group(function () {
         Route::get('cajas', [CajaController::class, 'index']);
         Route::get('cajas/{id}', [CajaController::class, 'show']);
         Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre']);
-    });
-
-    Route::middleware('permission:cajas.manage')->group(function () {
         Route::post('cajas', [CajaController::class, 'store']);
         Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar']);
     });
