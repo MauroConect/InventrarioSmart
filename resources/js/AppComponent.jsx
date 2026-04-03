@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { canAccess } from './utils/permissions';
@@ -17,6 +17,14 @@ import Ventas from './pages/Ventas';
 import AumentoMasivoPrecios from './pages/AumentoMasivoPrecios';
 import Cheques from './pages/Cheques';
 import VentaDetalle from './pages/VentaDetalle';
+
+/** El panel Blade vive en /punto-caja y /cajas/mostrador; fuerza recarga para salir del SPA. */
+function FullPageBlade({ href }) {
+    useEffect(() => {
+        window.location.replace(href);
+    }, [href]);
+    return <div className="p-6 text-center text-gray-600">Abriendo punto de caja…</div>;
+}
 
 function HomeRoute() {
     const { user } = useAuth();
@@ -56,6 +64,8 @@ function AppRoutes() {
                 <Route path="proveedores" element={<Proveedores />} />
                 <Route path="clientes" element={<Clientes />} />
                 <Route path="cajas" element={<Cajas />} />
+                <Route path="cajas/mostrador" element={<FullPageBlade href="/punto-caja" />} />
+                <Route path="punto-caja" element={<FullPageBlade href="/punto-caja" />} />
                 <Route path="cuentas-corrientes" element={<CuentasCorrientes />} />
                 <Route path="deudas-clientes" element={<DeudasClientes />} />
                 <Route path="movimientos-stock" element={<MovimientosStock />} />

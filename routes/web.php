@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\DashboardController;
+use App\Http\Controllers\Web\PuntoCajaController;
 
 // Rutas de autenticación
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -26,7 +27,7 @@ Route::middleware('auth')->group(function () {
             $k = strtolower(trim((string) $user->role));
             $esMostrador = $k === '' || ($k !== 'admin' && in_array($k, ['vendedor', 'vendedora', 'cajero', 'cajera'], true));
             if ($esMostrador) {
-                return redirect('/cajas/mostrador');
+                return redirect('/punto-caja');
             }
 
             return redirect()->route('cajas.index');
@@ -43,22 +44,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/proveedores', function() { return view('pages.proveedores'); })->middleware('permission:proveedores.view')->name('proveedores.index');
     Route::get('/clientes', function() { return view('pages.clientes'); })->middleware('permission:clientes.view')->name('clientes.index');
 
-    // Ruta más específica primero (el patrón opcional cajas/{seccion?} fallaba en algunos entornos con 404 en /cajas/mostrador).
-    Route::get('/cajas/mostrador', function () {
-        $u = auth()->user();
-        $k = $u ? strtolower(trim((string) $u->role)) : '';
-        $esMostrador = $u && ($k === '' || ($k !== 'admin' && in_array($k, ['vendedor', 'vendedora', 'cajero', 'cajera'], true)));
-        abort_unless($esMostrador, 403);
-
-        return view('pages.punto-caja');
-    })->middleware('permission:cajas.mostrador.view');
+    // Punto de caja: controlador + dos URLs (Blade/Alpine; no pasa por React).
+    // Ruta más específica antes de GET /cajas.
+    Route::get('/cajas/mostrador', [PuntoCajaController::class, 'show'])
+        ->middleware('permission:cajas.mostrador.view');
+    Route::get('/punto-caja', [PuntoCajaController::class, 'show'])
+        ->middleware('permission:cajas.mostrador.view');
 
     Route::get('/cajas', function () {
         return view('pages.cajas');
     })->name('cajas.index');
 
-    Route::get('/caja-vendedor', fn () => redirect('/cajas/mostrador', 301));
-    Route::get('/punto-caja', fn () => redirect('/cajas/mostrador', 301));
+    Route::get('/caja-vendedor', fn () => redirect('/punto-caja', 301));
 
     // JSON de cajas: solo routes/api.php → /api/cajas (misma URL que el SPA; evita 404 "The route cajas/api could not be found").
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');
