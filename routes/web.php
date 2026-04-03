@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Models\User;
 use App\Http\Controllers\CajaController;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\DashboardController;
@@ -25,7 +24,7 @@ Route::middleware('auth')->group(function () {
         }
 
         if ($user) {
-            if (User::isMostrador($user)) {
+            if (user_es_mostrador($user)) {
                 return redirect()->route('punto-caja.index');
             }
 
