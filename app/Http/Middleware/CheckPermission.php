@@ -13,7 +13,7 @@ class CheckPermission
     {
         // Cajas API: nunca bloquear por permiso. Usamos URI cruda porque path() falla en algunos nginx/proxy/subcarpetas.
         $uriPath = parse_url($request->getRequestUri(), PHP_URL_PATH) ?? '';
-        if ($uriPath !== '' && preg_match('#/api/cajas(-abrir)?(/|$)#', $uriPath)) {
+        if ($uriPath !== '' && preg_match('#/api/cajas(/|$)#', $uriPath)) {
             return $next($request);
         }
 

@@ -157,9 +157,8 @@
 
 @push('scripts')
 <script>
-/** Listado/resumen/cierre: /api/cajas… Abrir: POST /api/cajas-abrir (evita colisión con rutas cacheadas). */
+/** Todo vía POST/GET /api/cajas (una sola URL base; CheckPermission no exige permisos). */
 const CAJA_API = '/api/cajas';
-const CAJA_ABRIR = '/api/cajas-abrir';
 const cajaResumenUrl = (id) => CAJA_API + '/' + id + '/resumen-cierre';
 const cajaCerrarUrl = (id) => CAJA_API + '/' + id + '/cerrar';
 function initCajasPage(puedeOperarCaja) {
@@ -247,7 +246,7 @@ function initCajasPage(puedeOperarCaja) {
             try {
                 this.error = '';
                 this.success = '';
-                await axios.post(CAJA_ABRIR, {
+                await axios.post(CAJA_API, {
                     nombre: this.nombreCaja || null,
                     monto_apertura: this.montoApertura
                 });
