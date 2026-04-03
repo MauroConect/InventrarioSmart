@@ -24,6 +24,13 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    // Cajas: solo usuario autenticado (sin middleware permission). Cierre: dueño en CajaController::cerrar.
+    Route::get('cajas', [CajaController::class, 'index']);
+    Route::get('cajas/{id}', [CajaController::class, 'show']);
+    Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre']);
+    Route::post('cajas', [CajaController::class, 'store']);
+    Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar']);
+
     // Dashboard
     Route::middleware('permission:dashboard.view')->group(function () {
         Route::get('/dashboard/estadisticas', [DashboardController::class, 'estadisticas']);
@@ -45,14 +52,8 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     Route::get('ventas-pendientes-facturacion', [VentaController::class, 'pendientesFacturacion'])->middleware('permission:ventas.facturar');
     Route::post('ventas-facturar-lote', [VentaController::class, 'facturarLote'])->middleware('permission:ventas.facturar');
 
-    // Cajas comparten el mismo permiso que clientes (mostrador: si puede clientes, puede operar cajas vía API).
     Route::middleware('permission:clientes.view')->group(function () {
         Route::apiResource('clientes', ClienteController::class)->names('api.clientes');
-        Route::get('cajas', [CajaController::class, 'index']);
-        Route::get('cajas/{id}', [CajaController::class, 'show']);
-        Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre']);
-        Route::post('cajas', [CajaController::class, 'store']);
-        Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar']);
     });
 
     Route::middleware('permission:productos.view')->group(function () {
