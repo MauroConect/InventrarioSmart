@@ -12,6 +12,12 @@ class CheckPermission
 {
     public function handle(Request $request, Closure $next, string $permission): Response
     {
+        // Toda la API de cajas: sin comprobar permiso (evita 403 por ruta mal resuelta o proxies).
+        $path = $request->path();
+        if ($path === 'api/cajas' || str_starts_with($path, 'api/cajas/')) {
+            return $next($request);
+        }
+
         // CajaController: no pedir permiso (vendedor = admin en cajas). No depende de la URL ni del route:cache.
         $route = $request->route();
         if ($route !== null) {
@@ -34,10 +40,6 @@ class CheckPermission
         // Respaldo por URL / nombre (proxies, rutas raras).
         $uriPath = parse_url($request->getRequestUri(), PHP_URL_PATH) ?? '';
         if ($uriPath !== '' && preg_match('#/api/cajas(/|$)#', $uriPath)) {
-            return $next($request);
-        }
-        $path = $request->path();
-        if ($path === 'api/cajas' || str_starts_with($path, 'api/cajas/')) {
             return $next($request);
         }
 

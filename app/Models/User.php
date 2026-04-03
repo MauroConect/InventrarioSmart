@@ -40,7 +40,7 @@ class User extends Authenticatable
         return $this->normalizedRoleKey() === self::ROLE_ADMIN;
     }
 
-    /** Mostrador / vendedor (solo $this->role; sin helpers globales). */
+    /** Mostrador / vendedor (menú Blade; no admin). */
     protected function esMostradorPorRole(): bool
     {
         $k = strtolower(trim((string) $this->role));
@@ -51,8 +51,16 @@ class User extends Authenticatable
             return false;
         }
 
-        return $k === self::ROLE_VENDEDOR
-            || in_array($k, ['vendedora', 'cajero', 'cajera'], true);
+        if ($k === self::ROLE_VENDEDOR || in_array($k, ['vendedora', 'cajero', 'cajera', 'mostrador'], true)) {
+            return true;
+        }
+
+        $aliases = config('permissions.vendedor_role_aliases', []);
+        if (is_array($aliases) && in_array($k, $aliases, true)) {
+            return true;
+        }
+
+        return str_contains($k, 'vend');
     }
 
     public function isVendedor(): bool
@@ -83,20 +91,25 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
-        // Admin y vendedor/mostrador: mismos permisos en toda la app (incluye cajas vía API).
-        if ($this->isAdmin() || $this->esMostradorPorRole()) {
-            return true;
+        // Política: en servidor, todo usuario autenticado tiene los mismos permisos (como admin).
+        // La diferencia vendedor/admin es solo el menú Blade (isAdmin / isVendedor).
+        if (config('permissions.enforce_role_permissions', false)) {
+            if ($this->isAdmin() || $this->esMostradorPorRole()) {
+                return true;
+            }
+
+            $roleKey = $this->effectiveRoleKey();
+            $rolePermissions = $roleKey === ''
+                ? []
+                : config('permissions.roles.' . $roleKey, []);
+            if (in_array('*', $rolePermissions, true)) {
+                return true;
+            }
+
+            return in_array($permission, $rolePermissions, true);
         }
 
-        $roleKey = $this->effectiveRoleKey();
-        $rolePermissions = $roleKey === ''
-            ? []
-            : config('permissions.roles.' . $roleKey, []);
-        if (in_array('*', $rolePermissions, true)) {
-            return true;
-        }
-
-        return in_array($permission, $rolePermissions, true);
+        return true;
     }
 
     /**
@@ -106,6 +119,10 @@ class User extends Authenticatable
      */
     public function getPermissionsAttribute(): array
     {
+        if (! config('permissions.enforce_role_permissions', false)) {
+            return ['*'];
+        }
+
         if ($this->isAdmin() || $this->esMostradorPorRole()) {
             return ['*'];
         }
