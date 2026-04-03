@@ -157,12 +157,10 @@
 
 @push('scripts')
 <script>
-/** Rutas web (auth + CSRF). Usamos url() para no depender de nombres en route:cache / despliegues parciales. */
-const CAJA_LIST = @json(url('/cajas/registros'));
-const CAJA_ABRIR = @json(url('/cajas/abrir'));
-const CAJA_BASE = @json(url('/cajas'));
-const cajaResumenUrl = (id) => CAJA_BASE + '/' + id + '/resumen-cierre';
-const cajaCerrarUrl = (id) => CAJA_BASE + '/' + id + '/cerrar';
+/** Siempre /api/cajas (routes/api.php, auth:sanctum, sin middleware permission). */
+const CAJA_API = @json(url('/api/cajas'));
+const cajaResumenUrl = (id) => CAJA_API + '/' + id + '/resumen-cierre';
+const cajaCerrarUrl = (id) => CAJA_API + '/' + id + '/cerrar';
 function initCajasPage(puedeOperarCaja) {
     return {
         puedeOperarCaja: Boolean(puedeOperarCaja),
@@ -188,11 +186,14 @@ function initCajasPage(puedeOperarCaja) {
         async fetch() {
             try {
                 this.loading = true;
-                const response = await axios.get(CAJA_LIST);
+                const response = await axios.get(CAJA_API);
                 this.listaCajas = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error:', error);
-                this.error = 'Error al cargar las cajas';
+                const s = error.response?.status;
+                this.error = s === 401
+                    ? 'Sesión no válida o expirada. Cerrá sesión y volvé a ingresar.'
+                    : (error.response?.data?.message || 'Error al cargar las cajas');
             } finally {
                 this.loading = false;
             }
@@ -245,7 +246,7 @@ function initCajasPage(puedeOperarCaja) {
             try {
                 this.error = '';
                 this.success = '';
-                await axios.post(CAJA_ABRIR, {
+                await axios.post(CAJA_API, {
                     nombre: this.nombreCaja || null,
                     monto_apertura: this.montoApertura
                 });

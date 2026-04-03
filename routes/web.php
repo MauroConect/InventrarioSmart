@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CajaController;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\DashboardController;
 
@@ -37,12 +36,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/aumento-masivo-precios', function() { return view('pages.aumento-masivo'); })->middleware('permission:productos.manage')->name('aumento-masivo.index');
     Route::get('/proveedores', function() { return view('pages.proveedores'); })->middleware('permission:proveedores.view')->name('proveedores.index');
     Route::get('/clientes', function() { return view('pages.clientes'); })->middleware('permission:clientes.view')->name('clientes.index');
-
-    // Cajas (Blade): JSON por sesión web + CSRF; no pasan por middleware permission ni Sanctum /api.
-    Route::get('/cajas/registros', [CajaController::class, 'index'])->name('cajas.registros');
-    Route::post('/cajas/abrir', [CajaController::class, 'store'])->name('cajas.abrir');
-    Route::get('/cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->name('cajas.resumen-cierre');
-    Route::post('/cajas/{id}/cerrar', [CajaController::class, 'cerrar'])->name('cajas.cerrar');
 
     Route::get('/cajas', function () {
         return view('pages.cajas');

@@ -30,7 +30,7 @@ export default function Cajas() {
     const fetchCajas = async () => {
         try {
             setLoading(true);
-            const response = await axios.get('/cajas/registros');
+            const response = await axios.get('/api/cajas');
             setCajas(response.data.data || response.data);
         } catch (error) {
             console.error('Error:', error);
@@ -44,7 +44,7 @@ export default function Cajas() {
         try {
             setCargandoResumen(true);
             setError('');
-            const response = await axios.get(`/cajas/${cajaId}/resumen-cierre`);
+            const response = await axios.get(`/api/cajas/${cajaId}/resumen-cierre`);
             setResumenCierre(response.data);
             setMontoReal(response.data.resumen.monto_esperado.toFixed(2));
         } catch (error) {
@@ -61,7 +61,7 @@ export default function Cajas() {
         try {
             setError('');
             setSuccess('');
-            await axios.post('/cajas/abrir', { 
+            await axios.post('/api/cajas', { 
                 nombre: nombreCaja || null,
                 monto_apertura: montoApertura 
             });
@@ -96,7 +96,7 @@ export default function Cajas() {
             setError('');
             setSuccess('');
             
-            await axios.post(`/cajas/${cajaSeleccionada.id}/cerrar`, {
+            await axios.post(`/api/cajas/${cajaSeleccionada.id}/cerrar`, {
                 monto_real: parseFloat(montoReal),
                 observaciones: observaciones || null,
             });
