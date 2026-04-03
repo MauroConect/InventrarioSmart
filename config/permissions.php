@@ -8,6 +8,7 @@ return [
         'vendedor' => [
             'ventas.view',
             'ventas.create',
+            'clientes.view',
             'cajas.view',
             'cajas.manage',
             'categorias.view',
