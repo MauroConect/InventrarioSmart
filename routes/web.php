@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CajaController;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\DashboardController;
 
@@ -23,6 +24,10 @@ Route::middleware('auth')->group(function () {
         }
 
         if ($user) {
+            if ($user->isVendedor()) {
+                return redirect()->route('punto-caja.index');
+            }
+
             return redirect()->route('cajas.index');
         }
 
@@ -40,6 +45,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/cajas', function () {
         return view('pages.cajas');
     })->name('cajas.index');
+
+    // Vendedor / mostrador: solo auth + web (CSRF). Sin middleware permission ni API.
+    Route::middleware('vendedor.punto-caja')->prefix('punto-caja')->name('punto-caja.')->group(function () {
+        Route::get('/', function () {
+            return view('pages.punto-caja');
+        })->name('index');
+        Route::get('/listado', [CajaController::class, 'index'])->name('listado');
+        Route::post('/apertura', [CajaController::class, 'store'])->name('apertura');
+        Route::get('/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id')->name('resumen');
+        Route::post('/{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id')->name('cerrar');
+    });
 
     // JSON de cajas: solo routes/api.php → /api/cajas (misma URL que el SPA; evita 404 "The route cajas/api could not be found").
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');

@@ -70,5 +70,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'permission' => \App\Http\Middleware\CheckPermission::class,
         'prefer.web.user' => \App\Http\Middleware\PreferWebSessionUser::class,
+        'vendedor.punto-caja' => \App\Http\Middleware\EnsureVendedorPuntoCaja::class,
     ];
 }
