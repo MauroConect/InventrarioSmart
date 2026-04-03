@@ -276,7 +276,7 @@ function ventas(canCuentaCorriente) {
 
                 const [productosRes, cajasRes] = await Promise.all([
                     axios.get('/api/productos', { params: { all: 'true' }, headers }),
-                    axios.get(@json(url('/api/cajas')), { params: { estado: 'abierta' } })
+                    axios.get(@json(url('/cajas/api/lista')), { params: { estado: 'abierta' } })
                 ]);
 
                 let clientes = [];

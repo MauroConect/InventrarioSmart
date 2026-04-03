@@ -157,10 +157,12 @@
 
 @push('scripts')
 <script>
-/** Siempre /api/cajas (routes/api.php, auth:sanctum, sin middleware permission). */
-const CAJA_API = @json(url('/api/cajas'));
-const cajaResumenUrl = (id) => CAJA_API + '/' + id + '/resumen-cierre';
-const cajaCerrarUrl = (id) => CAJA_API + '/' + id + '/cerrar';
+/** Rutas web /cajas/api/* (solo auth + CSRF). Evita por completo el stack /api y CheckPermission. */
+const CAJA_LIST = @json(url('/cajas/api/lista'));
+const CAJA_ABRIR = @json(url('/cajas/api/abrir'));
+const CAJA_API_ROOT = @json(url('/cajas/api'));
+const cajaResumenUrl = (id) => CAJA_API_ROOT + '/' + id + '/resumen-cierre';
+const cajaCerrarUrl = (id) => CAJA_API_ROOT + '/' + id + '/cerrar';
 function initCajasPage(puedeOperarCaja) {
     return {
         puedeOperarCaja: Boolean(puedeOperarCaja),
@@ -186,7 +188,7 @@ function initCajasPage(puedeOperarCaja) {
         async fetch() {
             try {
                 this.loading = true;
-                const response = await axios.get(CAJA_API);
+                const response = await axios.get(CAJA_LIST);
                 this.listaCajas = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error:', error);
@@ -246,7 +248,7 @@ function initCajasPage(puedeOperarCaja) {
             try {
                 this.error = '';
                 this.success = '';
-                await axios.post(CAJA_API, {
+                await axios.post(CAJA_ABRIR, {
                     nombre: this.nombreCaja || null,
                     monto_apertura: this.montoApertura
                 });

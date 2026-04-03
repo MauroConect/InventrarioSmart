@@ -11,6 +11,13 @@ class CheckPermission
 {
     public function handle(Request $request, Closure $next, string $permission): Response
     {
+        // Cajas vía /api/cajas: no aplicar permisos (solo importa estar autenticado en la ruta).
+        // Cubre route:cache viejo, despliegues parciales o cualquier stack que siga montando este middleware encima.
+        $path = $request->path();
+        if ($path === 'api/cajas' || str_starts_with($path, 'api/cajas/')) {
+            return $next($request);
+        }
+
         // Sesión web primero (Blade + axios same-origin); evita desajuste con token Sanctum residual.
         $user = Auth::guard('web')->user() ?? $request->user();
 
