@@ -26,7 +26,7 @@ Route::middleware('auth')->group(function () {
             $k = strtolower(trim((string) $user->role));
             $esMostrador = $k === '' || ($k !== 'admin' && in_array($k, ['vendedor', 'vendedora', 'cajero', 'cajera'], true));
             if ($esMostrador) {
-                return redirect()->route('cajas.mostrador');
+                return redirect('/cajas/mostrador');
             }
 
             return redirect()->route('cajas.index');
@@ -51,14 +51,14 @@ Route::middleware('auth')->group(function () {
         abort_unless($esMostrador, 403);
 
         return view('pages.punto-caja');
-    })->name('cajas.mostrador');
+    });
 
     Route::get('/cajas', function () {
         return view('pages.cajas');
     })->name('cajas.index');
 
-    Route::get('/caja-vendedor', fn () => redirect()->route('cajas.mostrador', [], 301));
-    Route::get('/punto-caja', fn () => redirect()->route('cajas.mostrador', [], 301));
+    Route::get('/caja-vendedor', fn () => redirect('/cajas/mostrador', 301));
+    Route::get('/punto-caja', fn () => redirect('/cajas/mostrador', 301));
 
     // JSON de cajas: solo routes/api.php → /api/cajas (misma URL que el SPA; evita 404 "The route cajas/api could not be found").
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');
