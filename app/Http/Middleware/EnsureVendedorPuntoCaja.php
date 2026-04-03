@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Rutas /caja-vendedor: solo perfiles de mostrador, no admin.
+ * Rutas /cajas/mostrador: solo perfiles de mostrador, no admin.
  */
 class EnsureVendedorPuntoCaja
 {

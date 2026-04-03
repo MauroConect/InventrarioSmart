@@ -130,7 +130,7 @@
 @push('scripts')
 <script>
 (function () {
-    const BASE = @json(rtrim(url('/caja-vendedor'), '/'));
+    const BASE = @json(rtrim(url('/cajas/mostrador'), '/'));
     const LISTADO = BASE + '/listado';
     const APERTURA = BASE + '/apertura';
     const resumenUrl = (id) => BASE + '/' + encodeURIComponent(id) + '/resumen-cierre';

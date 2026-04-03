@@ -27,7 +27,7 @@ Route::middleware('auth')->group(function () {
             $k = strtolower(trim((string) $user->role));
             $esMostrador = $k === '' || ($k !== 'admin' && in_array($k, ['vendedor', 'vendedora', 'cajero', 'cajera'], true));
             if ($esMostrador) {
-                return redirect('/caja-vendedor');
+                return redirect('/cajas/mostrador');
             }
 
             return redirect()->route('cajas.index');
@@ -44,22 +44,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/proveedores', function() { return view('pages.proveedores'); })->middleware('permission:proveedores.view')->name('proveedores.index');
     Route::get('/clientes', function() { return view('pages.clientes'); })->middleware('permission:clientes.view')->name('clientes.index');
 
+    // Vendedor (Blade): debajo de /cajas/… para que nginx que ya enruta /cajas a Laravel no devuelva 404 (SPA u otra regla en /caja-vendedor).
+    Route::middleware('vendedor.punto-caja')->group(function () {
+        Route::get('/cajas/mostrador', function () {
+            return view('pages.punto-caja');
+        });
+        Route::get('/cajas/mostrador/listado', [CajaController::class, 'index']);
+        Route::post('/cajas/mostrador/apertura', [CajaController::class, 'store']);
+        Route::get('/cajas/mostrador/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id');
+        Route::post('/cajas/mostrador/{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id');
+    });
+
     Route::get('/cajas', function () {
         return view('pages.cajas');
     })->name('cajas.index');
 
-    // Vendedor: rutas explícitas /caja-vendedor/* (evita 404 si route:cache o prefix no aplica). Sin permission.
-    Route::middleware(['auth', 'vendedor.punto-caja'])->get('/caja-vendedor', function () {
-        return view('pages.punto-caja');
-    });
-    Route::middleware(['auth', 'vendedor.punto-caja'])->get('/caja-vendedor/listado', [CajaController::class, 'index']);
-    Route::middleware(['auth', 'vendedor.punto-caja'])->post('/caja-vendedor/apertura', [CajaController::class, 'store']);
-    Route::middleware(['auth', 'vendedor.punto-caja'])->get('/caja-vendedor/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id');
-    Route::middleware(['auth', 'vendedor.punto-caja'])->post('/caja-vendedor/{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id');
-
-    Route::middleware('auth')->get('/punto-caja', function () {
-        return redirect('/caja-vendedor', 301);
-    });
+    Route::get('/caja-vendedor', fn () => redirect('/cajas/mostrador', 301));
+    Route::get('/punto-caja', fn () => redirect('/cajas/mostrador', 301));
 
     // JSON de cajas: solo routes/api.php → /api/cajas (misma URL que el SPA; evita 404 "The route cajas/api could not be found").
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');
