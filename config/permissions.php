@@ -11,6 +11,7 @@ return [
             'clientes.view',
             'cajas.view',
             'cajas.manage',
+            'cajas.mostrador.view',
             'categorias.view',
             'productos.view',
         ],
