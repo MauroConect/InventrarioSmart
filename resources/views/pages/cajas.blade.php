@@ -157,10 +157,10 @@
 
 @push('scripts')
 <script>
-/** Rutas web (auth + CSRF); evitan /api y el middleware permission. */
-const CAJA_LIST = @json(route('cajas.registros'));
-const CAJA_ABRIR = @json(route('cajas.abrir'));
-const CAJA_BASE = @json(route('cajas.index'));
+/** Rutas web (auth + CSRF). Usamos url() para no depender de nombres en route:cache / despliegues parciales. */
+const CAJA_LIST = @json(url('/cajas/registros'));
+const CAJA_ABRIR = @json(url('/cajas/abrir'));
+const CAJA_BASE = @json(url('/cajas'));
 const cajaResumenUrl = (id) => CAJA_BASE + '/' + id + '/resumen-cierre';
 const cajaCerrarUrl = (id) => CAJA_BASE + '/' + id + '/cerrar';
 function initCajasPage(puedeOperarCaja) {
