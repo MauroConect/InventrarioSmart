@@ -74,12 +74,8 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
-        if ($this->isAdmin()) {
-            return true;
-        }
-
-        // Cajas: mismo criterio que admin (vendedor / mostrador sin fricción).
-        if (str_starts_with($permission, 'cajas.')) {
+        // Admin y vendedor/mostrador: mismos permisos en toda la app (incluye cajas vía API).
+        if ($this->isAdmin() || $this->isVendedor()) {
             return true;
         }
 
@@ -101,7 +97,7 @@ class User extends Authenticatable
      */
     public function getPermissionsAttribute(): array
     {
-        if ($this->isAdmin()) {
+        if ($this->isAdmin() || $this->isVendedor()) {
             return ['*'];
         }
 
