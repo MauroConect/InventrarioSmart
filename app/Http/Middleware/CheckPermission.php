@@ -36,14 +36,14 @@ class CheckPermission
         if ($uriPath !== '' && preg_match('#/api/cajas(/|$)#', $uriPath)) {
             return $next($request);
         }
-        if ($uriPath !== '' && preg_match('#/internal/cajas(/|$)#', $uriPath)) {
+        if ($uriPath !== '' && preg_match('#/cajas/api(/|$)#', $uriPath)) {
             return $next($request);
         }
         $path = $request->path();
         if ($path === 'api/cajas' || str_starts_with($path, 'api/cajas/')) {
             return $next($request);
         }
-        if ($path === 'internal/cajas' || str_starts_with($path, 'internal/cajas/')) {
+        if ($path === 'cajas/api' || str_starts_with($path, 'cajas/api/')) {
             return $next($request);
         }
 
