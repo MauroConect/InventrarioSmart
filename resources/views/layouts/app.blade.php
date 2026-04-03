@@ -78,7 +78,7 @@
                             <span class="mr-3">🏪</span> Punto de caja
                         </a>
                     @endif
-                    <a href="{{ route('cajas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cajas.index') ? 'bg-gray-700' : '' }}">
+                    <a href="{{ route('cajas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cajas.index') && ! request()->is('cajas/mostrador', 'cajas/mostrador/*') ? 'bg-gray-700' : '' }}">
                         <span class="mr-3">💰</span> Cajas
                     </a>
                     @if(Auth::user()->hasPermission('cuentas_corrientes.view'))

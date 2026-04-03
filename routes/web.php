@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CajaController;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\DashboardController;
 
@@ -44,18 +43,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/proveedores', function() { return view('pages.proveedores'); })->middleware('permission:proveedores.view')->name('proveedores.index');
     Route::get('/clientes', function() { return view('pages.clientes'); })->middleware('permission:clientes.view')->name('clientes.index');
 
-    // Vendedor (Blade): debajo de /cajas/… para que nginx que ya enruta /cajas a Laravel no devuelva 404 (SPA u otra regla en /caja-vendedor).
-    Route::middleware('vendedor.punto-caja')->group(function () {
-        Route::get('/cajas/mostrador', function () {
-            return view('pages.punto-caja');
-        });
-        Route::get('/cajas/mostrador/listado', [CajaController::class, 'index']);
-        Route::post('/cajas/mostrador/apertura', [CajaController::class, 'store']);
-        Route::get('/cajas/mostrador/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id');
-        Route::post('/cajas/mostrador/{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id');
-    });
+    // GET /cajas y /cajas/mostrador en un solo Route::get (evita 404 si antes solo existía la ruta exacta /cajas).
+    Route::get('/cajas/{seccion?}', function (?string $seccion = null) {
+        if ($seccion === 'mostrador') {
+            $u = auth()->user();
+            $k = $u ? strtolower(trim((string) $u->role)) : '';
+            $esMostrador = $u && ($k === '' || ($k !== 'admin' && in_array($k, ['vendedor', 'vendedora', 'cajero', 'cajera'], true)));
+            abort_unless($esMostrador, 403);
 
-    Route::get('/cajas', function () {
+            return view('pages.punto-caja');
+        }
+        if ($seccion !== null) {
+            abort(404);
+        }
+
         return view('pages.cajas');
     })->name('cajas.index');
 

@@ -130,9 +130,9 @@
 @push('scripts')
 <script>
 (function () {
-    const BASE = @json(rtrim(url('/cajas/mostrador'), '/'));
-    const LISTADO = BASE + '/listado';
-    const APERTURA = BASE + '/apertura';
+    const BASE = @json(rtrim(url('/api/cajas'), '/'));
+    const LISTADO = BASE;
+    const APERTURA = BASE;
     const resumenUrl = (id) => BASE + '/' + encodeURIComponent(id) + '/resumen-cierre';
     const cerrarUrl = (id) => BASE + '/' + encodeURIComponent(id) + '/cerrar';
 
