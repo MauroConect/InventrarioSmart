@@ -26,17 +26,15 @@ Route::middleware('auth')->group(function () {
             return redirect()->route('dashboard');
         }
 
+        if ($user && $user->isVendedor()) {
+            return redirect('/cajas/punto');
+        }
+
         if ($user && $user->hasPermission('ventas.view')) {
             return redirect()->route('ventas.index');
         }
 
-        if ($user) {
-            $k = strtolower(trim((string) $user->role));
-            $esMostrador = $k === '' || ($k !== 'admin' && in_array($k, ['vendedor', 'vendedora', 'cajero', 'cajera'], true));
-            if ($esMostrador) {
-                return redirect('/cajas/punto');
-            }
-
+        if ($user && $user->hasPermission('cajas.view')) {
             return redirect()->route('cajas.index');
         }
 
@@ -61,7 +59,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/cajas', function () {
         return view('pages.cajas');
-    })->name('cajas.index');
+    })->middleware('permission:cajas.view')->name('cajas.index');
 
     Route::get('/caja-vendedor', fn () => redirect('/cajas/punto', 301));
 

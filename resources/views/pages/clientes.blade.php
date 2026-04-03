@@ -4,10 +4,13 @@
 @section('page-title', 'Clientes')
 
 @section('content')
-<div x-data="clientes()" x-init="init()" class="space-y-6">
+<div x-data="clientes(@json(Auth::user()->hasPermission('clientes.manage')))" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 class="text-2xl sm:text-3xl font-bold">Clientes</h1>
         <button
+            type="button"
+            x-show="canManage"
+            x-cloak
             @click="openModal()"
             class="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
@@ -32,7 +35,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">DNI</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">CUIT</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Teléfono</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase" x-show="canManage">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -46,10 +49,10 @@
                                 <td class="px-6 py-4 hidden sm:table-cell" x-text="cliente.dni"></td>
                                 <td class="px-6 py-4 hidden lg:table-cell text-sm" x-text="cliente.cuit || '-'"></td>
                                 <td class="px-6 py-4 hidden md:table-cell" x-text="cliente.telefono || '-'"></td>
-                                <td class="px-6 py-4">
+                                <td class="px-6 py-4" x-show="canManage">
                                     <div class="flex flex-col sm:flex-row gap-2">
-                                        <button @click="edit(cliente)" class="text-blue-600 hover:text-blue-800 text-sm">Editar</button>
-                                        <button @click="remove(cliente.id)" class="text-red-600 hover:text-red-800 text-sm">Eliminar</button>
+                                        <button type="button" @click="edit(cliente)" class="text-blue-600 hover:text-blue-800 text-sm">Editar</button>
+                                        <button type="button" @click="remove(cliente.id)" class="text-red-600 hover:text-red-800 text-sm">Eliminar</button>
                                     </div>
                                 </td>
                             </tr>
@@ -61,7 +64,7 @@
     </div>
 
     <!-- Modal -->
-    <div x-show="showModal" 
+    <div x-show="showModal && canManage"
          x-cloak
          class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4"
          @click.away="closeModal()">
@@ -88,25 +91,23 @@
 
 @push('scripts')
 <script>
-function clientes() {
+function clientes(canManage) {
     return {
+        canManage: !!canManage,
         clientes: [],
         loading: true,
         showModal: false,
         editing: null,
         formData: { nombre: '', apellido: '', dni: '', cuit: '', telefono: '', email: '', direccion: '', activo: true },
-        
+
         async init() {
             await this.fetch();
         },
-        
+
         async fetch() {
             try {
                 this.loading = true;
-                const token = localStorage.getItem('token');
-                const response = await axios.get('/api/clientes', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                const response = await axios.get('/api/clientes');
                 this.clientes = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error:', error);
@@ -114,8 +115,9 @@ function clientes() {
                 this.loading = false;
             }
         },
-        
+
         openModal() {
+            if (!this.canManage) return;
             this.editing = null;
             this.formData = { nombre: '', apellido: '', dni: '', cuit: '', telefono: '', email: '', direccion: '', activo: true };
             this.showModal = true;
@@ -133,16 +135,12 @@ function clientes() {
         },
         
         async save() {
+            if (!this.canManage) return;
             try {
-                const token = localStorage.getItem('token');
                 if (this.editing) {
-                    await axios.put(`/api/clientes/${this.editing}`, this.formData, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
+                    await axios.put('/api/clientes/' + this.editing, this.formData);
                 } else {
-                    await axios.post('/api/clientes', this.formData, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
+                    await axios.post('/api/clientes', this.formData);
                 }
                 await this.fetch();
                 this.closeModal();
@@ -150,14 +148,12 @@ function clientes() {
                 alert('Error al guardar');
             }
         },
-        
+
         async remove(id) {
+            if (!this.canManage) return;
             if (!confirm('¿Está seguro de eliminar este cliente?')) return;
             try {
-                const token = localStorage.getItem('token');
-                await axios.delete(`/api/clientes/${id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                await axios.delete('/api/clientes/' + id);
                 await this.fetch();
             } catch (error) {
                 alert('Error al eliminar');

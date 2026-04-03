@@ -4,10 +4,10 @@
 @section('page-title', 'Movimientos de Stock')
 
 @section('content')
-<div x-data="movimientosStock()" x-init="init()" class="space-y-6">
+<div x-data="movimientosStock(@json(Auth::user()->hasPermission('stock.manage')))" x-init="init()" class="space-y-6">
     <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold">Movimientos de Stock</h1>
-        <button @click="openModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        <button type="button" x-show="canManage" x-cloak @click="openModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
             Nuevo Movimiento
         </button>
     </div>
@@ -53,7 +53,7 @@
     </div>
 
     <!-- Modal -->
-    <div x-show="showModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" @click.away="closeModal()">
+    <div x-show="showModal && canManage" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" @click.away="closeModal()">
         <div class="bg-white rounded-lg w-full max-w-md" @click.stop>
             <div class="px-6 py-4 border-b">
                 <h3 class="text-lg font-bold">Nuevo Movimiento</h3>
@@ -98,25 +98,26 @@
 
 @push('scripts')
 <script>
-function movimientosStock() {
+function movimientosStock(canManage) {
     return {
+        canManage: !!canManage,
         movimientos: [],
         productos: [],
         loading: true,
         showModal: false,
         formData: { producto_id: '', tipo: 'entrada', cantidad: 0, motivo: '', observaciones: '' },
-        
+
         async init() {
-            await Promise.all([this.fetch(), this.fetchProductos()]);
+            await this.fetch();
+            if (this.canManage) {
+                await this.fetchProductos();
+            }
         },
-        
+
         async fetch() {
             try {
                 this.loading = true;
-                const token = localStorage.getItem('token');
-                const response = await axios.get('/api/movimientos-stock', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                const response = await axios.get('/api/movimientos-stock');
                 this.movimientos = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error:', error);
@@ -124,20 +125,18 @@ function movimientosStock() {
                 this.loading = false;
             }
         },
-        
+
         async fetchProductos() {
             try {
-                const token = localStorage.getItem('token');
-                const response = await axios.get('/api/productos', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                const response = await axios.get('/api/productos');
                 this.productos = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error:', error);
             }
         },
-        
+
         openModal() {
+            if (!this.canManage) return;
             this.showModal = true;
             this.formData = { producto_id: '', tipo: 'entrada', cantidad: 0, motivo: '', observaciones: '' };
         },
@@ -147,11 +146,9 @@ function movimientosStock() {
         },
         
         async save() {
+            if (!this.canManage) return;
             try {
-                const token = localStorage.getItem('token');
-                await axios.post('/api/movimientos-stock', this.formData, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                await axios.post('/api/movimientos-stock', this.formData);
                 await this.fetch();
                 this.closeModal();
             } catch (error) {

@@ -24,12 +24,13 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Cajas: solo auth (sin permission). Nombres api.cajas.* para bypass en CheckPermission.
-    Route::get('cajas', [CajaController::class, 'index'])->name('api.cajas.index');
-    Route::get('cajas/{id}', [CajaController::class, 'show'])->name('api.cajas.show');
-    Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->name('api.cajas.resumen');
-    Route::post('cajas', [CajaController::class, 'store'])->name('api.cajas.store');
-    Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar'])->name('api.cajas.cerrar');
+    Route::middleware('permission:cajas.view')->group(function () {
+        Route::get('cajas', [CajaController::class, 'index'])->name('api.cajas.index');
+        Route::get('cajas/{id}', [CajaController::class, 'show'])->name('api.cajas.show');
+        Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->name('api.cajas.resumen');
+    });
+    Route::post('cajas', [CajaController::class, 'store'])->middleware('permission:cajas.manage')->name('api.cajas.store');
+    Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar'])->middleware('permission:cajas.manage')->name('api.cajas.cerrar');
 
     // Dashboard
     Route::middleware('permission:dashboard.view')->group(function () {
@@ -53,8 +54,21 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     Route::post('ventas-facturar-lote', [VentaController::class, 'facturarLote'])->middleware('permission:ventas.facturar');
 
     Route::middleware('permission:clientes.view')->group(function () {
-        Route::apiResource('clientes', ClienteController::class)->names('api.clientes');
+        Route::get('clientes', [ClienteController::class, 'index'])->name('api.clientes.index');
+        Route::get('clientes/{id}', [ClienteController::class, 'show'])->whereNumber('id')->name('api.clientes.show');
     });
+    Route::middleware('permission:clientes.manage')->group(function () {
+        Route::post('clientes', [ClienteController::class, 'store'])->name('api.clientes.store');
+        Route::put('clientes/{id}', [ClienteController::class, 'update'])->whereNumber('id')->name('api.clientes.update');
+        Route::patch('clientes/{id}', [ClienteController::class, 'update'])->whereNumber('id')->name('api.clientes.patch');
+        Route::delete('clientes/{id}', [ClienteController::class, 'destroy'])->whereNumber('id')->name('api.clientes.destroy');
+    });
+
+    Route::middleware('permission:stock.view')->group(function () {
+        Route::get('movimientos-stock', [MovimientoStockController::class, 'index'])->name('api.movimientos-stock.index');
+        Route::get('movimientos-stock/{id}', [MovimientoStockController::class, 'show'])->whereNumber('id')->name('api.movimientos-stock.show');
+    });
+    Route::post('movimientos-stock', [MovimientoStockController::class, 'store'])->middleware('permission:stock.manage')->name('api.movimientos-stock.store');
 
     Route::middleware('permission:productos.view')->group(function () {
         Route::get('productos', [ProductoController::class, 'index']);
@@ -101,10 +115,6 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
         Route::post('deudas-clientes', [DeudaClienteController::class, 'store']);
         Route::get('deudas-clientes/{id}', [DeudaClienteController::class, 'show']);
         Route::post('deudas-clientes/{id}/pago', [DeudaClienteController::class, 'registrarPago']);
-
-        Route::get('movimientos-stock', [MovimientoStockController::class, 'index']);
-        Route::post('movimientos-stock', [MovimientoStockController::class, 'store']);
-        Route::get('movimientos-stock/{id}', [MovimientoStockController::class, 'show']);
 
         Route::apiResource('cheques', ChequeController::class)->names('api.cheques');
         Route::get('cheques-proximos-vencer', [ChequeController::class, 'proximosAVencer']);

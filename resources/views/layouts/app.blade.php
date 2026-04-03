@@ -16,9 +16,8 @@
 <body class="bg-gray-100">
     @auth
         <div class="min-h-screen flex" x-data="{ sidebarOpen: window.innerWidth >= 1024 }" x-init="window.addEventListener('resize', () => { if (window.innerWidth >= 1024) sidebarOpen = true; else sidebarOpen = false; })">
-            <!-- Sidebar -->
-            <aside 
-                x-show="sidebarOpen" 
+            <aside
+                x-show="sidebarOpen"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="-translate-x-full"
                 x-transition:enter-end="translate-x-0"
@@ -36,74 +35,85 @@
                         </svg>
                     </button>
                 </div>
-                
+
                 <nav class="flex-1 overflow-y-auto py-4">
-                    @php $__adm = Auth::user()->isAdmin(); @endphp
-                    @if($__adm)
+                    @if(Auth::user()->hasPermission('dashboard.view'))
                         <a href="{{ route('dashboard') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('dashboard') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📊</span> Dashboard
                         </a>
                     @endif
-                    <a href="{{ route('categorias.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('categorias.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">📁</span> Sabores
-                    </a>
-                    <a href="{{ route('productos.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('productos.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">🍨</span> Sabores y Productos
-                    </a>
-                    @if($__adm)
+                    @if(Auth::user()->hasPermission('categorias.view'))
+                        <a href="{{ route('categorias.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('categorias.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">📁</span> Sabores
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('productos.view'))
+                        <a href="{{ route('productos.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('productos.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">🍨</span> Sabores y Productos
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('productos.manage'))
                         <a href="{{ route('aumento-masivo.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('aumento-masivo.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📈</span> Aumento Masivo
                         </a>
                     @endif
-                    @if($__adm)
+                    @if(Auth::user()->hasPermission('proveedores.view'))
                         <a href="{{ route('proveedores.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('proveedores.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">🚚</span> Proveedores
                         </a>
                     @endif
-                    <a href="{{ route('clientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('clientes.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">👥</span> Clientes
-                    </a>
-                    <a href="{{ url('/cajas/punto') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->is('cajas/punto', 'caja', 'mi-caja', 'mcaja', 'punto-caja', 'cajas/mostrador', 'cajas/mostrador/*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">🏪</span> Punto de caja
-                    </a>
-                    <a href="{{ route('cajas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cajas.index') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">💰</span> Cajas
-                    </a>
-                    @if($__adm)
+                    @if(Auth::user()->hasPermission('clientes.view'))
+                        <a href="{{ route('clientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('clientes.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">👥</span> Clientes
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('cajas.view'))
+                        <a href="{{ url('/cajas/punto') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->is('cajas/punto', 'caja', 'mi-caja', 'mcaja', 'punto-caja', 'cajas/mostrador', 'cajas/mostrador/*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">🏪</span> Punto de caja
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('cajas.view'))
+                        <a href="{{ route('cajas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cajas.index') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">💰</span> Cajas
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('cuentas_corrientes.view'))
                         <a href="{{ route('cuentas-corrientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cuentas-corrientes.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">💳</span> Cuentas Corrientes
                         </a>
                     @endif
-                    @if($__adm)
+                    @if(Auth::user()->hasPermission('deudas.view'))
                         <a href="{{ route('deudas-clientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('deudas-clientes.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📋</span> Deudas
                         </a>
                     @endif
-                    @if($__adm)
+                    @if(Auth::user()->hasPermission('stock.view'))
                         <a href="{{ route('movimientos-stock.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('movimientos-stock.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📦</span> Stock
                         </a>
                     @endif
-                    <a href="{{ route('ventas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('ventas.*') ? 'bg-gray-700' : '' }}">
-                        <span class="mr-3">🛒</span> Ventas de Helado
-                    </a>
-                    @if($__adm)
+                    @if(Auth::user()->hasPermission('ventas.view'))
+                        <a href="{{ route('ventas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('ventas.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">🛒</span> Ventas de Helado
+                        </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('ventas.facturar'))
                         <a href="{{ route('facturacion.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('facturacion.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">🧾</span> Facturacion
                         </a>
                     @endif
-                    @if($__adm)
+                    @if(Auth::user()->hasPermission('cheques.view'))
                         <a href="{{ route('cheques.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cheques.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">💵</span> Cheques
                         </a>
                     @endif
-                    @if($__adm)
+                    @if(Auth::user()->hasPermission('admin'))
                         <a href="{{ route('configuracion-fiscal.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('configuracion-fiscal.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">🧾</span> Configuracion Fiscal
                         </a>
                     @endif
                 </nav>
-                
+
                 <div class="border-t border-gray-700 p-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm text-gray-400">{{ Auth::user()->name }}</span>
@@ -117,9 +127,8 @@
                 </div>
             </aside>
 
-            <!-- Overlay para móvil -->
-            <div 
-                x-show="sidebarOpen" 
+            <div
+                x-show="sidebarOpen"
                 @click="sidebarOpen = false"
                 x-transition:enter="transition-opacity ease-linear duration-300"
                 x-transition:enter-start="opacity-0"
@@ -131,9 +140,7 @@
                 x-cloak
             ></div>
 
-            <!-- Main Content -->
             <div class="flex-1 flex flex-col lg:ml-0">
-                <!-- Header -->
                 <header class="bg-white shadow-sm h-16 flex items-center px-4 lg:px-6">
                     <button @click="sidebarOpen = true" class="lg:hidden text-gray-600 hover:text-gray-900 mr-4">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,7 +150,6 @@
                     <h2 class="text-xl font-semibold text-gray-800">@yield('page-title', 'Danielles')</h2>
                 </header>
 
-                <!-- Page Content -->
                 <main class="flex-1 overflow-y-auto p-4 lg:p-6">
                     @if(session('success'))
                         <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
@@ -177,7 +183,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
-        // Configurar Axios para usar CSRF token y cookies
         axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         axios.defaults.headers.common['Accept'] = 'application/json';
         axios.defaults.headers.common['Content-Type'] = 'application/json';

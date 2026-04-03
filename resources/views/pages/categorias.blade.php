@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
 @section('title', 'Sabores - Danielles')
-@section('page-title', auth()->user()->role === 'vendedor' ? 'Sabores' : 'Categorías')
+@section('page-title', auth()->user()->isVendedor() ? 'Sabores' : 'Categorías')
 
 @section('content')
 <div x-data="categorias({{ auth()->user()->hasPermission('categorias.manage') ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
     <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold">{{ auth()->user()->role === 'vendedor' ? 'Sabores' : 'Categorías' }}</h1>
+        <h1 class="text-3xl font-bold">{{ auth()->user()->isVendedor() ? 'Sabores' : 'Categorías' }}</h1>
         <button
             x-show="canManage"
             @click="openModal()"
