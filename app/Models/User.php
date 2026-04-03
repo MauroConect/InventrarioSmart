@@ -40,9 +40,24 @@ class User extends Authenticatable
         return $this->normalizedRoleKey() === self::ROLE_ADMIN;
     }
 
+    /** Mostrador / vendedor (solo $this->role; sin helpers globales). */
+    protected function esMostradorPorRole(): bool
+    {
+        $k = strtolower(trim((string) $this->role));
+        if ($k === '') {
+            return true;
+        }
+        if ($k === self::ROLE_ADMIN) {
+            return false;
+        }
+
+        return $k === self::ROLE_VENDEDOR
+            || in_array($k, ['vendedora', 'cajero', 'cajera'], true);
+    }
+
     public function isVendedor(): bool
     {
-        return user_es_mostrador($this);
+        return $this->esMostradorPorRole();
     }
 
     protected function normalizedRoleKey(): string
@@ -69,7 +84,7 @@ class User extends Authenticatable
     public function hasPermission(string $permission): bool
     {
         // Admin y vendedor/mostrador: mismos permisos en toda la app (incluye cajas vía API).
-        if ($this->isAdmin() || user_es_mostrador($this)) {
+        if ($this->isAdmin() || $this->esMostradorPorRole()) {
             return true;
         }
 
@@ -91,7 +106,7 @@ class User extends Authenticatable
      */
     public function getPermissionsAttribute(): array
     {
-        if ($this->isAdmin() || user_es_mostrador($this)) {
+        if ($this->isAdmin() || $this->esMostradorPorRole()) {
             return ['*'];
         }
 
