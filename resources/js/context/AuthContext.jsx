@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-// Configurar axios
+// baseURL = '/api' → las URLs deben ser relativas ('cajas', 'ventas'), NUNCA '/api/cajas' (se duplica a /api/api/cajas).
 axios.defaults.baseURL = '/api';
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 axios.defaults.headers.common['Accept'] = 'application/json';
