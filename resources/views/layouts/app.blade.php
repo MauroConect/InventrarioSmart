@@ -74,7 +74,7 @@
                         $__mostrador = $__pc && ($__kr === '' || ($__kr !== 'admin' && in_array($__kr, ['vendedor', 'vendedora', 'cajero', 'cajera'], true)));
                     @endphp
                     @if($__mostrador)
-                        <a href="{{ route('punto-caja.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('punto-caja.*') ? 'bg-gray-700' : '' }}">
+                        <a href="{{ url('/punto-caja') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->is('punto-caja', 'punto-caja/*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">🏪</span> Punto de caja
                         </a>
                     @endif

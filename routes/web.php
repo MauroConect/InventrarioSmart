@@ -27,7 +27,7 @@ Route::middleware('auth')->group(function () {
             $k = strtolower(trim((string) $user->role));
             $esMostrador = $k === '' || ($k !== 'admin' && in_array($k, ['vendedor', 'vendedora', 'cajero', 'cajera'], true));
             if ($esMostrador) {
-                return redirect()->route('punto-caja.index');
+                return redirect('/punto-caja');
             }
 
             return redirect()->route('cajas.index');
