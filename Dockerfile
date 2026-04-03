@@ -46,15 +46,18 @@ WORKDIR /var/www
 # Copiar archivos de la aplicación
 COPY . /var/www
 
-# Asegurar permisos correctos antes de cambiar de usuario
+WORKDIR /var/www
+
+# Dependencias PHP (genera vendor/autoload.php). Sin esto index.php falla al arrancar.
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+# Permisos y usuario de ejecución
 RUN chown -R www:www /var/www && \
     chmod -R 755 /var/www && \
     chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Cambiar a usuario www
 USER www
 
-# Configurar Composer para producción
 RUN composer global config process-timeout 600 && \
     composer global config preferred-install dist
 

@@ -27,7 +27,7 @@ Route::middleware('auth')->group(function () {
             $k = strtolower(trim((string) $user->role));
             $esMostrador = $k === '' || ($k !== 'admin' && in_array($k, ['vendedor', 'vendedora', 'cajero', 'cajera'], true));
             if ($esMostrador) {
-                return redirect('/punto-caja');
+                return redirect('/mi-caja');
             }
 
             return redirect()->route('cajas.index');
@@ -44,18 +44,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/proveedores', function() { return view('pages.proveedores'); })->middleware('permission:proveedores.view')->name('proveedores.index');
     Route::get('/clientes', function() { return view('pages.clientes'); })->middleware('permission:clientes.view')->name('clientes.index');
 
-    // Punto de caja: controlador + dos URLs (Blade/Alpine; no pasa por React).
-    // Ruta más específica antes de GET /cajas.
-    Route::get('/cajas/mostrador', [PuntoCajaController::class, 'show'])
-        ->middleware('permission:cajas.mostrador.view');
-    Route::get('/punto-caja', [PuntoCajaController::class, 'show'])
-        ->middleware('permission:cajas.mostrador.view');
+    // Punto de caja: varias URLs (una sola suele fallar en algunos hostings). Solo auth; permiso en el controlador.
+    Route::get('/mi-caja', [PuntoCajaController::class, 'show'])->name('cajas.punto');
+    Route::get('/mcaja', [PuntoCajaController::class, 'show']);
+    Route::get('/punto-caja', [PuntoCajaController::class, 'show']);
+    Route::get('/cajas/mostrador', [PuntoCajaController::class, 'show']);
 
     Route::get('/cajas', function () {
         return view('pages.cajas');
     })->name('cajas.index');
 
-    Route::get('/caja-vendedor', fn () => redirect('/punto-caja', 301));
+    Route::get('/caja-vendedor', fn () => redirect('/mi-caja', 301));
 
     // JSON de cajas: solo routes/api.php → /api/cajas (misma URL que el SPA; evita 404 "The route cajas/api could not be found").
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');

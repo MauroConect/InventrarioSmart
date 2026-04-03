@@ -18,7 +18,7 @@ import AumentoMasivoPrecios from './pages/AumentoMasivoPrecios';
 import Cheques from './pages/Cheques';
 import VentaDetalle from './pages/VentaDetalle';
 
-/** El panel Blade vive en /punto-caja y /cajas/mostrador; fuerza recarga para salir del SPA. */
+/** Panel Blade de caja; recarga completa para salir del SPA. */
 function FullPageBlade({ href }) {
     useEffect(() => {
         window.location.replace(href);
@@ -64,8 +64,10 @@ function AppRoutes() {
                 <Route path="proveedores" element={<Proveedores />} />
                 <Route path="clientes" element={<Clientes />} />
                 <Route path="cajas" element={<Cajas />} />
-                <Route path="cajas/mostrador" element={<FullPageBlade href="/punto-caja" />} />
-                <Route path="punto-caja" element={<FullPageBlade href="/punto-caja" />} />
+                <Route path="cajas/mostrador" element={<FullPageBlade href="/mi-caja" />} />
+                <Route path="punto-caja" element={<FullPageBlade href="/mi-caja" />} />
+                <Route path="mi-caja" element={<FullPageBlade href="/mi-caja" />} />
+                <Route path="mcaja" element={<FullPageBlade href="/mi-caja" />} />
                 <Route path="cuentas-corrientes" element={<CuentasCorrientes />} />
                 <Route path="deudas-clientes" element={<DeudasClientes />} />
                 <Route path="movimientos-stock" element={<MovimientosStock />} />
