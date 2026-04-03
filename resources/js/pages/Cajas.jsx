@@ -30,7 +30,7 @@ export default function Cajas() {
     const fetchCajas = async () => {
         try {
             setLoading(true);
-            const response = await axios.get('/cajas');
+            const response = await axios.get('/cajas/registros');
             setCajas(response.data.data || response.data);
         } catch (error) {
             console.error('Error:', error);
@@ -61,7 +61,7 @@ export default function Cajas() {
         try {
             setError('');
             setSuccess('');
-            await axios.post('/cajas', { 
+            await axios.post('/cajas/abrir', { 
                 nombre: nombreCaja || null,
                 monto_apertura: montoApertura 
             });

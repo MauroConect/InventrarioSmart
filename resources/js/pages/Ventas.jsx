@@ -77,7 +77,7 @@ export default function Ventas() {
 
             const [productosRes, cajasRes] = await Promise.all([
                 axios.get('/productos', { params: { all: 'true' } }),
-                axios.get('/cajas', { params: { estado: 'abierta' } }),
+                axios.get('/cajas/registros', { params: { estado: 'abierta' } }),
             ]);
 
             let clientesData = [];
