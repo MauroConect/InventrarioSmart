@@ -5,7 +5,7 @@
 
 @section('content')
 @php
-    /** Listado/abrir/cerrar vía /api/operaciones/caja (routes/api.php). Modal y tabla solo en este Blade. */
+    /** Listado/abrir/cerrar vía /internal/cajas (web.php + sesión). Modal y tabla solo en este Blade. */
     $puedeUsarCajasUi = auth()->check();
 @endphp
 <div x-data="initCajasPage(@json($puedeUsarCajasUi))" x-init="init()" class="space-y-6">
@@ -158,8 +158,7 @@
 @push('scripts')
 <script>
 (function () {
-/** /api/operaciones/caja: alias sin conflictos con route:cache viejo sobre POST /api/cajas. */
-const CAJA_API = '/api/operaciones/caja';
+const CAJA_API = '/internal/cajas';
 const cajaResumenUrl = (id) => CAJA_API + '/' + encodeURIComponent(id) + '/resumen-cierre';
 const cajaCerrarUrl = (id) => CAJA_API + '/' + encodeURIComponent(id) + '/cerrar';
 function initCajasPage(puedeOperarCaja) {

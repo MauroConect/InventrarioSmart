@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CajaController;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\DashboardController;
 
@@ -40,6 +41,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/cajas', function () {
         return view('pages.cajas');
     })->name('cajas.index');
+
+    // JSON cajas para Blade (sesión + CSRF): no pasa por routes/api.php ni route:cache de API.
+    Route::get('/internal/cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id');
+    Route::post('/internal/cajas/{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id');
+    Route::get('/internal/cajas', [CajaController::class, 'index']);
+    Route::post('/internal/cajas', [CajaController::class, 'store']);
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');
     Route::get('/deudas-clientes', function() { return view('pages.deudas-clientes'); })->middleware('permission:deudas.view')->name('deudas-clientes.index');
     Route::get('/movimientos-stock', function() { return view('pages.movimientos-stock'); })->middleware('permission:stock.view')->name('movimientos-stock.index');

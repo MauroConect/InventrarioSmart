@@ -36,19 +36,19 @@ class CheckPermission
         if ($uriPath !== '' && preg_match('#/api/cajas(/|$)#', $uriPath)) {
             return $next($request);
         }
-        if ($uriPath !== '' && preg_match('#/api/operaciones/caja(/|$)#', $uriPath)) {
+        if ($uriPath !== '' && preg_match('#/internal/cajas(/|$)#', $uriPath)) {
             return $next($request);
         }
         $path = $request->path();
         if ($path === 'api/cajas' || str_starts_with($path, 'api/cajas/')) {
             return $next($request);
         }
-        if ($path === 'api/operaciones/caja' || str_starts_with($path, 'api/operaciones/caja/')) {
+        if ($path === 'internal/cajas' || str_starts_with($path, 'internal/cajas/')) {
             return $next($request);
         }
 
         $routeName = $route?->getName();
-        if (is_string($routeName) && (str_starts_with($routeName, 'api.cajas') || str_starts_with($routeName, 'api.operaciones.caja'))) {
+        if (is_string($routeName) && str_starts_with($routeName, 'api.cajas')) {
             return $next($request);
         }
 
