@@ -157,7 +157,7 @@
 
 @push('scripts')
 <script>
-/** API estándar; User::hasPermission da siempre OK en cajas.* (vendedor = admin en cajas). Sesión: withCredentials en layout. */
+/** /api/cajas solo exige usuario autenticado (igual que la ruta web). Sesión: withCredentials en layout. */
 const CAJA_API = '/api/cajas';
 function initCajasPage(puedeOperarCaja) {
     return {

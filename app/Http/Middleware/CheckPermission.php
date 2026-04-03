@@ -11,10 +11,8 @@ class CheckPermission
 {
     public function handle(Request $request, Closure $next, string $permission): Response
     {
-        $user = $request->user();
-        if (! $user) {
-            $user = Auth::guard('web')->user();
-        }
+        // Sesión web primero (Blade + axios same-origin); evita desajuste con token Sanctum residual.
+        $user = Auth::guard('web')->user() ?? $request->user();
 
         if (! $user) {
             abort(401, 'No autenticado.');
