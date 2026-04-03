@@ -46,7 +46,9 @@ Route::middleware('auth')->group(function () {
     // Ruta más específica primero (el patrón opcional cajas/{seccion?} fallaba en algunos entornos con 404 en /cajas/mostrador).
     Route::get('/cajas/mostrador', function () {
         $u = auth()->user();
-        abort_unless($u && $u->isVendedor(), 403);
+        $k = $u ? strtolower(trim((string) $u->role)) : '';
+        $esMostrador = $u && ($k === '' || ($k !== 'admin' && in_array($k, ['vendedor', 'vendedora', 'cajero', 'cajera'], true)));
+        abort_unless($esMostrador, 403);
 
         return view('pages.punto-caja');
     })->middleware('permission:cajas.mostrador.view')->name('cajas.mostrador');
