@@ -5,7 +5,7 @@
 
 @section('content')
 @php
-    /** Ruta /cajas solo exige login; cualquier usuario autenticado puede operar la UI (API igual). */
+    /** UI Cajas: listado/abrir/cerrar vía rutas web /caja/* (auth + CSRF), no /api. */
     $puedeUsarCajasUi = auth()->check();
 @endphp
 <div x-data="initCajasPage(@json($puedeUsarCajasUi))" x-init="init()" class="space-y-6">
@@ -157,10 +157,12 @@
 
 @push('scripts')
 <script>
-/** Todo vía POST/GET /api/cajas (una sola URL base; CheckPermission no exige permisos). */
-const CAJA_API = '/api/cajas';
-const cajaResumenUrl = (id) => CAJA_API + '/' + id + '/resumen-cierre';
-const cajaCerrarUrl = (id) => CAJA_API + '/' + id + '/cerrar';
+(function () {
+const CAJA_LISTADO = @json(url('/caja/listado'));
+const CAJA_ABRIR = @json(url('/caja/abrir'));
+const CAJA_BASE = @json(rtrim(url('/caja'), '/'));
+const cajaResumenUrl = (id) => CAJA_BASE + '/' + encodeURIComponent(id) + '/resumen-cierre';
+const cajaCerrarUrl = (id) => CAJA_BASE + '/' + encodeURIComponent(id) + '/cerrar';
 function initCajasPage(puedeOperarCaja) {
     return {
         puedeOperarCaja: Boolean(puedeOperarCaja),
@@ -186,14 +188,14 @@ function initCajasPage(puedeOperarCaja) {
         async fetch() {
             try {
                 this.loading = true;
-                const response = await axios.get(CAJA_API);
+                const response = await axios.get(CAJA_LISTADO);
                 this.listaCajas = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error:', error);
                 const s = error.response?.status;
                 this.error = s === 401
                     ? 'Sesión no válida o expirada. Cerrá sesión y volvé a ingresar.'
-                    : (error.response?.data?.message || 'Error al cargar las cajas');
+                    : (s === 419 ? 'Sesión de seguridad vencida. Recargá la página e intentá de nuevo.' : (error.response?.data?.message || 'Error al cargar las cajas'));
             } finally {
                 this.loading = false;
             }
@@ -246,7 +248,7 @@ function initCajasPage(puedeOperarCaja) {
             try {
                 this.error = '';
                 this.success = '';
-                await axios.post(CAJA_API, {
+                await axios.post(CAJA_ABRIR, {
                     nombre: this.nombreCaja || null,
                     monto_apertura: this.montoApertura
                 });
@@ -255,7 +257,10 @@ function initCajasPage(puedeOperarCaja) {
                 this.closeModal();
                 setTimeout(() => this.success = '', 3000);
             } catch (error) {
-                this.error = error.response?.data?.message || 'Error al abrir caja';
+                const s = error.response?.status;
+                this.error = s === 419
+                    ? 'Recargá la página (token de seguridad) e intentá otra vez.'
+                    : (error.response?.data?.message || 'Error al abrir caja');
             }
         },
         
@@ -284,6 +289,8 @@ function initCajasPage(puedeOperarCaja) {
         }
     }
 }
+window.initCajasPage = initCajasPage;
+})();
 </script>
 @endpush
 @endsection
