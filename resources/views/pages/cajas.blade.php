@@ -5,7 +5,7 @@
 
 @section('content')
 @php
-    /** UI Cajas: listado/abrir/cerrar vía rutas web /caja/* (auth + CSRF), no /api. */
+    /** Listado/abrir/cerrar vía /api/cajas (routes/api.php). Modal y tabla solo en este Blade. */
     $puedeUsarCajasUi = auth()->check();
 @endphp
 <div x-data="initCajasPage(@json($puedeUsarCajasUi))" x-init="init()" class="space-y-6">
@@ -158,11 +158,10 @@
 @push('scripts')
 <script>
 (function () {
-const CAJA_LISTADO = @json(url('/caja/listado'));
-const CAJA_ABRIR = @json(url('/caja/abrir'));
-const CAJA_BASE = @json(rtrim(url('/caja'), '/'));
-const cajaResumenUrl = (id) => CAJA_BASE + '/' + encodeURIComponent(id) + '/resumen-cierre';
-const cajaCerrarUrl = (id) => CAJA_BASE + '/' + encodeURIComponent(id) + '/cerrar';
+/** Rutas relativas fijas: no usan route()/url() de Blade (evita errores si web.php no está actualizado en el servidor). */
+const CAJA_API = '/api/cajas';
+const cajaResumenUrl = (id) => CAJA_API + '/' + encodeURIComponent(id) + '/resumen-cierre';
+const cajaCerrarUrl = (id) => CAJA_API + '/' + encodeURIComponent(id) + '/cerrar';
 function initCajasPage(puedeOperarCaja) {
     return {
         puedeOperarCaja: Boolean(puedeOperarCaja),
@@ -188,7 +187,7 @@ function initCajasPage(puedeOperarCaja) {
         async fetch() {
             try {
                 this.loading = true;
-                const response = await axios.get(CAJA_LISTADO);
+                const response = await axios.get(CAJA_API);
                 this.listaCajas = response.data?.data || response.data || [];
             } catch (error) {
                 console.error('Error:', error);
@@ -248,7 +247,7 @@ function initCajasPage(puedeOperarCaja) {
             try {
                 this.error = '';
                 this.success = '';
-                await axios.post(CAJA_ABRIR, {
+                await axios.post(CAJA_API, {
                     nombre: this.nombreCaja || null,
                     monto_apertura: this.montoApertura
                 });

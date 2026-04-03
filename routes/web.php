@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CajaController;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\DashboardController;
 
@@ -37,15 +36,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/aumento-masivo-precios', function() { return view('pages.aumento-masivo'); })->middleware('permission:productos.manage')->name('aumento-masivo.index');
     Route::get('/proveedores', function() { return view('pages.proveedores'); })->middleware('permission:proveedores.view')->name('proveedores.index');
     Route::get('/clientes', function() { return view('pages.clientes'); })->middleware('permission:clientes.view')->name('clientes.index');
-
-    /*
-     | Cajas (pantalla Blade /cajas): JSON por rutas web, solo middleware auth + CSRF.
-     | No pasan por routes/api.php ni por CheckPermission (evita 403 en producción).
-     */
-    Route::get('/caja/listado', [CajaController::class, 'index']);
-    Route::post('/caja/abrir', [CajaController::class, 'store']);
-    Route::get('/caja/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id');
-    Route::post('/caja/{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id');
 
     Route::get('/cajas', function () {
         return view('pages.cajas');
