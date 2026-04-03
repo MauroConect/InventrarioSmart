@@ -11,10 +11,14 @@ class CheckPermission
 {
     public function handle(Request $request, Closure $next, string $permission): Response
     {
-        // Cajas vía /api/cajas: no aplicar permisos (solo importa estar autenticado en la ruta).
-        // Cubre route:cache viejo, despliegues parciales o cualquier stack que siga montando este middleware encima.
-        $path = $request->path();
-        if ($path === 'api/cajas' || str_starts_with($path, 'api/cajas/')) {
+        // Cajas API: nunca bloquear por permiso. Usamos URI cruda porque path() falla en algunos nginx/proxy/subcarpetas.
+        $uriPath = parse_url($request->getRequestUri(), PHP_URL_PATH) ?? '';
+        if ($uriPath !== '' && preg_match('#/api/cajas(-abrir)?(/|$)#', $uriPath)) {
+            return $next($request);
+        }
+
+        $routeName = $request->route()?->getName();
+        if (is_string($routeName) && str_starts_with($routeName, 'api.cajas')) {
             return $next($request);
         }
 

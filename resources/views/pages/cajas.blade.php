@@ -157,8 +157,9 @@
 
 @push('scripts')
 <script>
-/** Misma URL en todos los entornos (routes/api.php). CheckPermission ignora permisos en api/cajas*. */
+/** Listado/resumen/cierre: /api/cajas… Abrir: POST /api/cajas-abrir (evita colisión con rutas cacheadas). */
 const CAJA_API = '/api/cajas';
+const CAJA_ABRIR = '/api/cajas-abrir';
 const cajaResumenUrl = (id) => CAJA_API + '/' + id + '/resumen-cierre';
 const cajaCerrarUrl = (id) => CAJA_API + '/' + id + '/cerrar';
 function initCajasPage(puedeOperarCaja) {
@@ -246,7 +247,7 @@ function initCajasPage(puedeOperarCaja) {
             try {
                 this.error = '';
                 this.success = '';
-                await axios.post(CAJA_API, {
+                await axios.post(CAJA_ABRIR, {
                     nombre: this.nombreCaja || null,
                     monto_apertura: this.montoApertura
                 });

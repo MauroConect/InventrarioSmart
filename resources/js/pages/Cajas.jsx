@@ -61,7 +61,7 @@ export default function Cajas() {
         try {
             setError('');
             setSuccess('');
-            await axios.post('/api/cajas', { 
+            await axios.post('/api/cajas-abrir', { 
                 nombre: nombreCaja || null,
                 monto_apertura: montoApertura 
             });

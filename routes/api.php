@@ -24,12 +24,13 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Cajas: solo usuario autenticado (sin middleware permission). Cierre: dueño en CajaController::cerrar.
-    Route::get('cajas', [CajaController::class, 'index']);
-    Route::get('cajas/{id}', [CajaController::class, 'show']);
-    Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre']);
-    Route::post('cajas', [CajaController::class, 'store']);
-    Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar']);
+    // Cajas: solo auth (sin permission). Nombres api.cajas.* + POST alternativo cajas-abrir por si route:cache viejo intercepta POST cajas.
+    Route::get('cajas', [CajaController::class, 'index'])->name('api.cajas.index');
+    Route::get('cajas/{id}', [CajaController::class, 'show'])->name('api.cajas.show');
+    Route::get('cajas/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->name('api.cajas.resumen');
+    Route::post('cajas-abrir', [CajaController::class, 'store'])->name('api.cajas.abrir');
+    Route::post('cajas', [CajaController::class, 'store'])->name('api.cajas.store');
+    Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar'])->name('api.cajas.cerrar');
 
     // Dashboard
     Route::middleware('permission:dashboard.view')->group(function () {
