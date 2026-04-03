@@ -3,7 +3,14 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\DashboardController;
-use App\Http\Controllers\Web\PuntoCajaController;
+
+// Misma mecánica que GET /cajas y /clientes (closure): evita depender de otra clase y usa el prefijo /cajas/* que ya te funciona.
+$puntoCajaView = static function () {
+    $u = auth()->user();
+    abort_unless($u && $u->hasPermission('cajas.view'), 403);
+
+    return view('pages.punto-caja');
+};
 
 // Rutas de autenticación
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -27,7 +34,7 @@ Route::middleware('auth')->group(function () {
             $k = strtolower(trim((string) $user->role));
             $esMostrador = $k === '' || ($k !== 'admin' && in_array($k, ['vendedor', 'vendedora', 'cajero', 'cajera'], true));
             if ($esMostrador) {
-                return redirect('/caja');
+                return redirect('/cajas/punto');
             }
 
             return redirect()->route('cajas.index');
@@ -44,20 +51,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/proveedores', function() { return view('pages.proveedores'); })->middleware('permission:proveedores.view')->name('proveedores.index');
     Route::get('/clientes', function() { return view('pages.clientes'); })->middleware('permission:clientes.view')->name('clientes.index');
 
-    // Punto de caja: varias URLs. GET /caja antes que /cajas (misma raíz, distinto path).
-    // Si ves 404 con Docker: montá ./routes (compose ya lo hace) y ejecutá `php artisan route:clear`
-    // (bootstrap/cache montado puede tener routes-*.php viejo).
-    Route::get('/caja', [PuntoCajaController::class, 'show'])->name('cajas.punto');
-    Route::get('/mi-caja', [PuntoCajaController::class, 'show']);
-    Route::get('/mcaja', [PuntoCajaController::class, 'show']);
-    Route::get('/punto-caja', [PuntoCajaController::class, 'show']);
-    Route::get('/cajas/mostrador', [PuntoCajaController::class, 'show']);
+    // Punto de caja: primero /cajas/punto (mismo prefijo que GET /cajas que ya responde bien).
+    Route::get('/cajas/punto', $puntoCajaView)->name('cajas.punto');
+    Route::get('/caja', $puntoCajaView);
+    Route::get('/mi-caja', $puntoCajaView);
+    Route::get('/mcaja', $puntoCajaView);
+    Route::get('/punto-caja', $puntoCajaView);
+    Route::get('/cajas/mostrador', $puntoCajaView);
 
     Route::get('/cajas', function () {
         return view('pages.cajas');
     })->name('cajas.index');
 
-    Route::get('/caja-vendedor', fn () => redirect('/caja', 301));
+    Route::get('/caja-vendedor', fn () => redirect('/cajas/punto', 301));
 
     // JSON de cajas: solo routes/api.php → /api/cajas (misma URL que el SPA; evita 404 "The route cajas/api could not be found").
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');

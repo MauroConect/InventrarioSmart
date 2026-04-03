@@ -69,7 +69,7 @@
                         </a>
                     @endif
                     @if(Auth::user()->hasPermission('cajas.view'))
-                        <a href="{{ url('/caja') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->is('caja', 'mi-caja', 'mcaja', 'punto-caja', 'cajas/mostrador', 'cajas/mostrador/*') ? 'bg-gray-700' : '' }}">
+                        <a href="{{ url('/cajas/punto') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->is('cajas/punto', 'caja', 'mi-caja', 'mcaja', 'punto-caja', 'cajas/mostrador', 'cajas/mostrador/*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">🏪</span> Punto de caja
                         </a>
                     @endif
