@@ -15,6 +15,9 @@ services:
       - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
       - ./.env:/var/www/.env
       - ./resources:/var/www/resources
+      # Sin esto, las rutas quedan congeladas en la imagen Docker hasta rebuild.
+      - ./routes:/var/www/routes
+      - ./app/Http/Controllers:/var/www/app/Http/Controllers
     networks:
       - inventario-network
     depends_on:

@@ -17,6 +17,8 @@ services:
       - ./docker/php/prod.ini:/usr/local/etc/php/conf.d/prod.ini
       - ./.env:/var/www/.env
       - ./resources:/var/www/resources
+      - ./routes:/var/www/routes
+      - ./app/Http/Controllers:/var/www/app/Http/Controllers
     # Límites más estrictos en producción
     deploy:
       resources:

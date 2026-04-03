@@ -27,7 +27,7 @@ Route::middleware('auth')->group(function () {
             $k = strtolower(trim((string) $user->role));
             $esMostrador = $k === '' || ($k !== 'admin' && in_array($k, ['vendedor', 'vendedora', 'cajero', 'cajera'], true));
             if ($esMostrador) {
-                return redirect('/mi-caja');
+                return redirect('/caja');
             }
 
             return redirect()->route('cajas.index');
@@ -44,8 +44,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/proveedores', function() { return view('pages.proveedores'); })->middleware('permission:proveedores.view')->name('proveedores.index');
     Route::get('/clientes', function() { return view('pages.clientes'); })->middleware('permission:clientes.view')->name('clientes.index');
 
-    // Punto de caja: varias URLs (una sola suele fallar en algunos hostings). Solo auth; permiso en el controlador.
-    Route::get('/mi-caja', [PuntoCajaController::class, 'show'])->name('cajas.punto');
+    // Punto de caja: varias URLs. GET /caja antes que /cajas (misma raíz, distinto path).
+    // Si ves 404 con Docker: montá ./routes (compose ya lo hace) y ejecutá `php artisan route:clear`
+    // (bootstrap/cache montado puede tener routes-*.php viejo).
+    Route::get('/caja', [PuntoCajaController::class, 'show'])->name('cajas.punto');
+    Route::get('/mi-caja', [PuntoCajaController::class, 'show']);
     Route::get('/mcaja', [PuntoCajaController::class, 'show']);
     Route::get('/punto-caja', [PuntoCajaController::class, 'show']);
     Route::get('/cajas/mostrador', [PuntoCajaController::class, 'show']);
@@ -54,7 +57,7 @@ Route::middleware('auth')->group(function () {
         return view('pages.cajas');
     })->name('cajas.index');
 
-    Route::get('/caja-vendedor', fn () => redirect('/mi-caja', 301));
+    Route::get('/caja-vendedor', fn () => redirect('/caja', 301));
 
     // JSON de cajas: solo routes/api.php → /api/cajas (misma URL que el SPA; evita 404 "The route cajas/api could not be found").
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');

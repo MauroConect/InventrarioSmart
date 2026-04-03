@@ -64,10 +64,11 @@ function AppRoutes() {
                 <Route path="proveedores" element={<Proveedores />} />
                 <Route path="clientes" element={<Clientes />} />
                 <Route path="cajas" element={<Cajas />} />
-                <Route path="cajas/mostrador" element={<FullPageBlade href="/mi-caja" />} />
-                <Route path="punto-caja" element={<FullPageBlade href="/mi-caja" />} />
-                <Route path="mi-caja" element={<FullPageBlade href="/mi-caja" />} />
-                <Route path="mcaja" element={<FullPageBlade href="/mi-caja" />} />
+                <Route path="caja" element={<FullPageBlade href="/caja" />} />
+                <Route path="cajas/mostrador" element={<FullPageBlade href="/caja" />} />
+                <Route path="punto-caja" element={<FullPageBlade href="/caja" />} />
+                <Route path="mi-caja" element={<FullPageBlade href="/caja" />} />
+                <Route path="mcaja" element={<FullPageBlade href="/caja" />} />
                 <Route path="cuentas-corrientes" element={<CuentasCorrientes />} />
                 <Route path="deudas-clientes" element={<DeudasClientes />} />
                 <Route path="movimientos-stock" element={<MovimientosStock />} />
