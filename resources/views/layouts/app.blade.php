@@ -68,7 +68,7 @@
                             <span class="mr-3">👥</span> Clientes
                         </a>
                     @endif
-                    @if(Auth::user()->isVendedor())
+                    @if(\App\Support\Mostrador::es(Auth::user()))
                         <a href="{{ route('punto-caja.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('punto-caja.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">🏪</span> Punto de caja
                         </a>

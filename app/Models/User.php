@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Mostrador;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -42,13 +43,7 @@ class User extends Authenticatable
 
     public function isVendedor(): bool
     {
-        $k = $this->normalizedRoleKey();
-        if ($k === '') {
-            return true;
-        }
-
-        return $k === self::ROLE_VENDEDOR
-            || in_array($k, ['vendedora', 'cajero', 'cajera'], true);
+        return Mostrador::es($this);
     }
 
     protected function normalizedRoleKey(): string
@@ -75,7 +70,7 @@ class User extends Authenticatable
     public function hasPermission(string $permission): bool
     {
         // Admin y vendedor/mostrador: mismos permisos en toda la app (incluye cajas vía API).
-        if ($this->isAdmin() || $this->isVendedor()) {
+        if ($this->isAdmin() || Mostrador::es($this)) {
             return true;
         }
 
@@ -97,7 +92,7 @@ class User extends Authenticatable
      */
     public function getPermissionsAttribute(): array
     {
-        if ($this->isAdmin() || $this->isVendedor()) {
+        if ($this->isAdmin() || Mostrador::es($this)) {
             return ['*'];
         }
 

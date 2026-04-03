@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Mostrador;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,8 +14,7 @@ class EnsureVendedorPuntoCaja
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
-        if (! $user || ! $user->isVendedor()) {
+        if (! Mostrador::es($request->user())) {
             abort(403, 'Punto de caja solo para vendedores.');
         }
 
