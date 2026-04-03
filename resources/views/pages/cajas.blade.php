@@ -5,7 +5,7 @@
 
 @section('content')
 @php
-    /** Base JSON: url('/cajas/api') (no usa nombres de ruta; evita "Route [...] not defined" con caché vieja). */
+    /** Cajas JSON = /api/cajas (routes/api.php). El mensaje Laravel "The route cajas/api could not be found" es 404: path sin ruta, no route(). */
     $puedeUsarCajasUi = auth()->check();
 @endphp
 <div x-data="initCajasPage(@json($puedeUsarCajasUi))" x-init="init()" class="space-y-6">
@@ -158,7 +158,7 @@
 @push('scripts')
 <script>
 (function () {
-const CAJA_API = @json(rtrim(url('/cajas/api'), '/'));
+const CAJA_API = @json(rtrim(url('/api/cajas'), '/'));
 const cajaResumenUrl = (id) => CAJA_API + '/' + encodeURIComponent(id) + '/resumen-cierre';
 const cajaCerrarUrl = (id) => CAJA_API + '/' + encodeURIComponent(id) + '/cerrar';
 function initCajasPage(puedeOperarCaja) {

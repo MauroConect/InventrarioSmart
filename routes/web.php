@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CajaController;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\DashboardController;
 
@@ -42,13 +41,7 @@ Route::middleware('auth')->group(function () {
         return view('pages.cajas');
     })->name('cajas.index');
 
-    // JSON cajas para Blade (sesión + CSRF). En vistas usar url('/cajas/api'), no route(), si hay route:cache viejo.
-    Route::prefix('cajas/api')->group(function () {
-        Route::get('/', [CajaController::class, 'index'])->name('blade_json.cajas.list');
-        Route::post('/', [CajaController::class, 'store'])->name('blade_json.cajas.store');
-        Route::get('{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id')->name('blade_json.cajas.resumen');
-        Route::post('{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id')->name('blade_json.cajas.cerrar');
-    });
+    // JSON de cajas: solo routes/api.php → /api/cajas (misma URL que el SPA; evita 404 "The route cajas/api could not be found").
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');
     Route::get('/deudas-clientes', function() { return view('pages.deudas-clientes'); })->middleware('permission:deudas.view')->name('deudas-clientes.index');
     Route::get('/movimientos-stock', function() { return view('pages.movimientos-stock'); })->middleware('permission:stock.view')->name('movimientos-stock.index');
