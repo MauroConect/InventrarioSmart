@@ -134,7 +134,7 @@ export default function Cheques() {
 
     const fetchCajas = async () => {
         try {
-            const response = await axios.get('cajas');
+            const response = await axios.get('operaciones/caja');
             const cajasData = response.data?.data || response.data || [];
             setCajas(Array.isArray(cajasData) ? cajasData : []);
         } catch (error) {

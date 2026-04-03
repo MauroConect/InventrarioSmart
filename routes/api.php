@@ -31,6 +31,14 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     Route::post('cajas', [CajaController::class, 'store'])->name('api.cajas.store');
     Route::post('cajas/{id}/cerrar', [CajaController::class, 'cerrar'])->name('api.cajas.cerrar');
 
+    // Alias sin middleware permission (útil si route:cache en servidor apunta POST /api/cajas a rutas viejas).
+    Route::prefix('operaciones')->group(function () {
+        Route::get('caja/{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id')->name('api.operaciones.caja.resumen');
+        Route::post('caja/{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id')->name('api.operaciones.caja.cerrar');
+        Route::get('caja', [CajaController::class, 'index'])->name('api.operaciones.caja.index');
+        Route::post('caja', [CajaController::class, 'store'])->name('api.operaciones.caja.store');
+    });
+
     // Dashboard
     Route::middleware('permission:dashboard.view')->group(function () {
         Route::get('/dashboard/estadisticas', [DashboardController::class, 'estadisticas']);
