@@ -276,7 +276,7 @@ function ventas(canCuentaCorriente) {
 
                 const [productosRes, cajasRes] = await Promise.all([
                     axios.get('/api/productos', { params: { all: 'true' }, headers }),
-                    axios.get(@json(rtrim(route('blade_json.cajas.list'), '/')), { params: { estado: 'abierta' } })
+                    axios.get(@json(rtrim(url('/cajas/api'), '/')), { params: { estado: 'abierta' } })
                 ]);
 
                 let clientes = [];

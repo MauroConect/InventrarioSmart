@@ -220,7 +220,7 @@ function cheques() {
                 const [clientesRes, proveedoresRes, cajasRes] = await Promise.all([
                     axios.get('/api/clientes', { headers: { 'Authorization': `Bearer ${token}` } }),
                     axios.get('/api/proveedores', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    axios.get(@json(rtrim(route('blade_json.cajas.list'), '/')), { headers: { 'Authorization': `Bearer ${token}` } })
+                    axios.get(@json(rtrim(url('/cajas/api'), '/')), { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
                 this.clientes = (clientesRes.data?.data || clientesRes.data || []).filter(c => c.activo !== false);
                 this.proveedores = (proveedoresRes.data?.data || proveedoresRes.data || []).filter(p => p.activo !== false);

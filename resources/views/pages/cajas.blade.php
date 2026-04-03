@@ -5,7 +5,7 @@
 
 @section('content')
 @php
-    /** JSON vía route('blade_json.cajas.*'); la URL es /cajas/api (no usar route('cajas/api')). */
+    /** Base JSON: url('/cajas/api') (no usa nombres de ruta; evita "Route [...] not defined" con caché vieja). */
     $puedeUsarCajasUi = auth()->check();
 @endphp
 <div x-data="initCajasPage(@json($puedeUsarCajasUi))" x-init="init()" class="space-y-6">
@@ -158,7 +158,7 @@
 @push('scripts')
 <script>
 (function () {
-const CAJA_API = @json(rtrim(route('blade_json.cajas.list'), '/'));
+const CAJA_API = @json(rtrim(url('/cajas/api'), '/'));
 const cajaResumenUrl = (id) => CAJA_API + '/' + encodeURIComponent(id) + '/resumen-cierre';
 const cajaCerrarUrl = (id) => CAJA_API + '/' + encodeURIComponent(id) + '/cerrar';
 function initCajasPage(puedeOperarCaja) {

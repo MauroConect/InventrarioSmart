@@ -42,13 +42,12 @@ Route::middleware('auth')->group(function () {
         return view('pages.cajas');
     })->name('cajas.index');
 
-    // JSON cajas para Blade (sesión + CSRF). Prefijo /cajas/api (evita /internal bloqueado en algunos proxies).
-    // Nombres blade_json.cajas.* (no "cajas.api"): evita confusiones con route('cajas/api') o routeIs('cajas.*').
+    // JSON cajas para Blade (sesión + CSRF). En vistas usar url('/cajas/api'), no route(), si hay route:cache viejo.
     Route::prefix('cajas/api')->group(function () {
-        Route::get('{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id')->name('blade_json.cajas.resumen');
-        Route::post('{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id')->name('blade_json.cajas.cerrar');
         Route::get('/', [CajaController::class, 'index'])->name('blade_json.cajas.list');
         Route::post('/', [CajaController::class, 'store'])->name('blade_json.cajas.store');
+        Route::get('{id}/resumen-cierre', [CajaController::class, 'resumenCierre'])->whereNumber('id')->name('blade_json.cajas.resumen');
+        Route::post('{id}/cerrar', [CajaController::class, 'cerrar'])->whereNumber('id')->name('blade_json.cajas.cerrar');
     });
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');
     Route::get('/deudas-clientes', function() { return view('pages.deudas-clientes'); })->middleware('permission:deudas.view')->name('deudas-clientes.index');
