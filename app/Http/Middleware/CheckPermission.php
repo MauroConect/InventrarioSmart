@@ -48,7 +48,7 @@ class CheckPermission
         }
 
         $routeName = $route?->getName();
-        if (is_string($routeName) && str_starts_with($routeName, 'api.cajas')) {
+        if (is_string($routeName) && (str_starts_with($routeName, 'api.cajas') || str_starts_with($routeName, 'blade_json.cajas'))) {
             return $next($request);
         }
 
