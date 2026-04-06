@@ -20,7 +20,7 @@ class VentaController extends Controller
 
     public function index(Request $request)
     {
-        $query = Venta::with(['caja', 'cliente', 'items.producto']);
+        $query = Venta::with(['caja', 'cliente', 'usuario', 'items.producto']);
 
         if ($request->has('caja_id')) {
             $query->where('caja_id', $request->caja_id);
@@ -130,6 +130,7 @@ class VentaController extends Controller
             $venta = Venta::create([
                 'caja_id' => $validated['caja_id'],
                 'cliente_id' => $validated['cliente_id'] ?? null,
+                'usuario_id' => $request->user()->id,
                 'numero_factura' => $numeroFactura,
                 'fecha' => now(),
                 'total' => $total,
@@ -172,7 +173,7 @@ class VentaController extends Controller
 
             DB::commit();
 
-            return response()->json($venta->load(['caja', 'cliente', 'items.producto', 'adjuntos']), 201);
+            return response()->json($venta->load(['caja', 'cliente', 'usuario', 'items.producto', 'adjuntos']), 201);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -183,7 +184,7 @@ class VentaController extends Controller
 
     public function show($id)
     {
-        $venta = Venta::with(['caja', 'cliente', 'items.producto', 'adjuntos'])->findOrFail($id);
+        $venta = Venta::with(['caja', 'cliente', 'usuario', 'items.producto', 'adjuntos'])->findOrFail($id);
         return response()->json($venta);
     }
 
@@ -232,7 +233,7 @@ class VentaController extends Controller
             DB::commit();
 
             return response()->json(
-                $venta->fresh()->load(['caja', 'cliente', 'items.producto', 'adjuntos']),
+                $venta->fresh()->load(['caja', 'cliente', 'usuario', 'items.producto', 'adjuntos']),
                 200
             );
         } catch (\Exception $e) {
@@ -332,7 +333,7 @@ class VentaController extends Controller
 
             return response()->json([
                 'message' => 'Venta facturada correctamente en AFIP/ARCA.',
-                'venta' => $venta->fresh(['cliente', 'items.producto']),
+                'venta' => $venta->fresh(['cliente', 'usuario', 'items.producto']),
                 'afip' => $resultado['afip_response'],
             ]);
         } catch (\Throwable $e) {

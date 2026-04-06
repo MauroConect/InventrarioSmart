@@ -35,6 +35,11 @@ class User extends Authenticatable
         'permissions',
     ];
 
+    public function ventas()
+    {
+        return $this->hasMany(Venta::class, 'usuario_id');
+    }
+
     public function isAdmin(): bool
     {
         return $this->normalizedRoleKey() === self::ROLE_ADMIN;

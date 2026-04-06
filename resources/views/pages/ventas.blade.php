@@ -50,6 +50,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendedor</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo Pago</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
@@ -61,6 +62,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="venta.id"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="new Date(venta.created_at).toLocaleString()"></td>
                                 <td class="px-6 py-4 text-sm" x-text="venta.cliente ? (venta.cliente.nombre + ' ' + venta.cliente.apellido) : 'Cliente General'"></td>
+                                <td class="px-6 py-4 text-sm text-gray-600" x-text="venta.usuario ? venta.usuario.name : '—'"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" x-text="'$' + parseFloat(venta.total || 0).toFixed(2)"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm" x-text="etiquetaTipoPago(venta.tipo_pago)"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
