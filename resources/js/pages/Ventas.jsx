@@ -200,7 +200,7 @@ export default function Ventas() {
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>Presupuesto</title>
+                <title>Danielles</title>
                 <style>
                     @media print {
                         @page {
@@ -319,7 +319,7 @@ export default function Ventas() {
             </head>
             <body>
                 <div class="header">
-                    <h1>PRESUPUESTO</h1>
+                    <h1>Danielles</h1>
                     <p>Fecha: ${fechaActual}</p>
                 </div>
 
@@ -450,7 +450,7 @@ export default function Ventas() {
                 ` : ''}
 
                 <div class="footer">
-                    <p>Este es un presupuesto. Los precios pueden variar sin previo aviso.</p>
+                    <p>Danielles. Los precios pueden variar sin previo aviso.</p>
                     <p>Válido por 30 días desde la fecha de emisión.</p>
                 </div>
 
