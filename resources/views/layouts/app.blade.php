@@ -89,7 +89,7 @@
                     @endif
                     @if(Auth::user()->hasPermission('ventas.view'))
                         <a href="{{ route('ventas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('ventas.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">🛒</span> Ventas de Helado
+                            <span class="mr-3">🛒</span> Ventas
                         </a>
                     @endif
                     @if(Auth::user()->hasPermission('ventas.facturar'))

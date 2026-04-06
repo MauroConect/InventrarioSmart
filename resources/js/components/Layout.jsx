@@ -14,7 +14,7 @@ const ALL_MENU_ITEMS = [
     { path: '/cuentas-corrientes', label: 'Cuentas Corrientes', icon: '💳', permission: 'cuentas_corrientes.view' },
     { path: '/deudas-clientes', label: 'Deudas', icon: '📋', permission: 'deudas.view' },
     { path: '/movimientos-stock', label: 'Stock', icon: '📊', permission: 'stock.view' },
-    { path: '/ventas', label: 'Venta helados', icon: '🛒', permission: 'ventas.view' },
+    { path: '/ventas', label: 'Ventas', icon: '🛒', permission: 'ventas.view' },
     { path: '/cheques', label: 'Cheques', icon: '💵', permission: 'cheques.view' },
 ];
 
