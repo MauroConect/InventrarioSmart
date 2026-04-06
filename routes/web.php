@@ -18,7 +18,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Rutas protegidas
-Route::middleware('auth')->group(function () {
+Route::middleware('auth')->group(function () use ($puntoCajaView) {
     Route::get('/', function () {
         $user = request()->user();
 
