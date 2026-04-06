@@ -72,10 +72,6 @@ class VentaController extends Controller
             foreach ($validated['items'] as $itemData) {
                 $producto = Producto::findOrFail($itemData['producto_id']);
 
-                if ($producto->stock_actual < $itemData['cantidad']) {
-                                        throw new \Exception("Stock insuficiente para el producto: {$producto->nombre}. Stock disponible: {$producto->stock_actual}");
-                }
-
                 $subtotal = $producto->precio_venta * $itemData['cantidad'];
                 $total += $subtotal;
 
