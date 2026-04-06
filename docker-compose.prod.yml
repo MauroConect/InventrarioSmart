@@ -18,7 +18,8 @@ services:
       - ./.env:/var/www/.env
       - ./resources:/var/www/resources
       - ./routes:/var/www/routes
-      - ./app/Http/Controllers:/var/www/app/Http/Controllers
+      - ./config:/var/www/config
+      - ./app:/var/www/app
     # Límites más estrictos en producción
     deploy:
       resources:
