@@ -19,6 +19,7 @@ services:
       - ./resources:/var/www/resources
       - ./routes:/var/www/routes
       - ./config:/var/www/config
+      - ./database:/var/www/database
       - ./app:/var/www/app
     # Límites más estrictos en producción
     deploy:
