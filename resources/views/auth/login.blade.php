@@ -23,17 +23,22 @@
             
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2">
-                    Email
+                    Usuario
                 </label>
-                <input
-                    type="email"
-                    name="email"
-                    value="{{ old('email', 'admin@inventario.com') }}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-base @error('email') border-red-500 @enderror"
+                <select
+                    name="user_id"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-base bg-white @error('user_id') border-red-500 @enderror"
                     required
                     autofocus
                 >
-                @error('email')
+                    <option value="" disabled {{ old('user_id') ? '' : 'selected' }}>Seleccioná un usuario</option>
+                    @foreach ($users as $u)
+                        <option value="{{ $u->id }}" {{ (string) old('user_id') === (string) $u->id ? 'selected' : '' }}>
+                            {{ $u->name }} @if($u->email) ({{ $u->email }}) @endif
+                        </option>
+                    @endforeach
+                </select>
+                @error('user_id')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>

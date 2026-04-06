@@ -15,22 +15,27 @@ class AuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('dashboard');
         }
-        return view('auth.login');
+        $users = User::query()
+            ->orderBy('name')
+            ->orderBy('email')
+            ->get(['id', 'name', 'email']);
+
+        return view('auth.login', compact('users'));
     }
 
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'user_id' => 'required|exists:users,id',
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::find($request->user_id);
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return back()->withErrors([
-                'email' => 'Las credenciales proporcionadas son incorrectas.',
-            ])->withInput($request->only('email'));
+                'user_id' => 'Las credenciales proporcionadas son incorrectas.',
+            ])->withInput($request->only('user_id'));
         }
 
         Auth::login($user, $request->remember ?? false);
