@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { canAccess } from '../utils/permissions';
 
 const TIPO_PAGO_LABELS = {
     efectivo: 'Efectivo',
@@ -17,15 +19,41 @@ function etiquetaTipoPago(tipo) {
 export default function VentaDetalle() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const puedeAgregarItems = canAccess(user, 'ventas.create');
 
     const [venta, setVenta] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [productos, setProductos] = useState([]);
+    const [nuevoItem, setNuevoItem] = useState({ producto_id: '', cantidad: 1 });
+    const [agregandoItems, setAgregandoItems] = useState(false);
+    const [accionMenu, setAccionMenu] = useState('');
+
+    const puedeAgregarLineasFn = useCallback((v) => {
+        if (!v || !v.caja) return false;
+        if (v.estado === 'cancelada') return false;
+        if ((v.estado_facturacion || 'pendiente') === 'facturada') return false;
+        return v.caja.estado === 'abierta';
+    }, []);
 
     useEffect(() => {
         fetchVenta();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
+
+    useEffect(() => {
+        if (!puedeAgregarItems) return;
+        (async () => {
+            try {
+                const res = await axios.get('/productos', { params: { all: 'true' } });
+                setProductos(Array.isArray(res.data) ? res.data : []);
+            } catch {
+                setProductos([]);
+            }
+        })();
+    }, [puedeAgregarItems]);
 
     const fetchVenta = async () => {
         try {
@@ -46,6 +74,31 @@ export default function VentaDetalle() {
 
     const handleVolver = () => {
         navigate('/ventas');
+    };
+
+    const agregarLineasVenta = async () => {
+        const pid = parseInt(nuevoItem.producto_id, 10);
+        const cant = parseInt(nuevoItem.cantidad, 10);
+        if (!pid || cant < 1) return;
+        try {
+            setAgregandoItems(true);
+            setError('');
+            setSuccess('');
+            const { data } = await axios.post(`/ventas/${id}/items`, {
+                items: [{ producto_id: pid, cantidad: cant }],
+            });
+            setVenta(data);
+            setSuccess('Productos agregados correctamente.');
+            setNuevoItem({ producto_id: '', cantidad: 1 });
+            setTimeout(() => setSuccess(''), 3500);
+        } catch (err) {
+            setError(
+                err.response?.data?.message ||
+                    'No se pudieron agregar los productos.'
+            );
+        } finally {
+            setAgregandoItems(false);
+        }
     };
 
     if (loading) {
@@ -100,7 +153,12 @@ export default function VentaDetalle() {
 
     return (
         <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
+            {success && (
+                <div className="p-4 bg-green-100 border border-green-400 text-green-800 rounded">
+                    {success}
+                </div>
+            )}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800">
                         Venta {venta.numero_factura}
@@ -112,8 +170,24 @@ export default function VentaDetalle() {
                             : '-'}
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
+                    <select
+                        value={accionMenu}
+                        onChange={(e) => {
+                            const v = e.target.value;
+                            setAccionMenu(v);
+                            if (v === 'cerrar') {
+                                setAccionMenu('');
+                                navigate('/ventas');
+                            }
+                        }}
+                        className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-800 min-w-[11rem]"
+                    >
+                        <option value="">Acciones</option>
+                        <option value="cerrar">Cerrar venta</option>
+                    </select>
                     <button
+                        type="button"
                         onClick={handleVolver}
                         className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
                     >
@@ -290,6 +364,82 @@ export default function VentaDetalle() {
                     </div>
                 </div>
             </div>
+
+            {puedeAgregarItems && venta && puedeAgregarLineasFn(venta) && (
+                <div className="bg-white rounded-lg shadow p-6 border border-dashed border-blue-200">
+                    <h2 className="text-lg font-semibold text-gray-800 mb-1">
+                        Agregar productos
+                    </h2>
+                    <p className="text-sm text-gray-600 mb-4">
+                        Sumá más ítems mientras la caja siga abierta y la venta no esté facturada.
+                    </p>
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-end">
+                        <div className="flex-1 min-w-[200px]">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Producto
+                            </label>
+                            <select
+                                value={nuevoItem.producto_id}
+                                onChange={(e) =>
+                                    setNuevoItem((s) => ({
+                                        ...s,
+                                        producto_id: e.target.value,
+                                    }))
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            >
+                                <option value="">Elegir producto</option>
+                                {productos.map((p) => (
+                                    <option key={p.id} value={String(p.id)}>
+                                        {(p.codigo ? `${p.codigo} — ` : '') +
+                                            p.nombre}{' '}
+                                        ($
+                                        {parseFloat(p.precio_venta || 0).toFixed(
+                                            2
+                                        )}
+                                        )
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="w-28">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Cantidad
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                value={nuevoItem.cantidad}
+                                onChange={(e) =>
+                                    setNuevoItem((s) => ({
+                                        ...s,
+                                        cantidad: parseInt(e.target.value, 10) || 1,
+                                    }))
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={agregarLineasVenta}
+                            disabled={
+                                agregandoItems ||
+                                !nuevoItem.producto_id ||
+                                !(parseInt(nuevoItem.cantidad, 10) > 0)
+                            }
+                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
+                        >
+                            {agregandoItems ? 'Guardando...' : 'Agregar a la venta'}
+                        </button>
+                    </div>
+                    {venta.tipo_pago === 'mixto' && (
+                        <p className="text-xs text-amber-700 mt-3">
+                            Pago mixto: si cambió el total, revisá que efectivo /
+                            tarjeta / transferencia sigan cuadrando.
+                        </p>
+                    )}
+                </div>
+            )}
 
             {/* Items de la venta */}
             <div className="bg-white rounded-lg shadow">

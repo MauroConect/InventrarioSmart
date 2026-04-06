@@ -4,10 +4,24 @@
 @section('page-title', 'Detalle de Venta')
 
 @section('content')
-<div x-data="ventaDetalle()" x-init="init()" class="space-y-6">
+@php
+    $puedeAgregarItemsVenta = auth()->check() && auth()->user()->hasPermission('ventas.create');
+@endphp
+<div x-data="ventaDetalle({{ $puedeAgregarItemsVenta ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 class="text-3xl font-bold">Venta #<span x-text="ventaId"></span></h1>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2 items-center">
+            <div class="relative">
+                <label class="sr-only">Acciones</label>
+                <select
+                    x-model="accionMenu"
+                    @change="ejecutarAccionMenu()"
+                    class="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-800 min-w-[11rem]"
+                >
+                    <option value="">Acciones</option>
+                    <option value="cerrar">Cerrar venta</option>
+                </select>
+            </div>
             <button
                 @click="facturarAfip()"
                 x-show="venta && venta.estado_facturacion !== 'facturada'"
@@ -56,8 +70,12 @@
                         <p class="font-medium" x-text="etiquetaTipoPago(venta.tipo_pago)"></p>
                     </div>
                     <div>
-                        <p class="text-sm text-gray-600">Total</p>
-                        <p class="font-medium text-xl" x-text="'$' + parseFloat(venta.total || 0).toFixed(2)"></p>
+                        <p class="text-sm text-gray-600">Subtotal ítems</p>
+                        <p class="font-medium" x-text="'$' + parseFloat(venta.total || 0).toFixed(2)"></p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Total a pagar</p>
+                        <p class="font-medium text-xl" x-text="'$' + parseFloat(venta.total_final != null ? venta.total_final : venta.total || 0).toFixed(2)"></p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-600">Estado facturacion</p>
@@ -128,6 +146,50 @@
                 <p class="text-sm text-red-700 mt-1" x-text="venta.afip_observaciones"></p>
             </div>
 
+            <div
+                x-show="puedeAgregarItems && venta && puedeAgregarLineas()"
+                x-cloak
+                class="bg-white rounded-lg shadow p-6 border border-dashed border-blue-200"
+            >
+                <h2 class="text-xl font-bold mb-3">Agregar productos</h2>
+                <p class="text-sm text-gray-600 mb-4">Sumá más ítems a esta venta mientras la caja siga abierta y la venta no esté facturada.</p>
+                <div class="flex flex-col sm:flex-row flex-wrap gap-3 items-end">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
+                        <select
+                            x-model="nuevoItem.producto_id"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        >
+                            <option value="">Elegir producto</option>
+                            <template x-for="p in productos" :key="p.id">
+                                <option :value="String(p.id)" x-text="(p.codigo ? p.codigo + ' — ' : '') + p.nombre + ' ($' + parseFloat(p.precio_venta || 0).toFixed(2) + ')'"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="w-28">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                        <input
+                            type="number"
+                            min="1"
+                            x-model.number="nuevoItem.cantidad"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        >
+                    </div>
+                    <button
+                        type="button"
+                        @click="agregarLineasVenta()"
+                        :disabled="agregandoItems || !nuevoItem.producto_id || !(parseInt(nuevoItem.cantidad) > 0)"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
+                    >
+                        <span x-show="!agregandoItems">Agregar a la venta</span>
+                        <span x-show="agregandoItems" x-cloak>Guardando...</span>
+                    </button>
+                </div>
+                <p class="text-xs text-amber-700 mt-3" x-show="venta && venta.tipo_pago === 'mixto'">
+                    Pago mixto: si cambió el total, revisá que efectivo / tarjeta / transferencia sigan cuadrando.
+                </p>
+            </div>
+
             <div class="bg-white rounded-lg shadow p-6">
                 <h2 class="text-xl font-bold mb-4">Productos</h2>
                 <div class="overflow-x-auto">
@@ -159,24 +221,89 @@
 
 @push('scripts')
 <script>
-function ventaDetalle() {
+function ventaDetalle(puedeAgregarItems) {
     return {
         venta: null,
         fiscal: null,
         ventaId: @json($id ?? null),
         loading: true,
         facturando: false,
+        agregandoItems: false,
         error: '',
         success: '',
+        puedeAgregarItems: puedeAgregarItems === true,
+        productos: [],
+        nuevoItem: { producto_id: '', cantidad: 1 },
+        accionMenu: '',
+        ventasIndexUrl: @json(url('/ventas')),
         
         etiquetaTipoPago(tipo) {
             const m = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', cuenta_corriente: 'Cuenta Corriente', mixto: 'Mixto' };
             return m[tipo] || tipo || '-';
         },
 
+        puedeAgregarLineas() {
+            if (!this.venta || !this.venta.caja) return false;
+            if (this.venta.estado === 'cancelada') return false;
+            if ((this.venta.estado_facturacion || 'pendiente') === 'facturada') return false;
+            return this.venta.caja.estado === 'abierta';
+        },
+
+        ejecutarAccionMenu() {
+            const v = this.accionMenu;
+            this.accionMenu = '';
+            if (v === 'cerrar') {
+                window.location.href = this.ventasIndexUrl;
+            }
+        },
+
         async init() {
             if (this.ventaId) {
-                await Promise.all([this.fetch(), this.fetchFiscal()]);
+                const tasks = [this.fetch(), this.fetchFiscal()];
+                if (this.puedeAgregarItems) {
+                    tasks.push(this.fetchProductos());
+                }
+                await Promise.all(tasks);
+            }
+        },
+
+        async fetchProductos() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await axios.get('/api/productos', {
+                    params: { all: 'true' },
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
+                this.productos = Array.isArray(response.data) ? response.data : [];
+            } catch (e) {
+                this.productos = [];
+            }
+        },
+
+        async agregarLineasVenta() {
+            const pid = this.nuevoItem.producto_id;
+            const cant = parseInt(this.nuevoItem.cantidad, 10);
+            if (!pid || cant < 1) return;
+            try {
+                this.agregandoItems = true;
+                this.error = '';
+                this.success = '';
+                const token = localStorage.getItem('token');
+                const response = await axios.post(
+                    `/api/ventas/${this.ventaId}/items`,
+                    {
+                        items: [{ producto_id: parseInt(pid, 10), cantidad: cant }],
+                    },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                this.venta = response.data;
+                this.success = 'Productos agregados correctamente.';
+                this.nuevoItem = { producto_id: '', cantidad: 1 };
+                setTimeout(() => { this.success = ''; }, 3500);
+            } catch (error) {
+                this.error = error.response?.data?.message || 'No se pudieron agregar los productos.';
+            } finally {
+                this.agregandoItems = false;
             }
         },
 

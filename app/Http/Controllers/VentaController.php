@@ -187,6 +187,97 @@ class VentaController extends Controller
         return response()->json($venta);
     }
 
+    /**
+     * Agrega líneas a una venta existente (caja abierta, venta no facturada ni cancelada).
+     */
+    public function agregarItems(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.producto_id' => 'required|exists:productos,id',
+            'items.*.cantidad' => 'required|integer|min:1',
+        ]);
+
+        $venta = Venta::with(['caja', 'items'])->findOrFail($id);
+
+        if ($venta->estado === 'cancelada') {
+            return response()->json(['message' => 'No se pueden agregar productos a una venta cancelada.'], 400);
+        }
+
+        if (($venta->estado_facturacion ?? 'pendiente') === 'facturada') {
+            return response()->json(['message' => 'No se pueden agregar productos a una venta ya facturada.'], 400);
+        }
+
+        if (! $venta->caja || $venta->caja->estado === 'cerrada') {
+            return response()->json(['message' => 'La caja de esta venta está cerrada; no se pueden agregar ítems.'], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($validated['items'] as $itemData) {
+                $producto = Producto::findOrFail($itemData['producto_id']);
+                $cantidad = (int) $itemData['cantidad'];
+                $subtotal = (float) $producto->precio_venta * $cantidad;
+
+                ItemVenta::create([
+                    'venta_id' => $venta->id,
+                    'producto_id' => $producto->id,
+                    'cantidad' => $cantidad,
+                    'precio_unitario' => $producto->precio_venta,
+                    'subtotal' => $subtotal,
+                ]);
+
+                $producto->stock_actual -= $cantidad;
+                $producto->save();
+            }
+
+            $this->recalcularTotalesVenta($venta->fresh(['items']));
+
+            DB::commit();
+
+            return response()->json(
+                $venta->fresh()->load(['caja', 'cliente', 'items.producto', 'adjuntos']),
+                200
+            );
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
+    }
+
+    private function recalcularTotalesVenta(Venta $venta): void
+    {
+        $venta->load('items');
+        $total = (float) $venta->items->sum(fn ($i) => (float) $i->subtotal);
+        $descuento = (float) ($venta->descuento ?? 0);
+        $venta->total = $total;
+        $venta->total_final = $total - $descuento;
+
+        switch ($venta->tipo_pago) {
+            case 'transferencia':
+                $venta->monto_transferencia = $venta->total_final;
+                break;
+            case 'tarjeta':
+                $venta->monto_tarjeta = $venta->total_final;
+                if ($venta->cuotas && (int) $venta->cuotas > 0) {
+                    $venta->monto_cuota = $venta->total_final / (int) $venta->cuotas;
+                }
+                break;
+            case 'efectivo':
+                $venta->monto_efectivo = null;
+                $venta->monto_tarjeta = null;
+                $venta->monto_transferencia = null;
+                break;
+            case 'cuenta_corriente':
+                break;
+            case 'mixto':
+                break;
+        }
+
+        $venta->save();
+    }
+
     public function agregarAdjuntos(Request $request, $id)
     {
         $venta = Venta::findOrFail($id);
