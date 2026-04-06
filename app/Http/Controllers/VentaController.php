@@ -208,10 +208,6 @@ class VentaController extends Controller
             return response()->json(['message' => 'No se pueden agregar productos a una venta ya facturada.'], 400);
         }
 
-        if (! $venta->caja || $venta->caja->estado === 'cerrada') {
-            return response()->json(['message' => 'La caja de esta venta está cerrada; no se pueden agregar ítems.'], 400);
-        }
-
         DB::beginTransaction();
         try {
             foreach ($validated['items'] as $itemData) {

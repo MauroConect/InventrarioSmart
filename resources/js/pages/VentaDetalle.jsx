@@ -31,12 +31,21 @@ export default function VentaDetalle() {
     const [agregandoItems, setAgregandoItems] = useState(false);
     const [accionMenu, setAccionMenu] = useState('');
 
-    const puedeAgregarLineasFn = useCallback((v) => {
-        if (!v || !v.caja) return false;
-        if (v.estado === 'cancelada') return false;
-        if ((v.estado_facturacion || 'pendiente') === 'facturada') return false;
-        return v.caja.estado === 'abierta';
+    const motivoBloqueoAgregarItems = useCallback((v) => {
+        if (!v) return 'Cargando…';
+        if (v.estado === 'cancelada') {
+            return 'No se pueden agregar productos a una venta cancelada.';
+        }
+        if ((v.estado_facturacion || 'pendiente') === 'facturada') {
+            return 'No se pueden agregar productos a una venta ya facturada.';
+        }
+        return null;
     }, []);
+
+    const puedeAgregarLineasFn = useCallback(
+        (v) => motivoBloqueoAgregarItems(v) === null,
+        [motivoBloqueoAgregarItems]
+    );
 
     useEffect(() => {
         fetchVenta();
@@ -365,14 +374,20 @@ export default function VentaDetalle() {
                 </div>
             </div>
 
-            {puedeAgregarItems && venta && puedeAgregarLineasFn(venta) && (
+            {puedeAgregarItems && venta && (
                 <div className="bg-white rounded-lg shadow p-6 border border-dashed border-blue-200">
                     <h2 className="text-lg font-semibold text-gray-800 mb-1">
                         Agregar productos
                     </h2>
                     <p className="text-sm text-gray-600 mb-4">
-                        Sumá más ítems mientras la caja siga abierta y la venta no esté facturada.
+                        Elegí un artículo y la cantidad para sumarlo a esta venta (no aplica si ya está
+                        facturada en AFIP).
                     </p>
+                    {motivoBloqueoAgregarItems(venta) && (
+                        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded">
+                            {motivoBloqueoAgregarItems(venta)}
+                        </div>
+                    )}
                     <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-end">
                         <div className="flex-1 min-w-[200px]">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -380,13 +395,14 @@ export default function VentaDetalle() {
                             </label>
                             <select
                                 value={nuevoItem.producto_id}
+                                disabled={!puedeAgregarLineasFn(venta)}
                                 onChange={(e) =>
                                     setNuevoItem((s) => ({
                                         ...s,
                                         producto_id: e.target.value,
                                     }))
                                 }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             >
                                 <option value="">Elegir producto</option>
                                 {productos.map((p) => (
@@ -410,19 +426,21 @@ export default function VentaDetalle() {
                                 type="number"
                                 min={1}
                                 value={nuevoItem.cantidad}
+                                disabled={!puedeAgregarLineasFn(venta)}
                                 onChange={(e) =>
                                     setNuevoItem((s) => ({
                                         ...s,
                                         cantidad: parseInt(e.target.value, 10) || 1,
                                     }))
                                 }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                         </div>
                         <button
                             type="button"
                             onClick={agregarLineasVenta}
                             disabled={
+                                !puedeAgregarLineasFn(venta) ||
                                 agregandoItems ||
                                 !nuevoItem.producto_id ||
                                 !(parseInt(nuevoItem.cantidad, 10) > 0)
@@ -432,7 +450,7 @@ export default function VentaDetalle() {
                             {agregandoItems ? 'Guardando...' : 'Agregar a la venta'}
                         </button>
                     </div>
-                    {venta.tipo_pago === 'mixto' && (
+                    {venta.tipo_pago === 'mixto' && puedeAgregarLineasFn(venta) && (
                         <p className="text-xs text-amber-700 mt-3">
                             Pago mixto: si cambió el total, revisá que efectivo /
                             tarjeta / transferencia sigan cuadrando.

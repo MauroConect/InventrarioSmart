@@ -147,18 +147,24 @@
             </div>
 
             <div
-                x-show="puedeAgregarItems && venta && puedeAgregarLineas()"
+                x-show="puedeAgregarItems && venta"
                 x-cloak
                 class="bg-white rounded-lg shadow p-6 border border-dashed border-blue-200"
             >
                 <h2 class="text-xl font-bold mb-3">Agregar productos</h2>
-                <p class="text-sm text-gray-600 mb-4">Sumá más ítems a esta venta mientras la caja siga abierta y la venta no esté facturada.</p>
+                <p class="text-sm text-gray-600 mb-4">Elegí un artículo y la cantidad para sumarlo a esta venta (no aplica si ya está facturada en AFIP).</p>
+                <div
+                    x-show="motivoBloqueoAgregarItems()"
+                    class="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded"
+                    x-text="motivoBloqueoAgregarItems()"
+                ></div>
                 <div class="flex flex-col sm:flex-row flex-wrap gap-3 items-end">
                     <div class="flex-1 min-w-[200px]">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
                         <select
                             x-model="nuevoItem.producto_id"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            :disabled="!puedeAgregarLineas()"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                         >
                             <option value="">Elegir producto</option>
                             <template x-for="p in productos" :key="p.id">
@@ -172,20 +178,21 @@
                             type="number"
                             min="1"
                             x-model.number="nuevoItem.cantidad"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            :disabled="!puedeAgregarLineas()"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                         >
                     </div>
                     <button
                         type="button"
                         @click="agregarLineasVenta()"
-                        :disabled="agregandoItems || !nuevoItem.producto_id || !(parseInt(nuevoItem.cantidad) > 0)"
+                        :disabled="!puedeAgregarLineas() || agregandoItems || !nuevoItem.producto_id || !(parseInt(nuevoItem.cantidad) > 0)"
                         class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
                     >
                         <span x-show="!agregandoItems">Agregar a la venta</span>
                         <span x-show="agregandoItems" x-cloak>Guardando...</span>
                     </button>
                 </div>
-                <p class="text-xs text-amber-700 mt-3" x-show="venta && venta.tipo_pago === 'mixto'">
+                <p class="text-xs text-amber-700 mt-3" x-show="venta && venta.tipo_pago === 'mixto' && puedeAgregarLineas()">
                     Pago mixto: si cambió el total, revisá que efectivo / tarjeta / transferencia sigan cuadrando.
                 </p>
             </div>
@@ -242,11 +249,18 @@ function ventaDetalle(puedeAgregarItems) {
             return m[tipo] || tipo || '-';
         },
 
+        motivoBloqueoAgregarItems() {
+            if (!this.venta) return 'Cargando…';
+            if (this.venta.estado === 'cancelada') {
+                return 'No se pueden agregar productos a una venta cancelada.';
+            }
+            if ((this.venta.estado_facturacion || 'pendiente') === 'facturada') {
+                return 'No se pueden agregar productos a una venta ya facturada.';
+            }
+            return null;
+        },
         puedeAgregarLineas() {
-            if (!this.venta || !this.venta.caja) return false;
-            if (this.venta.estado === 'cancelada') return false;
-            if ((this.venta.estado_facturacion || 'pendiente') === 'facturada') return false;
-            return this.venta.caja.estado === 'abierta';
+            return this.motivoBloqueoAgregarItems() === null;
         },
 
         ejecutarAccionMenu() {
