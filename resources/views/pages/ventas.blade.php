@@ -382,24 +382,34 @@ function ventas(canCuentaCorriente) {
                     <meta charset="UTF-8">
                     <title>Danielles</title>
                     <style>
+                        /* Ticket térmico: papel 58 mm, ancho útil ~48 mm */
+                        * { box-sizing: border-box; }
                         @media print {
                             @page {
-                                width: 58mm;
+                                size: 58mm auto;
                                 margin: 2mm;
                             }
-                            body {
+                            html, body {
+                                width: 48mm;
                                 margin: 0;
+                                padding: 0;
                             }
                             .no-print {
-                                display: none;
+                                display: none !important;
                             }
                         }
+                        html, body {
+                            margin: 0;
+                            padding: 0;
+                        }
                         body {
-                            font-family: Arial, sans-serif;
+                            font-family: Arial, Helvetica, sans-serif;
                             max-width: 48mm;
+                            width: 100%;
                             margin: 0 auto;
                             padding: 2mm;
                             font-size: 10px;
+                            line-height: 1.25;
                         }
                         .header {
                             text-align: center;
@@ -415,6 +425,7 @@ function ventas(canCuentaCorriente) {
                         .header p {
                             margin: 2px 0;
                             color: #666;
+                            font-size: 9px;
                         }
                         .info-section {
                             margin-bottom: 2mm;
@@ -422,34 +433,39 @@ function ventas(canCuentaCorriente) {
                         .info-row {
                             display: flex;
                             justify-content: space-between;
+                            gap: 1mm;
                             margin-bottom: 1mm;
+                            font-size: 9px;
                         }
                         .info-label {
                             font-weight: bold;
                             color: #333;
+                            flex-shrink: 0;
                         }
                         .info-value {
                             color: #666;
                             text-align: right;
-                            max-width: 26mm;
-                            overflow: hidden;
-                            white-space: nowrap;
-                            text-overflow: ellipsis;
+                            max-width: 28mm;
+                            word-break: break-word;
                         }
                         table {
                             width: 100%;
                             border-collapse: collapse;
                             margin: 2mm 0;
+                            table-layout: fixed;
                         }
                         th {
                             border-bottom: 1px dashed #333;
                             padding: 2px 0;
                             text-align: left;
-                            font-size: 9px;
+                            font-size: 8px;
+                            color: #333;
                         }
                         td {
                             padding: 1px 0;
-                            font-size: 9px;
+                            font-size: 8px;
+                            word-break: break-word;
+                            vertical-align: top;
                         }
                         .text-right {
                             text-align: right;
@@ -477,9 +493,10 @@ function ventas(canCuentaCorriente) {
                             margin-top: 3mm;
                             text-align: center;
                             color: #666;
-                            font-size: 8px;
+                            font-size: 7px;
                             border-top: 1px dashed #ddd;
                             padding-top: 2mm;
+                            line-height: 1.3;
                         }
                         .button-container {
                             text-align: center;
@@ -584,8 +601,8 @@ function ventas(canCuentaCorriente) {
                         
                         if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || montoTransferenciaNum > 0) {
                             return `
-                                <div class="totals" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
-                                    <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #333;">Detalle de Pago:</h3>
+                                <div class="totals" style="margin-top: 2mm; padding-top: 2mm; border-top: 1px dashed #333;">
+                                    <h3 style="margin: 0 0 1mm 0; font-size: 9px; font-weight: bold; color: #333;">Detalle de Pago:</h3>
                                     ${montoEfectivoNum > 0 ? `
                                         <div class="total-row">
                                             <span>Efectivo:</span>

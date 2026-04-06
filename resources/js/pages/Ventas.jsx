@@ -202,113 +202,133 @@ export default function Ventas() {
                 <meta charset="UTF-8">
                 <title>Danielles</title>
                 <style>
+                    /* Ticket térmico: papel 58 mm, ancho útil impresión ~48 mm (ej. IT02 / 203 dpi) */
+                    * { box-sizing: border-box; }
                     @media print {
                         @page {
-                            margin: 1cm;
+                            size: 58mm auto;
+                            margin: 2mm;
                         }
-                        body {
+                        html, body {
+                            width: 48mm;
                             margin: 0;
+                            padding: 0;
                         }
                         .no-print {
-                            display: none;
+                            display: none !important;
                         }
                     }
+                    html, body {
+                        margin: 0;
+                        padding: 0;
+                    }
                     body {
-                        font-family: Arial, sans-serif;
-                        max-width: 800px;
+                        font-family: Arial, Helvetica, sans-serif;
+                        max-width: 48mm;
+                        width: 100%;
                         margin: 0 auto;
-                        padding: 20px;
+                        padding: 2mm;
+                        font-size: 10px;
+                        line-height: 1.25;
                     }
                     .header {
                         text-align: center;
-                        border-bottom: 2px solid #333;
-                        padding-bottom: 20px;
-                        margin-bottom: 20px;
+                        border-bottom: 1px dashed #333;
+                        padding-bottom: 2mm;
+                        margin-bottom: 2mm;
                     }
                     .header h1 {
                         margin: 0;
-                        font-size: 24px;
+                        font-size: 12px;
                         color: #333;
                     }
                     .header p {
-                        margin: 5px 0;
+                        margin: 2px 0;
                         color: #666;
+                        font-size: 9px;
                     }
                     .info-section {
-                        margin-bottom: 20px;
+                        margin-bottom: 2mm;
                     }
                     .info-row {
                         display: flex;
                         justify-content: space-between;
-                        margin-bottom: 8px;
+                        gap: 1mm;
+                        margin-bottom: 1mm;
+                        font-size: 9px;
                     }
                     .info-label {
                         font-weight: bold;
                         color: #333;
+                        flex-shrink: 0;
                     }
                     .info-value {
                         color: #666;
+                        text-align: right;
+                        max-width: 28mm;
+                        word-break: break-word;
                     }
                     table {
                         width: 100%;
                         border-collapse: collapse;
-                        margin: 20px 0;
+                        margin: 2mm 0;
+                        table-layout: fixed;
                     }
                     th {
-                        background-color: #333;
-                        color: white;
-                        padding: 10px;
+                        border-bottom: 1px dashed #333;
+                        padding: 2px 0;
                         text-align: left;
-                        font-size: 12px;
+                        font-size: 8px;
+                        color: #333;
                     }
                     td {
-                        padding: 8px 10px;
-                        border-bottom: 1px solid #ddd;
-                        font-size: 12px;
-                    }
-                    tr:nth-child(even) {
-                        background-color: #f9f9f9;
+                        padding: 1px 0;
+                        font-size: 8px;
+                        word-break: break-word;
+                        vertical-align: top;
                     }
                     .text-right {
                         text-align: right;
                     }
                     .totals {
-                        margin-top: 20px;
-                        padding-top: 20px;
-                        border-top: 2px solid #333;
+                        margin-top: 2mm;
+                        padding-top: 2mm;
+                        border-top: 1px dashed #333;
                     }
                     .total-row {
                         display: flex;
                         justify-content: space-between;
-                        margin-bottom: 10px;
-                        font-size: 14px;
+                        margin-bottom: 1mm;
+                        font-size: 9px;
+                        gap: 1mm;
                     }
                     .total-final {
-                        font-size: 18px;
+                        font-size: 10px;
                         font-weight: bold;
                         color: #333;
-                        margin-top: 10px;
-                        padding-top: 10px;
+                        margin-top: 1mm;
+                        padding-top: 1mm;
                         border-top: 1px solid #ddd;
                     }
                     .footer {
-                        margin-top: 40px;
+                        margin-top: 3mm;
                         text-align: center;
                         color: #666;
-                        font-size: 11px;
-                        border-top: 1px solid #ddd;
-                        padding-top: 20px;
+                        font-size: 7px;
+                        border-top: 1px dashed #ddd;
+                        padding-top: 2mm;
+                        line-height: 1.3;
                     }
                     .button-container {
                         text-align: center;
-                        margin: 20px 0;
+                        margin: 5mm 0 0;
                     }
                     button {
                         background-color: #007bff;
                         color: white;
                         border: none;
-                        padding: 10px 20px;
-                        font-size: 16px;
+                        padding: 4px 8px;
+                        font-size: 10px;
                         cursor: pointer;
                         border-radius: 4px;
                     }
@@ -402,8 +422,8 @@ export default function Ventas() {
                     
                     if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || montoTransferenciaNum > 0 || (cuotas && parseFloat(cuotas) > 0)) {
                         return `
-                            <div class="totals" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
-                                <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #333;">Detalle de Pago:</h3>
+                            <div class="totals" style="margin-top: 2mm; padding-top: 2mm; border-top: 1px dashed #333;">
+                                <h3 style="margin: 0 0 1mm 0; font-size: 9px; font-weight: bold; color: #333;">Detalle de Pago:</h3>
                                 ${montoEfectivoNum > 0 ? `
                                     <div class="total-row">
                                         <span>Efectivo:</span>
@@ -441,7 +461,7 @@ export default function Ventas() {
                 })() : ''}
 
                 ${tipoPago === 'tarjeta' && cuotas && parseFloat(cuotas) > 0 ? `
-                    <div class="totals" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                    <div class="totals" style="margin-top: 2mm; padding-top: 2mm; border-top: 1px dashed #333;">
                         <div class="total-row">
                             <span>Cuotas:</span>
                             <span>${cuotas} cuota(s) de $${(totalFinal / parseFloat(cuotas)).toFixed(2)}</span>
