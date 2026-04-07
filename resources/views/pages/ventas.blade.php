@@ -387,14 +387,38 @@ function ventas(canCuentaCorriente) {
                         /* Ticket térmico: papel 58 mm, ancho útil ~48 mm */
                         * { box-sizing: border-box; }
                         @media print {
+                            /* size: 58mm rompe muchos drivers USB térmicos (página en blanco) */
                             @page {
-                                size: 58mm auto;
-                                margin: 2mm;
+                                size: auto;
+                                margin: 3mm;
+                            }
+                            * {
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
                             }
                             html, body {
-                                width: 48mm;
-                                margin: 0;
-                                padding: 0;
+                                width: auto !important;
+                                max-width: 220px !important;
+                                margin: 0 auto !important;
+                                padding: 0 !important;
+                                background: #fff !important;
+                                color: #000 !important;
+                            }
+                            .header h1, .header p, .info-label, .info-value,
+                            th, td, .total-row, .total-final, .footer, .footer p {
+                                color: #000 !important;
+                            }
+                            .info-row, .total-row {
+                                display: table !important;
+                                width: 100% !important;
+                            }
+                            .info-row .info-label, .info-row .info-value,
+                            .total-row > span {
+                                display: table-cell !important;
+                                vertical-align: top !important;
+                            }
+                            .info-row .info-value, .total-row > span:last-child {
+                                text-align: right !important;
                             }
                             .no-print {
                                 display: none !important;
@@ -412,6 +436,8 @@ function ventas(canCuentaCorriente) {
                             padding: 2mm;
                             font-size: 10px;
                             line-height: 1.25;
+                            background: #fff;
+                            color: #000;
                         }
                         .header {
                             text-align: center;
@@ -648,17 +674,20 @@ function ventas(canCuentaCorriente) {
                 </html>
             `;
 
-            // Abrir ventana de impresión
             const ventanaImpresion = window.open('', '_blank');
+            if (!ventanaImpresion) {
+                this.error = 'El navegador bloqueó la ventana emergente. Permita ventanas para imprimir.';
+                return;
+            }
+            ventanaImpresion.document.open();
             ventanaImpresion.document.write(contenidoHTML);
             ventanaImpresion.document.close();
-            
-            // Esperar a que se cargue el contenido y luego mostrar el diálogo de impresión
-            ventanaImpresion.onload = () => {
-                setTimeout(() => {
+            setTimeout(() => {
+                try {
+                    ventanaImpresion.focus();
                     ventanaImpresion.print();
-                }, 250);
-            };
+                } catch (e) {}
+            }, 450);
         },
         
         openModal() {

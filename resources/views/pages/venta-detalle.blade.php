@@ -397,14 +397,43 @@ function ventaDetalle(puedeAgregarItems) {
                     <style>
                         @media print {
                             @page {
-                                width: 58mm;
-                                margin: 2mm;
+                                size: auto;
+                                margin: 3mm;
                             }
-                            body {
-                                margin: 0;
+                            * {
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                            }
+                            html, body {
+                                width: auto !important;
+                                max-width: 220px !important;
+                                margin: 0 auto !important;
+                                padding: 0 !important;
+                                background: #fff !important;
+                                color: #000 !important;
+                            }
+                            .header h1, .header p, .info-label, .info-value,
+                            th, td, .total-row, .total-final, .footer, .numero-factura {
+                                color: #000 !important;
+                            }
+                            .estado-badge {
+                                background: #333 !important;
+                                color: #fff !important;
+                            }
+                            .info-row, .total-row {
+                                display: table !important;
+                                width: 100% !important;
+                            }
+                            .info-row .info-label, .info-row .info-value,
+                            .total-row > span {
+                                display: table-cell !important;
+                                vertical-align: top !important;
+                            }
+                            .info-row .info-value, .total-row > span:last-child {
+                                text-align: right !important;
                             }
                             .no-print {
-                                display: none;
+                                display: none !important;
                             }
                         }
                         body {
@@ -413,6 +442,8 @@ function ventaDetalle(puedeAgregarItems) {
                             margin: 0 auto;
                             padding: 2mm;
                             font-size: 10px;
+                            background: #fff;
+                            color: #000;
                         }
                         .header {
                             text-align: center;
@@ -711,17 +742,20 @@ function ventaDetalle(puedeAgregarItems) {
                 </html>
             `;
 
-            // Abrir ventana de impresión
             const ventanaImpresion = window.open('', '_blank');
+            if (!ventanaImpresion) {
+                this.error = 'El navegador bloqueó la ventana emergente. Permita ventanas para imprimir.';
+                return;
+            }
+            ventanaImpresion.document.open();
             ventanaImpresion.document.write(contenidoHTML);
             ventanaImpresion.document.close();
-            
-            // Esperar a que se cargue el contenido y luego mostrar el diálogo de impresión
-            ventanaImpresion.onload = () => {
-                setTimeout(() => {
+            setTimeout(() => {
+                try {
+                    ventanaImpresion.focus();
                     ventanaImpresion.print();
-                }, 250);
-            };
+                } catch (e) {}
+            }, 450);
         }
     }
 }
