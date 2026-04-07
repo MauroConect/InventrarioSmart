@@ -141,9 +141,10 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
                             <textarea x-model="observaciones" class="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
                         </div>
-                        <div class="flex justify-end gap-2 pt-4 border-t">
+                        <div class="flex flex-wrap justify-end gap-2 pt-4 border-t">
+                            <button type="button" @click="imprimirTicketBorrador()" :disabled="cerrando" class="px-4 py-2 border border-gray-400 rounded-md hover:bg-gray-100 disabled:opacity-50">Imprimir ticket</button>
                             <button type="button" @click="closeCerrarModal()" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
-                            <button @click="cerrarCaja()" :disabled="cerrando" class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50">
+                            <button type="button" @click="cerrarCaja()" :disabled="cerrando" class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50">
                                 <span x-show="!cerrando">Cerrar Caja</span>
                                 <span x-show="cerrando" x-cloak>Cerrando...</span>
                             </button>
@@ -156,6 +157,7 @@
 </div>
 
 @push('scripts')
+@vite(['resources/js/ticket-cierre-print.js'])
 <script>
 (function () {
 const CAJA_API = @json(rtrim(url('/api/cajas'), '/'));
@@ -192,8 +194,8 @@ function initCajasPage(puedeOperarCaja) {
                 console.error('Error:', error);
                 const s = error.response?.status;
                 this.error = s === 401
-                    ? 'Sesión no válida o expirada. Cerrá sesión y volvé a ingresar.'
-                    : (s === 419 ? 'Sesión de seguridad vencida. Recargá la página e intentá de nuevo.' : (error.response?.data?.message || 'Error al cargar las cajas'));
+                    ? 'Sesi?n no v?lida o expirada. Cerr? sesi?n y volv? a ingresar.'
+                    : (s === 419 ? 'Sesi?n de seguridad vencida. Recarg? la p?gina e intent? de nuevo.' : (error.response?.data?.message || 'Error al cargar las cajas'));
             } finally {
                 this.loading = false;
             }
@@ -257,24 +259,56 @@ function initCajasPage(puedeOperarCaja) {
             } catch (error) {
                 const s = error.response?.status;
                 this.error = s === 419
-                    ? 'Recargá la página (token de seguridad) e intentá otra vez.'
+                    ? 'Recarg? la p?gina (token de seguridad) e intent? otra vez.'
                     : (error.response?.data?.message || 'Error al abrir caja');
             }
         },
-        
+
+        imprimirTicketBorrador() {
+            if (!this.resumenCierre) return;
+            if (this.montoReal === '' || parseFloat(this.montoReal) < 0) {
+                this.error = 'Debe ingresar un monto real valido para el ticket';
+                return;
+            }
+            if (typeof window.imprimirTicketCierreCaja !== 'function' || typeof window.construirPayloadTicketCierreCaja !== 'function') {
+                this.error = 'Recarga la pagina o ejecuta npm run build para habilitar la impresion del ticket.';
+                return;
+            }
+            this.error = '';
+            const payload = window.construirPayloadTicketCierreCaja({
+                resumenCierre: this.resumenCierre,
+                montoReal: parseFloat(this.montoReal),
+                observaciones: this.observaciones,
+                cajaCerrada: null,
+            });
+            if (!window.imprimirTicketCierreCaja(payload)) {
+                this.error = 'Permiti ventanas emergentes para imprimir.';
+            }
+        },
+
         async cerrarCaja() {
             if (!this.montoReal || parseFloat(this.montoReal) < 0) {
-                this.error = 'Debe ingresar un monto real válido';
+                this.error = 'Debe ingresar un monto real v?lido';
                 return;
             }
             try {
                 this.cerrando = true;
                 this.error = '';
                 this.success = '';
-                await axios.post(cajaCerrarUrl(this.cajaSeleccionada.id), {
+                const snapshot = this.resumenCierre;
+                const r = await axios.post(cajaCerrarUrl(this.cajaSeleccionada.id), {
                     monto_real: parseFloat(this.montoReal),
                     observaciones: this.observaciones
                 });
+                if (snapshot && typeof window.imprimirTicketCierreCaja === 'function' && typeof window.construirPayloadTicketCierreCaja === 'function') {
+                    const payload = window.construirPayloadTicketCierreCaja({
+                        resumenCierre: snapshot,
+                        montoReal: parseFloat(this.montoReal),
+                        observaciones: this.observaciones,
+                        cajaCerrada: r.data,
+                    });
+                    setTimeout(() => window.imprimirTicketCierreCaja(payload), 200);
+                }
                 this.success = 'Caja cerrada correctamente';
                 await this.fetch();
                 this.closeCerrarModal();

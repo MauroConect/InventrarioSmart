@@ -113,7 +113,8 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
                             <textarea x-model="observaciones" class="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
                         </div>
-                        <div class="flex justify-end gap-2 pt-4 border-t">
+                        <div class="flex flex-wrap justify-end gap-2 pt-4 border-t">
+                            <button type="button" @click="imprimirTicketBorrador()" :disabled="cerrando" class="px-4 py-2 border border-gray-400 rounded-md hover:bg-gray-100 disabled:opacity-50">Imprimir ticket</button>
                             <button type="button" @click="closeCerrarModal()" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
                             <button type="button" @click="cerrarCaja()" :disabled="cerrando" class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50">
                                 <span x-show="!cerrando">Cerrar caja</span>
@@ -128,6 +129,7 @@
 </div>
 
 @push('scripts')
+@vite(['resources/js/ticket-cierre-print.js'])
 <script>
 (function () {
     const BASE = @json(rtrim(url('/api/cajas'), '/'));
@@ -232,6 +234,28 @@
                 }
             },
 
+            imprimirTicketBorrador() {
+                if (!this.resumenCierre) return;
+                if (this.montoReal === '' || parseFloat(this.montoReal) < 0) {
+                    this.error = 'Ingresá un monto real válido para el ticket';
+                    return;
+                }
+                if (typeof window.imprimirTicketCierreCaja !== 'function' || typeof window.construirPayloadTicketCierreCaja !== 'function') {
+                    this.error = 'Recargá la página o ejecutá npm run build para habilitar la impresión del ticket.';
+                    return;
+                }
+                this.error = '';
+                const payload = window.construirPayloadTicketCierreCaja({
+                    resumenCierre: this.resumenCierre,
+                    montoReal: parseFloat(this.montoReal),
+                    observaciones: this.observaciones,
+                    cajaCerrada: null,
+                });
+                if (!window.imprimirTicketCierreCaja(payload)) {
+                    this.error = 'Permití ventanas emergentes para imprimir.';
+                }
+            },
+
             async cerrarCaja() {
                 if (this.montoReal === '' || parseFloat(this.montoReal) < 0) {
                     this.error = 'Ingresá un monto real válido';
@@ -240,10 +264,20 @@
                 try {
                     this.cerrando = true;
                     this.error = '';
-                    await axios.post(cerrarUrl(this.cajaSeleccionada.id), {
+                    const snapshot = this.resumenCierre;
+                    const r = await axios.post(cerrarUrl(this.cajaSeleccionada.id), {
                         monto_real: parseFloat(this.montoReal),
                         observaciones: this.observaciones
                     });
+                    if (snapshot && typeof window.imprimirTicketCierreCaja === 'function' && typeof window.construirPayloadTicketCierreCaja === 'function') {
+                        const payload = window.construirPayloadTicketCierreCaja({
+                            resumenCierre: snapshot,
+                            montoReal: parseFloat(this.montoReal),
+                            observaciones: this.observaciones,
+                            cajaCerrada: r.data,
+                        });
+                        setTimeout(() => window.imprimirTicketCierreCaja(payload), 200);
+                    }
                     this.success = 'Caja cerrada correctamente';
                     await this.fetch();
                     this.closeCerrarModal();

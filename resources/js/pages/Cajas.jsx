@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import {
+    abrirImpresionTicketCierre,
+    construirPayloadTicketCierre,
+} from '../utils/imprimirTicketCierreCaja';
 
 export default function Cajas() {
     const [cajas, setCajas] = useState([]);
@@ -85,6 +89,19 @@ export default function Cajas() {
         setObservaciones('');
     };
 
+    const imprimirTicketDesdeModal = (cajaCerrada = null) => {
+        if (!resumenCierre) return;
+        const payload = construirPayloadTicketCierre({
+            resumenCierre,
+            montoReal: parseFloat(montoReal) || 0,
+            observaciones,
+            cajaCerrada,
+        });
+        if (!abrirImpresionTicketCierre(payload)) {
+            setError('El navegador bloqueó la ventana emergente. Permita ventanas para imprimir.');
+        }
+    };
+
     const cerrarCaja = async () => {
         if (!montoReal || parseFloat(montoReal) < 0) {
             setError('Debe ingresar un monto real válido');
@@ -95,11 +112,20 @@ export default function Cajas() {
             setCerrando(true);
             setError('');
             setSuccess('');
-            
-            await axios.post(`cajas/${cajaSeleccionada.id}/cerrar`, {
+
+            const response = await axios.post(`cajas/${cajaSeleccionada.id}/cerrar`, {
                 monto_real: parseFloat(montoReal),
                 observaciones: observaciones || null,
             });
+
+            const snapshotResumen = resumenCierre;
+            const payload = construirPayloadTicketCierre({
+                resumenCierre: snapshotResumen,
+                montoReal: parseFloat(montoReal),
+                observaciones,
+                cajaCerrada: response.data,
+            });
+            setTimeout(() => abrirImpresionTicketCierre(payload), 200);
 
             setSuccess('Caja cerrada correctamente');
             await fetchCajas();
@@ -594,7 +620,18 @@ export default function Cajas() {
                                 </div>
 
                                 {/* Botones de Acción */}
-                                <div className="flex justify-end gap-3 pt-4 border-t">
+                                <div className="flex flex-wrap justify-end gap-3 pt-4 border-t">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setError('');
+                                            imprimirTicketDesdeModal(null);
+                                        }}
+                                        disabled={cerrando || !montoReal || parseFloat(montoReal) < 0}
+                                        className="px-6 py-2 border border-gray-400 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+                                    >
+                                        Imprimir ticket
+                                    </button>
                                     <button
                                         onClick={() => {
                                             setShowCerrarModal(false);
