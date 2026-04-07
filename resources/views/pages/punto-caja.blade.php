@@ -129,7 +129,7 @@
 </div>
 
 @push('scripts')
-@vite(['resources/js/ticket-cierre-print.js'])
+<script src="{{ asset('js/ticket-cierre-caja.js') }}"></script>
 <script>
 (function () {
     const BASE = @json(rtrim(url('/api/cajas'), '/'));
@@ -241,7 +241,7 @@
                     return;
                 }
                 if (typeof window.imprimirTicketCierreCaja !== 'function' || typeof window.construirPayloadTicketCierreCaja !== 'function') {
-                    this.error = 'Recargá la página o ejecutá npm run build para habilitar la impresión del ticket.';
+                    this.error = 'Falta el script de ticket (public/js/ticket-cierre-caja.js). Recargá la página o desplegá ese archivo.';
                     return;
                 }
                 this.error = '';
