@@ -703,13 +703,14 @@ export default function Ventas() {
                                 <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Vendedor</th>
                                 <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
                                 <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Tipo Pago</th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                                 <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {ventasList.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="px-3 sm:px-6 py-4 text-center text-gray-500">
+                                    <td colSpan="8" className="px-3 sm:px-6 py-4 text-center text-gray-500">
                                         No hay ventas registradas.
                                     </td>
                                 </tr>
@@ -722,6 +723,15 @@ export default function Ventas() {
                                         <td className="px-3 sm:px-6 py-4 text-sm hidden md:table-cell text-gray-600">{venta.usuario?.name ?? '—'}</td>
                                         <td className="px-3 sm:px-6 py-4 font-bold text-sm">${parseFloat(venta.total_final || 0).toFixed(2)}</td>
                                         <td className="px-3 sm:px-6 py-4 text-sm hidden lg:table-cell">{etiquetaTipoPago(venta.tipo_pago)}</td>
+                                        <td className="px-3 sm:px-6 py-4 text-sm">
+                                            <span className={`px-2 py-1 text-xs rounded-full ${
+                                                (venta.estado || '').toLowerCase() === 'abierta'
+                                                    ? 'bg-yellow-100 text-yellow-800'
+                                                    : 'bg-green-100 text-green-800'
+                                            }`}>
+                                                {venta.estado || 'cerrada'}
+                                            </span>
+                                        </td>
                                         <td className="px-3 sm:px-6 py-4">
                                             <button
                                                 onClick={() => navigate(`/ventas/${venta.id}`)}
