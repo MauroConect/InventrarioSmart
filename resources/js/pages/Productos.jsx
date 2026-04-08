@@ -6,6 +6,7 @@ import { canAccess } from '../utils/permissions';
 export default function Productos() {
     const { user } = useAuth();
     const canManage = canAccess(user, 'productos.manage');
+    const isVendedor = user?.role === 'vendedor';
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [proveedores, setProveedores] = useState([]);
@@ -271,7 +272,9 @@ export default function Productos() {
                                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
                                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Precio Compra</th>
                                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Venta</th>
-                                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                                    {!isVendedor && (
+                                        <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                                    )}
                                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Categoría</th>
                                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Estado</th>
                                     {canManage && (
@@ -308,16 +311,18 @@ export default function Productos() {
                                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                             ${parseFloat(producto.precio_venta || 0).toFixed(2)}
                                         </td>
-                                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
-                                            <div className="flex flex-col">
-                                                <span className={parseInt(producto.stock_actual || 0) < parseInt(producto.stock_minimo || 0) ? 'text-red-600 font-bold' : 'text-gray-900'}>
-                                                    {producto.stock_actual || 0}
-                                                </span>
-                                                {parseInt(producto.stock_actual || 0) < parseInt(producto.stock_minimo || 0) && (
-                                                    <span className="text-xs text-red-500">Mín: {producto.stock_minimo}</span>
-                                                )}
-                                            </div>
-                                        </td>
+                                        {!isVendedor && (
+                                            <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
+                                                <div className="flex flex-col">
+                                                    <span className={parseInt(producto.stock_actual || 0) < parseInt(producto.stock_minimo || 0) ? 'text-red-600 font-bold' : 'text-gray-900'}>
+                                                        {producto.stock_actual || 0}
+                                                    </span>
+                                                    {parseInt(producto.stock_actual || 0) < parseInt(producto.stock_minimo || 0) && (
+                                                        <span className="text-xs text-red-500">Mín: {producto.stock_minimo}</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        )}
                                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden lg:table-cell">
                                             {producto.categoria?.nombre || '-'}
                                         </td>
