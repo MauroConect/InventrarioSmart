@@ -138,7 +138,8 @@ class CajaController extends Controller
             ], 400);
         }
 
-        if ($caja->usuario_id !== $request->user()->id) {
+        $user = $request->user();
+        if (! $user->isAdmin() && $caja->usuario_id !== $user->id) {
             return response()->json([
                 'message' => 'No tiene permiso para cerrar esta caja'
             ], 403);
