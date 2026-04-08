@@ -16,6 +16,7 @@ const ALL_MENU_ITEMS = [
     { path: '/movimientos-stock', label: 'Stock', icon: '📊', permission: 'stock.view' },
     { path: '/ventas', label: 'Ventas', icon: '🛒', permission: 'ventas.view' },
     { path: '/cheques', label: 'Cheques', icon: '💵', permission: 'cheques.view' },
+    { path: '/usuarios', label: 'Usuarios', icon: '👤', permission: 'admin' },
 ];
 
 export default function Layout() {

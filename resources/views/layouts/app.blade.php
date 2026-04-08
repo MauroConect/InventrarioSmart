@@ -103,6 +103,9 @@
                         </a>
                     @endif
                     @if(Auth::user()->hasPermission('admin'))
+                        <a href="{{ route('usuarios.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('usuarios.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">👤</span> Usuarios
+                        </a>
                         <a href="{{ route('configuracion-fiscal.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('configuracion-fiscal.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">🧾</span> Configuracion Fiscal
                         </a>
