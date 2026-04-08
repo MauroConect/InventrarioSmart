@@ -49,6 +49,7 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
 
     Route::post('ventas', [VentaController::class, 'store'])->middleware('permission:ventas.create');
     Route::post('ventas/{id}/items', [VentaController::class, 'agregarItems'])->middleware('permission:ventas.create');
+    Route::post('ventas/{id}/cerrar', [VentaController::class, 'cerrar'])->middleware('permission:ventas.create');
     Route::post('ventas/{id}/adjuntos', [VentaController::class, 'agregarAdjuntos'])->middleware('permission:ventas.create');
     Route::post('ventas/{id}/facturar-afip', [VentaController::class, 'facturarAfip'])->middleware('permission:ventas.facturar');
     Route::get('ventas-pendientes-facturacion', [VentaController::class, 'pendientesFacturacion'])->middleware('permission:ventas.facturar');

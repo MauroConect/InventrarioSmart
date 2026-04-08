@@ -254,6 +254,9 @@ function ventaDetalle(puedeAgregarItems) {
             if (this.venta.estado === 'cancelada') {
                 return 'No se pueden agregar productos a una venta cancelada.';
             }
+            if (this.venta.estado === 'cerrada') {
+                return 'No se pueden agregar productos a una venta cerrada.';
+            }
             if ((this.venta.estado_facturacion || 'pendiente') === 'facturada') {
                 return 'No se pueden agregar productos a una venta ya facturada.';
             }
@@ -267,7 +270,22 @@ function ventaDetalle(puedeAgregarItems) {
             const v = this.accionMenu;
             this.accionMenu = '';
             if (v === 'cerrar') {
-                window.location.href = this.ventasIndexUrl;
+                this.cerrarVenta();
+            }
+        },
+
+        async cerrarVenta() {
+            try {
+                this.error = '';
+                this.success = '';
+                const token = localStorage.getItem('token');
+                const response = await axios.post(`/api/ventas/${this.ventaId}/cerrar`, {}, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                this.success = response.data?.message || 'Venta cerrada correctamente.';
+                await this.fetch();
+            } catch (error) {
+                this.error = error.response?.data?.message || 'No se pudo cerrar la venta.';
             }
         },
 
@@ -571,7 +589,7 @@ function ventaDetalle(puedeAgregarItems) {
                             <p style="font-size:10px;margin:2px 0;">${tipoLetra} ${ptoFmt}-${nroFmt}</p>
                         ` : ''}
                         <p>Fecha: ${fechaVenta}</p>
-                        <p class="estado-badge">${this.venta.estado || 'Completada'}</p>
+                        <p class="estado-badge">${this.venta.estado || 'abierta'}</p>
                     </div>
 
                     <div class="info-section">

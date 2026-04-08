@@ -145,7 +145,7 @@ class CajaController extends Controller
         }
 
         $ventasAbiertas = Venta::where('caja_id', $caja->id)
-            ->where('estado', 'abierto')
+            ->whereIn('estado', ['abierta', 'abierto'])
             ->count();
 
         if ($ventasAbiertas > 0) {

@@ -143,7 +143,7 @@ class VentaController extends Controller
                 'cuotas' => $cuotas,
                 'monto_cuota' => $montoCuota,
                 'recargo_cuotas' => $validated['recargo_cuotas'] ?? null,
-                'estado' => 'completada',
+                'estado' => 'abierta',
             ]);
 
             foreach ($items as $item) {
@@ -305,6 +305,31 @@ class VentaController extends Controller
             'venta' => $venta->load('adjuntos'),
             'adjuntos' => $adjuntosCreados,
         ], 201);
+    }
+
+    public function cerrar($id)
+    {
+        $venta = Venta::findOrFail($id);
+
+        if ($venta->estado === 'cancelada') {
+            return response()->json([
+                'message' => 'No se puede cerrar una venta cancelada.'
+            ], 400);
+        }
+
+        if ($venta->estado === 'cerrada') {
+            return response()->json([
+                'message' => 'La venta ya está cerrada.'
+            ], 400);
+        }
+
+        $venta->estado = 'cerrada';
+        $venta->save();
+
+        return response()->json([
+            'message' => 'Venta cerrada correctamente.',
+            'venta' => $venta->fresh(['caja', 'cliente', 'usuario', 'items.producto', 'adjuntos']),
+        ]);
     }
 
     public function facturarAfip($id)

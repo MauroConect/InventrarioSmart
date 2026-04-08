@@ -36,6 +36,9 @@ export default function VentaDetalle() {
         if (v.estado === 'cancelada') {
             return 'No se pueden agregar productos a una venta cancelada.';
         }
+        if (v.estado === 'cerrada') {
+            return 'No se pueden agregar productos a una venta cerrada.';
+        }
         if ((v.estado_facturacion || 'pendiente') === 'facturada') {
             return 'No se pueden agregar productos a una venta ya facturada.';
         }
@@ -107,6 +110,21 @@ export default function VentaDetalle() {
             );
         } finally {
             setAgregandoItems(false);
+        }
+    };
+
+    const cerrarVenta = async () => {
+        try {
+            setError('');
+            setSuccess('');
+            const { data } = await axios.post(`/ventas/${id}/cerrar`);
+            setVenta(data.venta || venta);
+            setSuccess(data.message || 'Venta cerrada correctamente.');
+            setTimeout(() => setSuccess(''), 3500);
+        } catch (err) {
+            setError(
+                err.response?.data?.message || 'No se pudo cerrar la venta.'
+            );
         }
     };
 
@@ -187,7 +205,7 @@ export default function VentaDetalle() {
                             setAccionMenu(v);
                             if (v === 'cerrar') {
                                 setAccionMenu('');
-                                navigate('/ventas');
+                                cerrarVenta();
                             }
                         }}
                         className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-800 min-w-[11rem]"

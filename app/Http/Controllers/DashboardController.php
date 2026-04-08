@@ -41,12 +41,12 @@ class DashboardController extends Controller
         
         // Ventas del día de hoy
         $ventasHoy = Venta::whereDate('fecha', $hoy)
-            ->where('estado', 'completada')
+            ->whereIn('estado', ['cerrada', 'completada'])
             ->count();
         
         // Monto total de ventas de hoy
         $montoVentasHoy = Venta::whereDate('fecha', $hoy)
-            ->where('estado', 'completada')
+            ->whereIn('estado', ['cerrada', 'completada'])
             ->sum('total_final');
         
         // Productos con stock bajo
@@ -57,12 +57,12 @@ class DashboardController extends Controller
         // Ventas del mes actual
         $ventasMes = Venta::whereMonth('fecha', $hoy->month)
             ->whereYear('fecha', $hoy->year)
-            ->where('estado', 'completada')
+            ->whereIn('estado', ['cerrada', 'completada'])
             ->count();
         
         $montoVentasMes = Venta::whereMonth('fecha', $hoy->month)
             ->whereYear('fecha', $hoy->year)
-            ->where('estado', 'completada')
+            ->whereIn('estado', ['cerrada', 'completada'])
             ->sum('total_final');
         
         // Deudas pendientes
@@ -109,7 +109,7 @@ class DashboardController extends Controller
             )
             ->whereMonth('fecha', $mes)
             ->whereYear('fecha', $ano)
-            ->where('estado', 'completada')
+            ->whereIn('estado', ['cerrada', 'completada'])
             ->groupBy(DB::raw('DATE(fecha)'))
             ->orderBy('fecha', 'asc')
             ->get();
@@ -130,7 +130,7 @@ class DashboardController extends Controller
             ->join('productos', 'items_venta.producto_id', '=', 'productos.id')
             ->join('ventas', 'items_venta.venta_id', '=', 'ventas.id')
             ->whereBetween('ventas.fecha', [$fechaInicio, $fechaFin])
-            ->where('ventas.estado', 'completada')
+            ->whereIn('ventas.estado', ['cerrada', 'completada'])
             ->select(
                 'productos.id',
                 'productos.codigo',
@@ -181,7 +181,7 @@ class DashboardController extends Controller
         
         $ventas = Venta::whereMonth('fecha', $mes)
             ->whereYear('fecha', $ano)
-            ->where('estado', 'completada')
+            ->whereIn('estado', ['cerrada', 'completada'])
             ->select(
                 'tipo_pago',
                 DB::raw('COUNT(*) as cantidad'),
