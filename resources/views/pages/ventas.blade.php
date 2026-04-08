@@ -53,6 +53,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendedor</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo Pago</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
                         </tr>
                     </thead>
@@ -65,6 +66,13 @@
                                 <td class="px-6 py-4 text-sm text-gray-600" x-text="venta.usuario ? venta.usuario.name : '—'"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" x-text="'$' + parseFloat(venta.total || 0).toFixed(2)"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm" x-text="etiquetaTipoPago(venta.tipo_pago)"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <span
+                                        class="px-2 py-1 text-xs rounded-full"
+                                        :class="(venta.estado || '').toLowerCase() === 'abierta' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'"
+                                        x-text="venta.estado || 'cerrada'"
+                                    ></span>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <a :href="'/ventas/' + venta.id" class="text-blue-600 hover:text-blue-900">Ver Detalle</a>
                                 </td>
@@ -262,7 +270,14 @@ function ventas(canCuentaCorriente) {
                 const response = await axios.get('/api/ventas', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                this.ventas = response.data?.data || response.data || [];
+                const ventas = response.data?.data || response.data || [];
+                this.ventas = [...ventas].sort((a, b) => {
+                    const estadoA = (a?.estado || '').toLowerCase();
+                    const estadoB = (b?.estado || '').toLowerCase();
+                    if (estadoA === 'abierta' && estadoB !== 'abierta') return -1;
+                    if (estadoA !== 'abierta' && estadoB === 'abierta') return 1;
+                    return 0;
+                });
             } catch (error) {
                 console.error('Error:', error);
             } finally {
