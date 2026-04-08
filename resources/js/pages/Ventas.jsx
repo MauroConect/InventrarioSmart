@@ -622,7 +622,14 @@ export default function Ventas() {
         }
     };
 
-    const ventasList = Array.isArray(ventas) ? ventas : (ventas.data || []);
+    const ventasListRaw = Array.isArray(ventas) ? ventas : (ventas.data || []);
+    const ventasList = [...ventasListRaw].sort((a, b) => {
+        const estadoA = (a?.estado || '').toLowerCase();
+        const estadoB = (b?.estado || '').toLowerCase();
+        if (estadoA === 'abierta' && estadoB !== 'abierta') return -1;
+        if (estadoA !== 'abierta' && estadoB === 'abierta') return 1;
+        return 0;
+    });
 
     if (loadingLista && loadingFormDatos) {
         return (
