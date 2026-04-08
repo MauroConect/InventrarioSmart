@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Caja;
+use App\Models\Venta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -141,6 +142,16 @@ class CajaController extends Controller
             return response()->json([
                 'message' => 'No tiene permiso para cerrar esta caja'
             ], 403);
+        }
+
+        $ventasAbiertas = Venta::where('caja_id', $caja->id)
+            ->where('estado', 'abierto')
+            ->count();
+
+        if ($ventasAbiertas > 0) {
+            return response()->json([
+                'message' => 'No se puede cerrar la caja porque existen ventas con estado abierto.'
+            ], 400);
         }
 
         // Calcular monto esperado
