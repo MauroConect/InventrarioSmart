@@ -196,6 +196,18 @@ export default function VentaDetalle() {
                             ? new Date(venta.fecha).toLocaleString()
                             : '-'}
                     </p>
+                    <div className="mt-2">
+                        <span className="text-sm text-gray-600 mr-2">Estado:</span>
+                        <span
+                            className={`px-2 py-1 text-xs rounded-full font-medium ${
+                                (venta.estado || '').toLowerCase() === 'abierta'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-green-100 text-green-800'
+                            }`}
+                        >
+                            {venta.estado || 'cerrada'}
+                        </span>
+                    </div>
                 </div>
                 <div className="flex flex-wrap gap-2 items-center">
                     <select

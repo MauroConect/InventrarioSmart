@@ -9,7 +9,17 @@
 @endphp
 <div x-data="ventaDetalle({{ $puedeAgregarItemsVenta ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <h1 class="text-3xl font-bold">Venta #<span x-text="ventaId"></span></h1>
+        <div>
+            <h1 class="text-3xl font-bold">Venta #<span x-text="ventaId"></span></h1>
+            <div class="mt-2" x-show="venta" x-cloak>
+                <span class="text-sm text-gray-600 mr-2">Estado:</span>
+                <span
+                    class="px-2 py-1 text-xs rounded-full font-medium"
+                    :class="(venta.estado || '').toLowerCase() === 'abierta' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'"
+                    x-text="venta.estado || 'cerrada'"
+                ></span>
+            </div>
+        </div>
         <div class="flex flex-wrap gap-2 items-center">
             <div class="relative">
                 <label class="sr-only">Acciones</label>
