@@ -24,6 +24,10 @@ class ClienteController extends Controller
             });
         }
 
+        if ($request->boolean('all')) {
+            return response()->json($query->orderBy('apellido')->orderBy('nombre')->get());
+        }
+
         return response()->json($query->paginate(15));
     }
 

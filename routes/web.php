@@ -65,6 +65,9 @@ Route::middleware('auth')->group(function () use ($puntoCajaView) {
 
     // JSON de cajas: solo routes/api.php → /api/cajas (misma URL que el SPA; evita 404 "The route cajas/api could not be found").
     Route::get('/cuentas-corrientes', function() { return view('pages.cuentas-corrientes'); })->middleware('permission:cuentas_corrientes.view')->name('cuentas-corrientes.index');
+    Route::get('/cuentas-corrientes/{id}', function ($id) {
+        return view('pages.cuenta-corriente-detalle', ['cuentaId' => (int) $id]);
+    })->middleware('permission:cuentas_corrientes.view')->whereNumber('id')->name('cuentas-corrientes.show');
     Route::get('/deudas-clientes', function() { return view('pages.deudas-clientes'); })->middleware('permission:deudas.view')->name('deudas-clientes.index');
     Route::get('/movimientos-stock', function() { return view('pages.movimientos-stock'); })->middleware('permission:stock.view')->name('movimientos-stock.index');
     Route::get('/ventas', function() { return view('pages.ventas'); })->middleware('permission:ventas.view')->name('ventas.index');

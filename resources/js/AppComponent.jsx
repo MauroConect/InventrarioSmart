@@ -11,6 +11,7 @@ import Proveedores from './pages/Proveedores';
 import Clientes from './pages/Clientes';
 import Cajas from './pages/Cajas';
 import CuentasCorrientes from './pages/CuentasCorrientes';
+import CuentaCorrienteDetalle from './pages/CuentaCorrienteDetalle';
 import DeudasClientes from './pages/DeudasClientes';
 import MovimientosStock from './pages/MovimientosStock';
 import Ventas from './pages/Ventas';
@@ -72,6 +73,7 @@ function AppRoutes() {
                 <Route path="mi-caja" element={<FullPageBlade href="/cajas/punto" />} />
                 <Route path="mcaja" element={<FullPageBlade href="/cajas/punto" />} />
                 <Route path="cuentas-corrientes" element={<CuentasCorrientes />} />
+                <Route path="cuentas-corrientes/:id" element={<CuentaCorrienteDetalle />} />
                 <Route path="deudas-clientes" element={<DeudasClientes />} />
                 <Route path="movimientos-stock" element={<MovimientosStock />} />
                 <Route path="ventas" element={<Ventas />} />
