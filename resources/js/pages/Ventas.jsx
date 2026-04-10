@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
-import { canAccess } from '../utils/permissions';
 
 const TIPO_PAGO_LABELS = {
     efectivo: 'Efectivo',
@@ -18,8 +16,6 @@ function etiquetaTipoPago(tipo) {
 
 export default function Ventas() {
     const navigate = useNavigate();
-    const { user } = useAuth();
-    const canCuentaCorriente = canAccess(user, 'cuentas_corrientes.view');
     const [ventas, setVentas] = useState([]);
     const [clientes, setClientes] = useState([]);
     const [productos, setProductos] = useState([]);
@@ -52,12 +48,6 @@ export default function Ventas() {
         fetchVentas();
         fetchDatosFormulario();
     }, []);
-
-    useEffect(() => {
-        if (!canCuentaCorriente && tipoPago === 'cuenta_corriente') {
-            setTipoPago('efectivo');
-        }
-    }, [canCuentaCorriente, tipoPago]);
 
     const fetchVentas = async () => {
         try {
@@ -548,6 +538,11 @@ export default function Ventas() {
                 return;
             }
 
+            if (tipoPago === 'cuenta_corriente' && !clienteId) {
+                setError('En cuenta corriente debe seleccionar un cliente.');
+                return;
+            }
+
             setLoadingSubmit(true);
 
             const totalFinal = calcularTotal();
@@ -805,11 +800,14 @@ export default function Ventas() {
                                     )}
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Cliente{tipoPago === 'cuenta_corriente' ? ' *' : ''}
+                                    </label>
                                     <select
                                         value={clienteId}
                                         onChange={(e) => setClienteId(e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        required={tipoPago === 'cuenta_corriente'}
                                     >
                                         <option value="">Cliente genérico / consumidor final</option>
                                         {clientes.map((cliente) => (
@@ -841,13 +839,18 @@ export default function Ventas() {
                                         <option value="efectivo">Efectivo</option>
                                         <option value="tarjeta">Tarjeta</option>
                                         <option value="transferencia">Transferencia</option>
-                                        {canCuentaCorriente && (
-                                            <option value="cuenta_corriente">Cuenta Corriente</option>
-                                        )}
+                                        <option value="cuenta_corriente">Cuenta Corriente</option>
                                         <option value="mixto">Mixto</option>
                                     </select>
                                 </div>
                             </div>
+
+                            {tipoPago === 'cuenta_corriente' && (
+                                <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                                    El cliente debe tener una cuenta corriente activa (la crea un administrador en Cuentas
+                                    corrientes). Se cargará el importe en el saldo de esa cuenta.
+                                </p>
+                            )}
 
                             {/* Campos para pago mixto */}
                             {tipoPago === 'mixto' && (

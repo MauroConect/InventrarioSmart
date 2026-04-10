@@ -110,6 +110,25 @@ class CajaController extends Controller
             $porMedioPago[$k] = round($val, 2);
         }
 
+        $ventasCuentaCorriente = $ventas
+            ->filter(fn ($v) => $v->tipo_pago === 'cuenta_corriente')
+            ->values()
+            ->map(function ($v) {
+                $nombreCliente = null;
+                if ($v->cliente) {
+                    $nombreCliente = trim($v->cliente->nombre.' '.$v->cliente->apellido);
+                }
+
+                return [
+                    'id' => $v->id,
+                    'numero_factura' => $v->numero_factura,
+                    'total_final' => round((float) $v->total_final, 2),
+                    'cliente_nombre' => $nombreCliente ?: null,
+                ];
+            })
+            ->values()
+            ->all();
+
         return response()->json([
             'caja' => $caja,
             'resumen' => [
@@ -122,6 +141,7 @@ class CajaController extends Controller
                 'cantidad_egresos' => $caja->movimientos()->where('tipo', 'egreso')->count(),
                 'monto_esperado' => round($montoEsperado, 2),
                 'por_medio_pago' => $porMedioPago,
+                'ventas_cuenta_corriente' => $ventasCuentaCorriente,
             ],
             'movimientos' => $movimientos,
             'ventas' => $ventas,

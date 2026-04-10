@@ -133,6 +133,18 @@
                                 <span class="text-right font-medium" x-text="'$' + parseFloat(resumenCierre.resumen.por_medio_pago?.cuenta_corriente || 0).toFixed(2)"></span>
                             </div>
                         </div>
+                        <div class="border rounded-lg p-4 bg-amber-50" x-show="resumenCierre.resumen.ventas_cuenta_corriente && resumenCierre.resumen.ventas_cuenta_corriente.length">
+                            <p class="text-sm font-semibold text-gray-800 mb-2">Cuenta corriente — por cliente</p>
+                            <template x-for="v in (resumenCierre.resumen.ventas_cuenta_corriente || [])" :key="v.id">
+                                <div class="flex justify-between gap-2 text-sm py-1 border-b border-amber-100 last:border-0">
+                                    <span class="text-gray-700">
+                                        <span class="font-medium" x-text="v.numero_factura || '—'"></span>
+                                        <span class="text-gray-600" x-text="' · ' + (v.cliente_nombre || 'Sin cliente')"></span>
+                                    </span>
+                                    <span class="font-medium whitespace-nowrap" x-text="'$' + parseFloat(v.total_final || 0).toFixed(2)"></span>
+                                </div>
+                            </template>
+                        </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Monto Real *</label>
                             <input type="number" step="0.01" x-model.number="montoReal" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>

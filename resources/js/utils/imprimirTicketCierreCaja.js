@@ -48,11 +48,13 @@ export function construirPayloadTicketCierre({ resumenCierre, montoReal, observa
         diferencia: dif,
         observaciones: obs,
         porMedioPago: r.por_medio_pago || {},
+        ventasCuentaCorriente: Array.isArray(r.ventas_cuenta_corriente) ? r.ventas_cuenta_corriente : [],
     };
 }
 
 function buildHtml(p) {
     const pm = p.porMedioPago || {};
+    const vcc = p.ventasCuentaCorriente || [];
     const titulo = p.esBorrador ? 'RELEVAMIENTO DE CAJA' : 'CIERRE DE CAJA';
     const fechaCierreStr = p.fechaCierre
         ? new Date(p.fechaCierre).toLocaleString('es-AR')
@@ -154,6 +156,18 @@ function buildHtml(p) {
     ${row('Tarjeta', money(pm.tarjeta))}
     ${row('Transferencia', money(pm.transferencia))}
     ${row('Cta. corriente', money(pm.cuenta_corriente))}
+    ${
+        vcc.length
+            ? `<div class="sep"></div><div class="sub" style="font-size:7px">Cta. cte. por cliente</div>${vcc
+                  .map((v) =>
+                      row(
+                          [v.numero_factura, v.cliente_nombre || 'Sin cliente'].filter(Boolean).join(' · '),
+                          money(v.total_final)
+                      )
+                  )
+                  .join('')}`
+            : ''
+    }
     <div class="sep"></div>
     ${row('Monto esperado', money(p.montoEsperado))}
     ${row('Monto real', money(p.montoReal))}

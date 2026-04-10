@@ -7,6 +7,8 @@ use App\Models\ItemVenta;
 use App\Models\Producto;
 use App\Models\Caja;
 use App\Models\VentaAdjunto;
+use App\Models\CuentaCorriente;
+use App\Models\MovimientoCuentaCorriente;
 use App\Services\AfipFacturacionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -90,6 +92,40 @@ class VentaController extends Controller
             $descuento = $validated['descuento'] ?? 0;
             $totalFinal = $total - $descuento;
 
+            $cuentaCorrienteParaVenta = null;
+            $saldoActualCuentaCorriente = null;
+            if ($validated['tipo_pago'] === 'cuenta_corriente') {
+                if (empty($validated['cliente_id'])) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'message' => 'Debe seleccionar un cliente para ventas en cuenta corriente.',
+                    ], 422);
+                }
+
+                $cuentaCorrienteParaVenta = CuentaCorriente::where('cliente_id', $validated['cliente_id'])
+                    ->where('activa', true)
+                    ->first();
+
+                if (! $cuentaCorrienteParaVenta) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'message' => 'El cliente no tiene una cuenta corriente activa. Solicite al administrador que la cree en Cuentas corrientes.',
+                    ], 422);
+                }
+
+                $saldoActualCuentaCorriente = (float) $cuentaCorrienteParaVenta->saldo;
+                $limite = (float) $cuentaCorrienteParaVenta->limite_credito;
+                if ($limite > 0 && ($saldoActualCuentaCorriente + $totalFinal) > $limite + 0.009) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'message' => 'La venta supera el límite de crédito de la cuenta corriente del cliente.',
+                    ], 422);
+                }
+            }
+
             // Generar número de factura
             $ultimaFactura = Venta::max('id') ?? 0;
             $numeroFactura = 'FAC-' . str_pad($ultimaFactura + 1, 8, '0', STR_PAD_LEFT);
@@ -108,6 +144,8 @@ class VentaController extends Controller
                 $sumaMontos = $montoTarjeta + $montoEfectivo + $montoTransferencia;
 
                 if (abs($sumaMontos - $totalFinal) > 0.01) {
+                    DB::rollBack();
+
                     return response()->json([
                         'message' => 'La suma de efectivo, tarjeta y transferencia debe ser igual al total final de la venta.'
                     ], 400);
@@ -154,6 +192,18 @@ class VentaController extends Controller
                     'precio_unitario' => $item['precio_unitario'],
                     'subtotal' => $item['subtotal'],
                 ]);
+            }
+
+            if ($cuentaCorrienteParaVenta && $saldoActualCuentaCorriente !== null) {
+                MovimientoCuentaCorriente::create([
+                    'cuenta_corriente_id' => $cuentaCorrienteParaVenta->id,
+                    'tipo' => 'debe',
+                    'monto' => $totalFinal,
+                    'concepto' => 'Venta '.$numeroFactura,
+                    'venta_id' => $venta->id,
+                ]);
+                $cuentaCorrienteParaVenta->saldo = $saldoActualCuentaCorriente + $totalFinal;
+                $cuentaCorrienteParaVenta->save();
             }
 
             // Guardar adjuntos si vienen en el mismo request

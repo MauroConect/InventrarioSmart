@@ -492,6 +492,35 @@ export default function Cajas() {
                                     </div>
                                 )}
 
+                                {resumenCierre.resumen.ventas_cuenta_corriente &&
+                                    resumenCierre.resumen.ventas_cuenta_corriente.length > 0 && (
+                                        <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                                            <h4 className="font-semibold text-lg mb-3 text-gray-800">
+                                                Cuenta corriente — detalle por cliente
+                                            </h4>
+                                            <ul className="space-y-2 text-sm">
+                                                {resumenCierre.resumen.ventas_cuenta_corriente.map((v) => (
+                                                    <li
+                                                        key={v.id}
+                                                        className="flex justify-between gap-2 border-b border-amber-100 pb-2 last:border-0 last:pb-0"
+                                                    >
+                                                        <span className="text-gray-700">
+                                                            <span className="font-medium">{v.numero_factura || '—'}</span>
+                                                            {v.cliente_nombre ? (
+                                                                <span className="text-gray-600"> · {v.cliente_nombre}</span>
+                                                            ) : (
+                                                                <span className="text-gray-500"> · Sin cliente</span>
+                                                            )}
+                                                        </span>
+                                                        <span className="font-medium whitespace-nowrap">
+                                                            ${parseFloat(v.total_final || 0).toFixed(2)}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
                                 {/* Lista de Ventas */}
                                 {resumenCierre.ventas && resumenCierre.ventas.length > 0 && (
                                     <div className="mb-6">
@@ -511,7 +540,11 @@ export default function Cajas() {
                                                         <tr key={venta.id}>
                                                             <td className="px-4 py-2">{venta.numero_factura || '-'}</td>
                                                             <td className="px-4 py-2">{new Date(venta.fecha).toLocaleString()}</td>
-                                                            <td className="px-4 py-2">{venta.cliente?.nombre || 'Cliente General'}</td>
+                                                            <td className="px-4 py-2">
+                                                                {venta.cliente
+                                                                    ? `${venta.cliente.nombre} ${venta.cliente.apellido || ''}`.trim()
+                                                                    : 'Cliente General'}
+                                                            </td>
                                                             <td className="px-4 py-2 font-medium">${parseFloat(venta.total_final || 0).toFixed(2)}</td>
                                                         </tr>
                                                     ))}

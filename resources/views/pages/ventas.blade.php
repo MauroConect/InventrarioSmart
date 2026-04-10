@@ -4,7 +4,7 @@
 @section('page-title', 'Ventas')
 
 @section('content')
-<div x-data="ventas({{ auth()->user()->hasPermission('cuentas_corrientes.view') ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
+<div x-data="ventas()" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 class="text-2xl sm:text-3xl font-bold">Ventas</h1>
         <button
@@ -93,8 +93,11 @@
             <form @submit.prevent="guardarVenta()" class="p-6 space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Cliente (opcional)</label>
-                        <select x-model="clienteId" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Cliente <span x-show="tipoPago === 'cuenta_corriente'" x-cloak class="text-red-600">*</span>
+                            <span x-show="tipoPago !== 'cuenta_corriente'">(opcional)</span>
+                        </label>
+                        <select x-model="clienteId" class="w-full px-3 py-2 border border-gray-300 rounded-md" :required="tipoPago === 'cuenta_corriente'">
                             <option value="">Cliente General</option>
                             <template x-for="cliente in clientes" :key="cliente.id">
                                 <option :value="cliente.id" x-text="cliente.nombre + ' ' + cliente.apellido"></option>
@@ -107,11 +110,15 @@
                             <option value="efectivo">Efectivo</option>
                             <option value="tarjeta">Tarjeta</option>
                             <option value="transferencia">Transferencia</option>
+                            <option value="cuenta_corriente">Cuenta Corriente</option>
                             <option value="mixto">Mixto</option>
-                            <option value="cuenta_corriente" x-show="canCuentaCorriente">Cuenta Corriente</option>
                         </select>
                     </div>
                 </div>
+
+                <p x-show="tipoPago === 'cuenta_corriente'" x-cloak class="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                    El cliente debe tener una cuenta corriente activa (la crea un administrador). Se cargará el importe en el saldo de esa cuenta.
+                </p>
 
                 <div x-show="tipoPago === 'mixto'" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -235,9 +242,8 @@
 
 @push('scripts')
 <script>
-function ventas(canCuentaCorriente) {
+function ventas() {
     return {
-        canCuentaCorriente: !!canCuentaCorriente,
         ventas: [],
         clientes: [],
         productos: [],
@@ -309,9 +315,6 @@ function ventas(canCuentaCorriente) {
                 this.cajasAbiertas = (cajasRes.data?.data || cajasRes.data || []).filter(c => c.estado === 'abierta');
                 if (this.cajasAbiertas.length > 0) {
                     this.cajaSeleccionada = this.cajasAbiertas[0].id;
-                }
-                if (!this.canCuentaCorriente && this.tipoPago === 'cuenta_corriente') {
-                    this.tipoPago = 'efectivo';
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -750,6 +753,11 @@ function ventas(canCuentaCorriente) {
             
             if (itemsValidos.length === 0) {
                 this.error = 'Debe agregar al menos un producto';
+                return;
+            }
+
+            if (this.tipoPago === 'cuenta_corriente' && !this.clienteId) {
+                this.error = 'En cuenta corriente debe seleccionar un cliente.';
                 return;
             }
 

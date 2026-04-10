@@ -54,6 +54,7 @@
             diferencia: dif,
             observaciones: obs,
             porMedioPago: r.por_medio_pago || {},
+            ventasCuentaCorriente: Array.isArray(r.ventas_cuenta_corriente) ? r.ventas_cuenta_corriente : [],
         };
     }
 
@@ -83,6 +84,20 @@
 
         var obs = String(p.observaciones || '').trim();
         var obsBlock = obs ? '<div class="obs">' + escapeHtml(obs) + '</div>' : '';
+
+        var vcc = p.ventasCuentaCorriente || [];
+        var ccDetalle = '';
+        if (vcc.length) {
+            ccDetalle =
+                '\n    <div class="sep"></div>\n    <div class="sub" style="font-size:7px">Cta. cte. por cliente</div>\n    ';
+            for (var i = 0; i < vcc.length; i++) {
+                var vc = vcc[i];
+                var parts = [];
+                if (vc.numero_factura) parts.push(vc.numero_factura);
+                parts.push(vc.cliente_nombre || 'Sin cliente');
+                ccDetalle += row(parts.join(' · '), money(vc.total_final)) + '\n    ';
+            }
+        }
 
         return (
             '<!DOCTYPE html>\n<html lang="es">\n<head>\n    <meta charset="UTF-8">\n    <title>Danielles — ' +
@@ -115,6 +130,7 @@
             row('Transferencia', money(pm.transferencia)) +
             '\n    ' +
             row('Cta. corriente', money(pm.cuenta_corriente)) +
+            ccDetalle +
             '\n    <div class="sep"></div>\n    ' +
             row('Monto esperado', money(p.montoEsperado)) +
             '\n    ' +
