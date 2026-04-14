@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('deudas_clientes', 'cuotas_originales')) return;
         Schema::table('deudas_clientes', function (Blueprint $table) {
             $table->integer('cuotas_originales')->nullable()->after('monto_pendiente');
             $table->integer('cuotas_pagadas')->default(0)->after('cuotas_originales');

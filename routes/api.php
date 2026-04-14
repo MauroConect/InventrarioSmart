@@ -75,6 +75,7 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
 
     Route::middleware('permission:productos.view')->group(function () {
         Route::get('productos', [ProductoController::class, 'index']);
+        Route::get('productos/buscar-codigo', [ProductoController::class, 'buscarPorCodigo']);
         Route::get('productos/{producto}', [ProductoController::class, 'show']);
         Route::get('productos/proveedor/{proveedorId}', [ProductoController::class, 'getByProveedor']);
     });

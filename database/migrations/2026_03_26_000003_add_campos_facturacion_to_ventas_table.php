@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('ventas', 'estado_facturacion')) return;
         Schema::table('ventas', function (Blueprint $table) {
             $table->string('estado_facturacion', 20)->default('pendiente')->after('estado');
             $table->string('comprobante_tipo', 10)->nullable()->after('estado_facturacion');

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ventas de Helado - Danielles')
+@section('title', 'Ventas - Danielles')
 @section('page-title', 'Ventas')
 
 @section('content')
@@ -13,7 +13,7 @@
             :class="cajasAbiertas.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'"
             class="w-full sm:w-auto px-4 py-2 rounded text-white"
         >
-            + Nueva Venta de Helado
+            + Nueva Venta
         </button>
     </div>
 
@@ -140,9 +140,36 @@
                     <input type="number" step="0.01" x-model.number="descuento" class="w-full px-3 py-2 border border-gray-300 rounded-md" value="0">
                 </div>
 
+                <!-- Escáner de Código de Barras -->
+                <div class="bg-indigo-50 border-2 border-indigo-300 rounded-md p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                        </svg>
+                        <h4 class="font-semibold text-indigo-800">Escáner de Código de Barras</h4>
+                        <span class="text-xs text-indigo-500 ml-auto hidden sm:inline">Escanee o escriba el código y presione Enter</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <input
+                            type="text"
+                            x-model="codigoBarras"
+                            @keydown.enter.prevent="escanearCodigo()"
+                            x-ref="barcodeInput"
+                            placeholder="Escanear código de barras..."
+                            class="flex-1 px-3 py-2 border-2 border-indigo-300 rounded-md text-lg font-mono focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none"
+                            autocomplete="off"
+                        >
+                        <button type="button" @click="escanearCodigo()" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium">
+                            Buscar
+                        </button>
+                    </div>
+                    <div x-show="scannerSuccess" x-cloak class="mt-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-1" x-text="scannerSuccess"></div>
+                    <div x-show="scannerError" x-cloak class="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-1" x-text="scannerError"></div>
+                </div>
+
                 <div class="border-t pt-4">
                     <div class="flex justify-between items-center mb-4">
-                        <h4 class="font-semibold">Helados</h4>
+                        <h4 class="font-semibold">Productos</h4>
                         <div class="flex gap-2">
                             <button type="button" @click="imprimirPresupuesto()" class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1">
                                 🖨️ Imprimir Presupuesto
@@ -171,18 +198,31 @@
                                         >
                                             <option value="">Seleccionar...</option>
                                             <template x-for="prod in filtrarProductos(index)" :key="prod.id">
-                                                <option :value="prod.id" x-text="(prod.nombre || '') + (prod.codigo ? ' (' + prod.codigo + ')' : '') + ' - $' + (parseFloat(prod.precio_venta || 0).toFixed(2))"></option>
+                                                <option :value="prod.id" x-text="(prod.nombre || '') + (prod.codigo ? ' (' + prod.codigo + ')' : '') + ' - $' + (parseFloat(prod.precio_venta || 0).toFixed(2)) + (prod.tipo_venta === 'peso' ? '/' + (prod.unidad_medida || 'kg') : '')"></option>
                                             </template>
                                         </select>
                                     </div>
+                                    <template x-if="esPesable(item)">
+                                        <span class="inline-block mt-1 px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded">PESO</span>
+                                    </template>
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-gray-600 mb-1">Cantidad</label>
-                                    <input type="number" x-model.number="item.cantidad" class="w-full px-2 py-1 border border-gray-300 rounded-md text-sm" required min="1">
+                                    <label class="block text-xs text-gray-600 mb-1">
+                                        <span x-text="esPesable(item) ? 'Peso (' + (obtenerProducto(item.producto_id)?.unidad_medida || 'kg') + ')' : 'Cantidad'"></span>
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        x-model.number="item.cantidad" 
+                                        :step="esPesable(item) ? '0.001' : '1'"
+                                        :min="esPesable(item) ? '0.001' : '1'"
+                                        :class="esPesable(item) ? 'border-orange-300 bg-orange-50' : 'border-gray-300'"
+                                        class="w-full px-2 py-1 border rounded-md text-sm" 
+                                        required
+                                    >
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-600 mb-1">Subtotal</label>
-                                    <input type="text" :value="calcularSubtotal(item)" readonly class="w-full px-2 py-1 border border-gray-300 rounded-md text-sm bg-gray-50">
+                                    <input type="text" :value="'$' + calcularSubtotal(item).toFixed(2)" readonly class="w-full px-2 py-1 border border-gray-300 rounded-md text-sm bg-gray-50">
                                 </div>
                                 <div>
                                     <button type="button" @click="eliminarItem(index)" x-show="items.length > 1" class="px-2 py-1 bg-red-500 text-white rounded text-sm">Eliminar</button>
@@ -264,6 +304,9 @@ function ventas() {
         items: [{ producto_id: '', cantidad: 1 }],
         busquedaProducto: {},
         adjuntos: [],
+        codigoBarras: '',
+        scannerError: '',
+        scannerSuccess: '',
         
         async init() {
             await Promise.all([this.fetchVentas(), this.fetchDatosFormulario()]);
@@ -354,10 +397,66 @@ function ventas() {
             );
         },
         
+        esPesable(item) {
+            const prod = this.obtenerProducto(item.producto_id);
+            return prod?.tipo_venta === 'peso';
+        },
+
+        async escanearCodigo() {
+            const codigo = (this.codigoBarras || '').trim();
+            if (!codigo) return;
+            this.scannerError = '';
+            this.scannerSuccess = '';
+
+            const prodLocal = this.productos.find(p => (p.codigo || '').toLowerCase() === codigo.toLowerCase());
+            if (prodLocal) {
+                this.agregarProductoEscaneado(prodLocal);
+                this.codigoBarras = '';
+                this.$nextTick(() => this.$refs.barcodeInput?.focus());
+                return;
+            }
+
+            try {
+                const res = await axios.get('/api/productos/buscar-codigo', { params: { codigo } });
+                this.agregarProductoEscaneado(res.data);
+            } catch {
+                this.scannerError = 'Producto con código "' + codigo + '" no encontrado.';
+                setTimeout(() => this.scannerError = '', 3000);
+            }
+            this.codigoBarras = '';
+            this.$nextTick(() => this.$refs.barcodeInput?.focus());
+        },
+
+        agregarProductoEscaneado(producto) {
+            const idStr = String(producto.id);
+
+            if (producto.tipo_venta === 'peso') {
+                const yaExiste = this.items.some(it => String(it.producto_id) === idStr);
+                if (!yaExiste) {
+                    const sinVacios = this.items.filter(it => it.producto_id !== '');
+                    this.items = [...sinVacios, { producto_id: idStr, cantidad: 0 }];
+                }
+                this.scannerSuccess = producto.nombre + ' (por peso) - Ingrese el peso en ' + (producto.unidad_medida || 'kg');
+                setTimeout(() => this.scannerSuccess = '', 4000);
+                return;
+            }
+
+            const idx = this.items.findIndex(it => String(it.producto_id) === idStr);
+            if (idx >= 0) {
+                this.items[idx].cantidad = (parseInt(this.items[idx].cantidad) || 0) + 1;
+            } else {
+                const sinVacios = this.items.filter(it => it.producto_id !== '');
+                this.items = [...sinVacios, { producto_id: idStr, cantidad: 1 }];
+            }
+
+            this.scannerSuccess = '+ ' + producto.nombre + ' agregado';
+            setTimeout(() => this.scannerSuccess = '', 2000);
+        },
+
         calcularSubtotal(item) {
             const prod = this.obtenerProducto(item.producto_id);
             if (!prod) return 0;
-            return (parseFloat(prod.precio_venta || 0) * (parseInt(item.cantidad) || 0)) || 0;
+            return (parseFloat(prod.precio_venta || 0) * (parseFloat(item.cantidad) || 0)) || 0;
         },
         
         calcularTotal() {
@@ -714,6 +813,7 @@ function ventas() {
             this.error = '';
             this.success = '';
             this.resetForm();
+            this.$nextTick(() => this.$refs.barcodeInput?.focus());
         },
         
         closeModal() {
@@ -731,11 +831,11 @@ function ventas() {
             this.items = [{ producto_id: '', cantidad: 1 }];
             this.busquedaProducto = {};
             this.adjuntos = [];
-            // Limpiar el input file
+            this.codigoBarras = '';
+            this.scannerError = '';
+            this.scannerSuccess = '';
             const fileInput = document.querySelector('input[type="file"]');
-            if (fileInput) {
-                fileInput.value = '';
-            }
+            if (fileInput) fileInput.value = '';
         },
         
         async guardarVenta() {
@@ -745,11 +845,15 @@ function ventas() {
             }
             
             const itemsValidos = this.items
-                .filter(item => item.producto_id && (parseInt(item.cantidad) || 0) > 0)
-                .map(item => ({
-                    producto_id: item.producto_id,
-                    cantidad: parseInt(item.cantidad) || 0,
-                }));
+                .filter(item => item.producto_id && (parseFloat(item.cantidad) || 0) > 0)
+                .map(item => {
+                    const prod = this.obtenerProducto(item.producto_id);
+                    const esPeso = prod?.tipo_venta === 'peso';
+                    return {
+                        producto_id: item.producto_id,
+                        cantidad: esPeso ? parseFloat(item.cantidad) || 0 : parseInt(item.cantidad) || 0,
+                    };
+                });
             
             if (itemsValidos.length === 0) {
                 this.error = 'Debe agregar al menos un producto';

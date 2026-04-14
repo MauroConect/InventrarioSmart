@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('ventas', 'recargo_cuotas')) return;
         Schema::table('ventas', function (Blueprint $table) {
             $table->decimal('recargo_cuotas', 5, 2)->nullable()->after('monto_cuota');
         });

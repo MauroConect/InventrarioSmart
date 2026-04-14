@@ -22,6 +22,8 @@ class Producto extends Model
         'categoria_id',
         'proveedor_id',
         'activo',
+        'tipo_venta',
+        'unidad_medida',
     ];
 
     protected $casts = [
@@ -31,6 +33,11 @@ class Producto extends Model
         'stock_actual' => 'integer',
         'activo' => 'boolean',
     ];
+
+    public function esPesable(): bool
+    {
+        return $this->tipo_venta === 'peso';
+    }
 
     public function categoria()
     {

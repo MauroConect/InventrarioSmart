@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('movimientos_cuenta_corriente')) return;
         Schema::create('movimientos_cuenta_corriente', function (Blueprint $table) {
             $table->id();
             $table->foreignId('cuenta_corriente_id')->constrained('cuentas_corrientes')->onDelete('cascade');

@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('configuraciones_fiscales')) return;
         Schema::create('configuraciones_fiscales', function (Blueprint $table) {
             $table->id();
             $table->string('razon_social')->nullable();

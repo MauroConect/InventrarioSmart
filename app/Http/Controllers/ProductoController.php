@@ -32,6 +32,22 @@ class ProductoController extends Controller
         return response()->json($query->paginate(15));
     }
 
+    public function buscarPorCodigo(Request $request)
+    {
+        $request->validate(['codigo' => 'required|string']);
+
+        $producto = Producto::with(['categoria', 'proveedor'])
+            ->where('codigo', $request->codigo)
+            ->where('activo', true)
+            ->first();
+
+        if (!$producto) {
+            return response()->json(['message' => 'Producto no encontrado'], 404);
+        }
+
+        return response()->json($producto);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -45,6 +61,8 @@ class ProductoController extends Controller
             'categoria_id' => 'required|exists:categorias,id',
             'proveedor_id' => 'nullable|exists:proveedores,id',
             'activo' => 'boolean',
+            'tipo_venta' => 'nullable|in:unidad,peso',
+            'unidad_medida' => 'nullable|in:u,kg,g,lt,ml',
         ]);
 
         $producto = Producto::create($validated);
@@ -72,6 +90,8 @@ class ProductoController extends Controller
             'categoria_id' => 'required|exists:categorias,id',
             'proveedor_id' => 'nullable|exists:proveedores,id',
             'activo' => 'boolean',
+            'tipo_venta' => 'nullable|in:unidad,peso',
+            'unidad_medida' => 'nullable|in:u,kg,g,lt,ml',
         ]);
 
         $producto->update($validated);

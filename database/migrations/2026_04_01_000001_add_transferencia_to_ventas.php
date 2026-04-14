@@ -9,9 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('ventas', function (Blueprint $table) {
-            $table->decimal('monto_transferencia', 10, 2)->nullable()->after('monto_efectivo');
-        });
+        if (!Schema::hasColumn('ventas', 'monto_transferencia')) {
+            Schema::table('ventas', function (Blueprint $table) {
+                $table->decimal('monto_transferencia', 10, 2)->nullable()->after('monto_efectivo');
+            });
+        }
 
         $driver = Schema::getConnection()->getDriverName();
         if ($driver === 'mysql') {

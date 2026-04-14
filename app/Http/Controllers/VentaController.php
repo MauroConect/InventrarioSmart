@@ -46,7 +46,7 @@ class VentaController extends Controller
             'cliente_id' => 'nullable|exists:clientes,id',
             'items' => 'required|array|min:1',
             'items.*.producto_id' => 'required|exists:productos,id',
-            'items.*.cantidad' => 'required|integer|min:1',
+            'items.*.cantidad' => 'required|numeric|min:0.001',
             'descuento' => 'nullable|numeric|min:0',
             'tipo_pago' => 'required|in:efectivo,tarjeta,transferencia,cuenta_corriente,mixto',
             'monto_tarjeta' => 'nullable|numeric|min:0',
@@ -73,19 +73,23 @@ class VentaController extends Controller
 
             foreach ($validated['items'] as $itemData) {
                 $producto = Producto::findOrFail($itemData['producto_id']);
+                $cantidad = (float) $itemData['cantidad'];
 
-                $subtotal = $producto->precio_venta * $itemData['cantidad'];
+                $subtotal = $producto->precio_venta * $cantidad;
                 $total += $subtotal;
 
                 $items[] = [
                     'producto' => $producto,
-                    'cantidad' => $itemData['cantidad'],
+                    'cantidad' => $cantidad,
                     'precio_unitario' => $producto->precio_venta,
                     'subtotal' => $subtotal,
                 ];
 
-                // Actualizar stock
-                $producto->stock_actual -= $itemData['cantidad'];
+                if ($producto->tipo_venta !== 'peso') {
+                    $producto->stock_actual -= (int) $cantidad;
+                } else {
+                    $producto->stock_actual -= $cantidad;
+                }
                 $producto->save();
             }
 
@@ -246,7 +250,7 @@ class VentaController extends Controller
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.producto_id' => 'required|exists:productos,id',
-            'items.*.cantidad' => 'required|integer|min:1',
+            'items.*.cantidad' => 'required|numeric|min:0.001',
         ]);
 
         $venta = Venta::with(['caja', 'items'])->findOrFail($id);

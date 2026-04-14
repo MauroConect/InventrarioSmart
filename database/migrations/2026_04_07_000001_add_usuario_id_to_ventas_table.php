@@ -9,13 +9,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('ventas', function (Blueprint $table) {
-            $table->foreignId('usuario_id')
-                ->nullable()
-                ->after('cliente_id')
-                ->constrained('users')
-                ->nullOnDelete();
-        });
+        if (!Schema::hasColumn('ventas', 'usuario_id')) {
+            Schema::table('ventas', function (Blueprint $table) {
+                $table->foreignId('usuario_id')
+                    ->nullable()
+                    ->after('cliente_id')
+                    ->constrained('users')
+                    ->nullOnDelete();
+            });
+        }
 
         $driver = Schema::getConnection()->getDriverName();
         if ($driver === 'mysql') {

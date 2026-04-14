@@ -6,7 +6,7 @@
 @section('content')
 <div x-data="productos({{ auth()->user()->hasPermission('productos.manage') ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Sabores y productos</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Productos</h1>
         <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <input
                 type="text"
@@ -73,8 +73,13 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell" 
                                     x-text="'$' + parseFloat(producto.precio_compra || 0).toFixed(2)"></td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" 
-                                    x-text="'$' + parseFloat(producto.precio_venta || 0).toFixed(2)"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <span x-text="'$' + parseFloat(producto.precio_venta || 0).toFixed(2)"></span>
+                                    <span x-show="producto.tipo_venta === 'peso'" class="text-xs text-orange-600" x-text="'/' + (producto.unidad_medida || 'kg')"></span>
+                                    <template x-if="producto.tipo_venta === 'peso'">
+                                        <span class="block mt-0.5 px-1.5 py-0.5 text-[10px] font-medium bg-orange-100 text-orange-700 rounded w-fit">PESO</span>
+                                    </template>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <span :class="parseInt(producto.stock_actual || 0) < parseInt(producto.stock_minimo || 0) ? 'text-red-600 font-bold' : 'text-gray-900'"
                                           x-text="producto.stock_actual || 0"></span>
@@ -87,6 +92,7 @@
                                           x-text="producto.activo ? 'Activo' : 'Inactivo'"></span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" x-show="canManage">
+                                    <button @click="showQr(producto)" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Generar QR">QR</button>
                                     <button @click="edit(producto)" class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
                                     <button @click="remove(producto.id)" class="text-red-600 hover:text-red-900">Eliminar</button>
                                 </td>
@@ -193,6 +199,29 @@
                         </template>
                     </select>
                 </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Venta</label>
+                        <select x-model="formData.tipo_venta" @change="formData.unidad_medida = formData.tipo_venta === 'peso' ? 'kg' : 'u'" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="unidad">Por Unidad</option>
+                            <option value="peso">Por Peso (Kg, g, etc.)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unidad de Medida</label>
+                        <select x-model="formData.unidad_medida" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="u" x-show="formData.tipo_venta !== 'peso'">Unidad (u)</option>
+                            <option value="kg" x-show="formData.tipo_venta === 'peso'">Kilogramos (kg)</option>
+                            <option value="g" x-show="formData.tipo_venta === 'peso'">Gramos (g)</option>
+                            <option value="lt" x-show="formData.tipo_venta === 'peso'">Litros (lt)</option>
+                            <option value="ml" x-show="formData.tipo_venta === 'peso'">Mililitros (ml)</option>
+                        </select>
+                    </div>
+                </div>
+                <div x-show="formData.tipo_venta === 'peso'" x-cloak class="p-3 bg-orange-50 border border-orange-200 rounded-md text-sm text-orange-800">
+                    Este producto se vende por peso. El precio se interpreta como precio por <span x-text="formData.unidad_medida || 'kg'"></span>.
+                    Al escanear en ventas, se pedirá ingresar el peso.
+                </div>
                 <div>
                     <label class="flex items-center">
                         <input type="checkbox" x-model="formData.activo" class="mr-2">
@@ -206,9 +235,41 @@
             </form>
         </div>
     </div>
+
+    <!-- Modal QR -->
+    <div x-show="showQrModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+        <template x-if="qrProducto">
+            <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md" @click.stop>
+                <div class="bg-white border-b px-6 py-4 flex justify-between items-center rounded-t-lg">
+                    <h3 class="text-lg font-bold text-gray-800">Código QR del Producto</h3>
+                    <button @click="showQrModal = false; qrProducto = null" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
+                <div class="p-6 text-center">
+                    <h4 class="text-xl font-bold text-gray-800 mb-1" x-text="qrProducto.nombre"></h4>
+                    <p class="text-sm text-gray-500 mb-4">Código: <span x-text="qrProducto.codigo"></span></p>
+                    <div x-ref="qrContainer" class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg"></div>
+                    <div class="mt-4 space-y-1">
+                        <p class="text-2xl font-bold text-gray-900">
+                            <span x-text="'$' + parseFloat(qrProducto.precio_venta || 0).toFixed(2)"></span>
+                            <span x-show="qrProducto.tipo_venta === 'peso'" class="text-base text-orange-600" x-text="'/' + (qrProducto.unidad_medida || 'kg')"></span>
+                        </p>
+                        <p x-show="qrProducto.tipo_venta === 'peso'" class="text-sm text-orange-600 font-medium">Producto por peso</p>
+                        <p x-show="qrProducto.categoria && qrProducto.categoria.nombre" class="text-sm text-gray-500" x-text="'Categoría: ' + (qrProducto.categoria ? qrProducto.categoria.nombre : '')"></p>
+                    </div>
+                    <div class="mt-6 flex justify-center gap-3">
+                        <button @click="imprimirQr()" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium">
+                            Imprimir Etiqueta QR
+                        </button>
+                        <button @click="showQrModal = false; qrProducto = null" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script>
 function productos(canManage) {
     return {
@@ -229,8 +290,12 @@ function productos(canManage) {
         success: '',
         formData: {
             codigo: '', nombre: '', descripcion: '', precio_compra: 0, precio_venta: 0,
-            stock_minimo: 0, stock_actual: 0, categoria_id: '', proveedor_id: '', activo: true
+            stock_minimo: 0, stock_actual: 0, categoria_id: '', proveedor_id: '', activo: true,
+            tipo_venta: 'unidad', unidad_medida: 'u'
         },
+        showQrModal: false,
+        qrProducto: null,
+        qrInstance: null,
         
         async init() {
             const tasks = [this.fetch(), this.fetchCategorias()];
@@ -317,7 +382,8 @@ function productos(canManage) {
             this.editing = null;
             this.formData = {
                 codigo: '', nombre: '', descripcion: '', precio_compra: 0, precio_venta: 0,
-                stock_minimo: 0, stock_actual: 0, categoria_id: '', proveedor_id: '', activo: true
+                stock_minimo: 0, stock_actual: 0, categoria_id: '', proveedor_id: '', activo: true,
+                tipo_venta: 'unidad', unidad_medida: 'u'
             };
             this.error = '';
             this.success = '';
@@ -337,11 +403,78 @@ function productos(canManage) {
                 stock_actual: producto.stock_actual || 0,
                 categoria_id: producto.categoria_id || '',
                 proveedor_id: producto.proveedor_id || '',
-                activo: producto.activo !== undefined ? producto.activo : true
+                activo: producto.activo !== undefined ? producto.activo : true,
+                tipo_venta: producto.tipo_venta || 'unidad',
+                unidad_medida: producto.unidad_medida || 'u'
             };
             this.error = '';
             this.success = '';
             this.showModal = true;
+        },
+
+        showQr(producto) {
+            this.qrProducto = producto;
+            this.showQrModal = true;
+            this.$nextTick(() => {
+                const container = this.$refs.qrContainer;
+                if (container) {
+                    container.innerHTML = '';
+                    const esPeso = producto.tipo_venta === 'peso';
+                    const unidad = producto.unidad_medida || (esPeso ? 'kg' : 'u');
+                    const qrData = JSON.stringify({
+                        codigo: producto.codigo,
+                        nombre: producto.nombre,
+                        precio: parseFloat(producto.precio_venta || 0),
+                        tipo: producto.tipo_venta || 'unidad',
+                        unidad: unidad,
+                        categoria: producto.categoria?.nombre || ''
+                    });
+                    this.qrInstance = new QRCode(container, {
+                        text: qrData,
+                        width: 200,
+                        height: 200,
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                }
+            });
+        },
+
+        imprimirQr() {
+            if (!this.qrProducto) return;
+            const p = this.qrProducto;
+            const esPeso = p.tipo_venta === 'peso';
+            const unidad = p.unidad_medida || (esPeso ? 'kg' : 'u');
+            const precioLabel = esPeso
+                ? '$' + parseFloat(p.precio_venta || 0).toFixed(2) + '/' + unidad
+                : '$' + parseFloat(p.precio_venta || 0).toFixed(2);
+            const imgEl = this.$refs.qrContainer?.querySelector('img') || this.$refs.qrContainer?.querySelector('canvas');
+            let imgSrc = '';
+            if (imgEl?.tagName === 'IMG') imgSrc = imgEl.src;
+            else if (imgEl?.tagName === 'CANVAS') imgSrc = imgEl.toDataURL();
+
+            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>QR - ' + p.nombre + '</title>' +
+                '<style>body{font-family:Arial,sans-serif;text-align:center;padding:10mm;margin:0}' +
+                '.qr-label{display:inline-block;border:1px solid #ccc;padding:5mm;border-radius:3mm}' +
+                '.qr-label h3{margin:0 0 2mm;font-size:14px}.qr-label p{margin:1mm 0;font-size:11px;color:#333}' +
+                '.qr-label .precio{font-size:16px;font-weight:bold;color:#000;margin-top:2mm}' +
+                '.qr-label .codigo{font-size:9px;color:#666}img{width:40mm;height:40mm}' +
+                '@media print{body{padding:2mm}button{display:none!important}}</style></head><body>' +
+                '<div class="qr-label"><h3>' + p.nombre + '</h3>' +
+                (imgSrc ? '<img src="' + imgSrc + '" />' : '') +
+                '<p class="precio">' + precioLabel + '</p>' +
+                (esPeso ? '<p style="font-size:10px;color:#e65100">Producto por peso (' + unidad + ')</p>' : '') +
+                '<p class="codigo">Cód: ' + p.codigo + '</p>' +
+                (p.categoria?.nombre ? '<p class="codigo">Cat: ' + p.categoria.nombre + '</p>' : '') +
+                '</div><br/><button onclick="window.print()" style="margin-top:5mm;padding:5px 15px;cursor:pointer">Imprimir</button>' +
+                '<button onclick="window.close()" style="margin-top:5mm;padding:5px 15px;cursor:pointer;margin-left:5px">Cerrar</button></body></html>';
+
+            const w = window.open('', '_blank');
+            if (w) {
+                w.document.open();
+                w.document.write(html);
+                w.document.close();
+                setTimeout(() => { try { w.focus(); w.print(); } catch(e) {} }, 400);
+            }
         },
         
         closeModal() {
