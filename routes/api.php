@@ -16,6 +16,7 @@ use App\Http\Controllers\VentaController;
 use App\Http\Controllers\ChequeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ConfiguracionFiscalController;
+use App\Http\Controllers\ConfiguracionComercioController;
 use App\Http\Controllers\UserController;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -105,6 +106,9 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
 
         Route::get('configuracion-fiscal', [ConfiguracionFiscalController::class, 'show']);
         Route::post('configuracion-fiscal', [ConfiguracionFiscalController::class, 'update']);
+
+        Route::get('configuracion-comercio', [ConfiguracionComercioController::class, 'show']);
+        Route::post('configuracion-comercio', [ConfiguracionComercioController::class, 'update']);
 
         Route::apiResource('proveedores', ProveedorController::class)->names('api.proveedores');
 

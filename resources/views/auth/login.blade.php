@@ -1,13 +1,18 @@
 @extends('layouts.app')
 
-@section('title', 'Iniciar Sesion - Danielles')
+@section('title', 'Iniciar Sesión - ' . ($comercio->nombre_comercio ?? 'Mi Comercio'))
 
 @section('content')
 <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4" 
      x-data="{ loading: false }">
     <div class="max-w-md w-full bg-white rounded-lg shadow-lg p-6 sm:p-8">
+        @if($comercio->logo_url ?? false)
+            <div class="flex justify-center mb-4">
+                <img src="{{ $comercio->logo_url }}" alt="{{ $comercio->nombre_comercio }}" class="h-16 object-contain">
+            </div>
+        @endif
         <h2 class="text-2xl sm:text-3xl font-bold text-center mb-6 sm:mb-8 text-gray-800">
-            Danielles
+            {{ $comercio->nombre_comercio ?? 'Mi Comercio' }}
         </h2>
         
         @if ($errors->any())
