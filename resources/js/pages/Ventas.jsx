@@ -37,6 +37,7 @@ export default function Ventas() {
     const [montoTransferencia, setMontoTransferencia] = useState('');
     const [cuotas, setCuotas] = useState('');
     const [recargoCuotas, setRecargoCuotas] = useState('');
+    const [pagoCon, setPagoCon] = useState('');
     const [descuento, setDescuento] = useState(0);
     const [items, setItems] = useState([
         { producto_id: '', cantidad: 1 },
@@ -107,6 +108,7 @@ export default function Ventas() {
         setMontoTransferencia('');
         setCuotas('');
         setRecargoCuotas('');
+        setPagoCon('');
         setDescuento(0);
         setItems([{ producto_id: '', cantidad: 1 }]);
         setAdjuntos([]);
@@ -159,6 +161,13 @@ export default function Ventas() {
         const totalBruto = items.reduce((acc, item) => acc + calcularSubtotal(item), 0);
         return totalBruto - (parseFloat(descuento) || 0);
     };
+
+    const totalFinalCalculadora = calcularTotal();
+    const montoObjetivoEfectivo = tipoPago === 'mixto'
+        ? (parseFloat(montoEfectivo) || 0)
+        : (tipoPago === 'efectivo' ? totalFinalCalculadora : 0);
+    const pagoConNumero = parseFloat(pagoCon) || 0;
+    const vueltoCalculado = pagoConNumero - montoObjetivoEfectivo;
 
     const imprimirPresupuesto = () => {
         const itemsValidos = items
@@ -823,6 +832,7 @@ export default function Ventas() {
                                         value={tipoPago}
                                         onChange={(e) => {
                                             setTipoPago(e.target.value);
+                                            setPagoCon('');
                                             // Limpiar campos de pago mixto si cambia el tipo
                                             if (e.target.value !== 'mixto') {
                                                 setMontoTarjeta('');
@@ -1190,6 +1200,52 @@ export default function Ventas() {
                                         </div>
                                     </div>
                                 </div>
+                                {(tipoPago === 'efectivo' || tipoPago === 'mixto') && (
+                                    <div className="mt-4 bg-amber-50 border border-amber-200 rounded-md p-3">
+                                        <h5 className="font-semibold text-sm text-amber-900 mb-2">Calculadora de Vuelto</h5>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                    Total a cobrar en efectivo
+                                                </label>
+                                                <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm font-semibold">
+                                                    ${montoObjetivoEfectivo.toFixed(2)}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                    Paga con
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={pagoCon}
+                                                    onChange={(e) => setPagoCon(e.target.value)}
+                                                    placeholder="0.00"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                    {vueltoCalculado >= 0 ? 'Vuelto' : 'Falta'}
+                                                </label>
+                                                <div className={`w-full px-3 py-2 border rounded-md text-sm font-bold ${
+                                                    vueltoCalculado >= 0
+                                                        ? 'bg-green-50 border-green-300 text-green-700'
+                                                        : 'bg-red-50 border-red-300 text-red-700'
+                                                }`}>
+                                                    ${Math.abs(vueltoCalculado).toFixed(2)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {tipoPago === 'mixto' && (
+                                            <p className="mt-2 text-xs text-amber-800">
+                                                En pago mixto, el vuelto se calcula solo sobre el monto en efectivo.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div>
