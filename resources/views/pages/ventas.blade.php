@@ -106,7 +106,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Pago *</label>
-                        <select x-model="tipoPago" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                        <select x-model="tipoPago" @change="pagoCon = ''" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                             <option value="efectivo">Efectivo</option>
                             <option value="tarjeta">Tarjeta</option>
                             <option value="transferencia">Transferencia</option>
@@ -197,6 +197,42 @@
                             </div>
                         </div>
                     </div>
+                    <div x-show="tipoPago === 'efectivo' || tipoPago === 'mixto'" x-cloak class="mt-4 bg-amber-50 border border-amber-200 rounded-md p-3">
+                        <h5 class="font-semibold text-sm text-amber-900 mb-2">Calculadora de Vuelto</h5>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">Total a cobrar en efectivo</label>
+                                <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm font-semibold">
+                                    $<span x-text="(tipoPago === 'mixto' ? (parseFloat(montoEfectivo) || 0) : calcularTotal()).toFixed(2)"></span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">Paga con</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    x-model.number="pagoCon"
+                                    placeholder="0.00"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1" x-text="((parseFloat(pagoCon) || 0) - (tipoPago === 'mixto' ? (parseFloat(montoEfectivo) || 0) : calcularTotal())) >= 0 ? 'Vuelto' : 'Falta'"></label>
+                                <div
+                                    class="w-full px-3 py-2 border rounded-md text-sm font-bold"
+                                    :class="((parseFloat(pagoCon) || 0) - (tipoPago === 'mixto' ? (parseFloat(montoEfectivo) || 0) : calcularTotal())) >= 0
+                                        ? 'bg-green-50 border-green-300 text-green-700'
+                                        : 'bg-red-50 border-red-300 text-red-700'"
+                                >
+                                    $<span x-text="Math.abs((parseFloat(pagoCon) || 0) - (tipoPago === 'mixto' ? (parseFloat(montoEfectivo) || 0) : calcularTotal())).toFixed(2)"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <p x-show="tipoPago === 'mixto'" x-cloak class="mt-2 text-xs text-amber-800">
+                            En pago mixto, el vuelto se calcula solo sobre el monto en efectivo.
+                        </p>
+                    </div>
                 </div>
 
                 <div>
@@ -260,6 +296,7 @@ function ventas() {
         montoTarjeta: '',
         montoEfectivo: '',
         montoTransferencia: '',
+        pagoCon: '',
         descuento: 0,
         items: [{ producto_id: '', cantidad: 1 }],
         busquedaProducto: {},
@@ -727,6 +764,7 @@ function ventas() {
             this.montoTarjeta = '';
             this.montoEfectivo = '';
             this.montoTransferencia = '';
+            this.pagoCon = '';
             this.descuento = 0;
             this.items = [{ producto_id: '', cantidad: 1 }];
             this.busquedaProducto = {};
