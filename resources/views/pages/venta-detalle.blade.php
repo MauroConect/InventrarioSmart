@@ -21,17 +21,6 @@
             </div>
         </div>
         <div class="flex flex-wrap gap-2 items-center">
-            <div class="relative">
-                <label class="sr-only">Acciones</label>
-                <select
-                    x-model="accionMenu"
-                    @change="ejecutarAccionMenu()"
-                    class="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-800 min-w-[11rem]"
-                >
-                    <option value="">Acciones</option>
-                    <option value="cerrar">Cerrar venta</option>
-                </select>
-            </div>
             <button
                 @click="facturarAfip()"
                 x-show="venta && venta.estado_facturacion !== 'facturada'"
@@ -50,6 +39,19 @@
             </button>
             <a href="{{ route('ventas.index') }}" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Volver</a>
         </div>
+    </div>
+    <div
+        class="flex justify-center"
+        x-show="venta && (venta.estado || '').toLowerCase() === 'abierta'"
+        x-cloak
+    >
+        <button
+            type="button"
+            @click="cerrarVenta()"
+            class="px-6 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 shadow"
+        >
+            Cerrar venta
+        </button>
     </div>
 
     <div x-show="error" x-cloak class="p-4 bg-red-100 border border-red-400 text-red-700 rounded" x-text="error"></div>
@@ -251,7 +253,6 @@ function ventaDetalle(puedeAgregarItems) {
         puedeAgregarItems: puedeAgregarItems === true,
         productos: [],
         nuevoItem: { producto_id: '', cantidad: 1 },
-        accionMenu: '',
         ventasIndexUrl: @json(url('/ventas')),
         
         etiquetaTipoPago(tipo) {
@@ -276,26 +277,43 @@ function ventaDetalle(puedeAgregarItems) {
             return this.motivoBloqueoAgregarItems() === null;
         },
 
-        ejecutarAccionMenu() {
-            const v = this.accionMenu;
-            this.accionMenu = '';
-            if (v === 'cerrar') {
-                this.cerrarVenta();
-            }
-        },
-
-        async cerrarVenta() {
+        async cerrarVenta({ silencioso = false } = {}) {
             try {
-                this.error = '';
-                this.success = '';
+                if (!silencioso) {
+                    this.error = '';
+                    this.success = '';
+                }
+
+                if (!this.venta) {
+                    await this.fetch();
+                }
+
+                const estadoActual = (this.venta?.estado || '').toLowerCase();
+                if (estadoActual === 'cancelada') {
+                    if (!silencioso) this.error = 'No se puede cerrar una venta cancelada.';
+                    return false;
+                }
+                if (estadoActual === 'cerrada') {
+                    if (!silencioso) this.success = 'La venta ya está cerrada.';
+                    return true;
+                }
+
                 const token = localStorage.getItem('token');
                 const response = await axios.post(`/api/ventas/${this.ventaId}/cerrar`, {}, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                this.success = response.data?.message || 'Venta cerrada correctamente.';
                 await this.fetch();
+                if (!silencioso) {
+                    this.success = response.data?.message || 'Venta cerrada correctamente.';
+                }
+                return true;
             } catch (error) {
-                this.error = error.response?.data?.message || 'No se pudo cerrar la venta.';
+                if (!silencioso) {
+                    this.error = error.response?.data?.message || 'No se pudo cerrar la venta.';
+                } else {
+                    this.error = 'No se pudo cerrar la venta antes de imprimir el ticket.';
+                }
+                return false;
             }
         },
 
@@ -396,8 +414,13 @@ function ventaDetalle(puedeAgregarItems) {
             }
         },
         
-        imprimirComprobante() {
+        async imprimirComprobante() {
             if (!this.venta) return;
+
+            if ((this.venta.estado || '').toLowerCase() === 'abierta') {
+                const ventaCerrada = await this.cerrarVenta({ silencioso: true });
+                if (!ventaCerrada) return;
+            }
 
             const f = this.fiscal || {};
             const fechaVenta = new Date(this.venta.created_at || this.venta.fecha).toLocaleString('es-AR');
