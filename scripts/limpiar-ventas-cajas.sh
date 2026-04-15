@@ -2,11 +2,30 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-if [[ ! -f "${PROJECT_ROOT}/artisan" ]]; then
-  echo "No se encontro artisan en: ${PROJECT_ROOT}"
-  echo "Verifica que el script este dentro de la carpeta scripts del proyecto Laravel."
+find_project_root() {
+  local dir="$1"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -f "$dir/artisan" ]]; then
+      echo "$dir"
+      return 0
+    fi
+    dir="$(dirname "$dir")"
+  done
+  return 1
+}
+
+PROJECT_ROOT="$(find_project_root "$SCRIPT_DIR" || true)"
+
+if [[ -z "${PROJECT_ROOT}" ]]; then
+  PROJECT_ROOT="$(find_project_root "$(pwd)" || true)"
+fi
+
+if [[ -z "${PROJECT_ROOT}" ]]; then
+  echo "No se encontro artisan buscando desde:"
+  echo "- script: ${SCRIPT_DIR}"
+  echo "- pwd: $(pwd)"
+  echo "Ejecuta este script dentro del proyecto Laravel (donde exista artisan)."
   exit 1
 fi
 
