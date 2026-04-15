@@ -129,6 +129,46 @@
                     <p class="text-gray-600">Monto transferencia</p>
                     <p class="font-medium" x-text="'$' + parseFloat(venta.monto_transferencia || venta.total_final || 0).toFixed(2)"></p>
                 </div>
+                <div
+                    class="mt-4 pt-4 border-t bg-amber-50 border border-amber-200 rounded-md p-3"
+                    x-show="venta && (venta.tipo_pago === 'efectivo' || venta.tipo_pago === 'mixto')"
+                    x-cloak
+                >
+                    <h5 class="font-semibold text-sm text-amber-900 mb-2">Calculadora de Vuelto</h5>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Total a cobrar en efectivo</label>
+                            <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm font-semibold">
+                                $<span x-text="(venta.tipo_pago === 'mixto' ? (parseFloat(venta.monto_efectivo || 0) || 0) : (parseFloat(venta.total_final != null ? venta.total_final : venta.total || 0) || 0)).toFixed(2)"></span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Paga con</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                x-model.number="pagoCon"
+                                placeholder="0.00"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1" x-text="((parseFloat(pagoCon) || 0) - (venta.tipo_pago === 'mixto' ? (parseFloat(venta.monto_efectivo || 0) || 0) : (parseFloat(venta.total_final != null ? venta.total_final : venta.total || 0) || 0))) >= 0 ? 'Vuelto' : 'Falta'"></label>
+                            <div
+                                class="w-full px-3 py-2 border rounded-md text-sm font-bold"
+                                :class="((parseFloat(pagoCon) || 0) - (venta.tipo_pago === 'mixto' ? (parseFloat(venta.monto_efectivo || 0) || 0) : (parseFloat(venta.total_final != null ? venta.total_final : venta.total || 0) || 0))) >= 0
+                                    ? 'bg-green-50 border-green-300 text-green-700'
+                                    : 'bg-red-50 border-red-300 text-red-700'"
+                            >
+                                $<span x-text="Math.abs((parseFloat(pagoCon) || 0) - (venta.tipo_pago === 'mixto' ? (parseFloat(venta.monto_efectivo || 0) || 0) : (parseFloat(venta.total_final != null ? venta.total_final : venta.total || 0) || 0))).toFixed(2)"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <p x-show="venta.tipo_pago === 'mixto'" x-cloak class="mt-2 text-xs text-amber-800">
+                        En pago mixto, el vuelto se calcula solo sobre el monto en efectivo.
+                    </p>
+                </div>
             </div>
 
             <div x-show="fiscal && (fiscal.razon_social || fiscal.cuit_emisor)" class="bg-white rounded-lg shadow p-6">
@@ -253,6 +293,7 @@ function ventaDetalle(puedeAgregarItems) {
         puedeAgregarItems: puedeAgregarItems === true,
         productos: [],
         nuevoItem: { producto_id: '', cantidad: 1 },
+        pagoCon: '',
         ventasIndexUrl: @json(url('/ventas')),
         
         etiquetaTipoPago(tipo) {
