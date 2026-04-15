@@ -14,194 +14,8 @@ function etiquetaTipoPago(tipo) {
     return TIPO_PAGO_LABELS[tipo] ?? tipo ?? '-';
 }
 
-export default function Ventas() {
-    const navigate = useNavigate();
-    const [ventas, setVentas] = useState([]);
-    const [clientes, setClientes] = useState([]);
-    const [productos, setProductos] = useState([]);
-    const [cajasAbiertas, setCajasAbiertas] = useState([]);
-    const [cajaSeleccionada, setCajaSeleccionada] = useState(null);
-
-    const [loadingLista, setLoadingLista] = useState(true);
-    const [loadingFormDatos, setLoadingFormDatos] = useState(true);
-    const [loadingSubmit, setLoadingSubmit] = useState(false);
-
-    const [showModal, setShowModal] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-
-    const [clienteId, setClienteId] = useState('');
-    const [tipoPago, setTipoPago] = useState('efectivo');
-    const [montoTarjeta, setMontoTarjeta] = useState('');
-    const [montoEfectivo, setMontoEfectivo] = useState('');
-    const [montoTransferencia, setMontoTransferencia] = useState('');
-    const [cuotas, setCuotas] = useState('');
-    const [recargoCuotas, setRecargoCuotas] = useState('');
-    const [pagoCon, setPagoCon] = useState('');
-    const [descuento, setDescuento] = useState(0);
-    const [items, setItems] = useState([
-        { producto_id: '', cantidad: 1 },
-    ]);
-    const [adjuntos, setAdjuntos] = useState([]);
-    const [busquedaProducto, setBusquedaProducto] = useState({});
-
-    useEffect(() => {
-        fetchVentas();
-        fetchDatosFormulario();
-    }, []);
-
-    const fetchVentas = async () => {
-        try {
-            setLoadingLista(true);
-            const response = await axios.get('/ventas');
-            setVentas(response.data.data || response.data);
-        } catch (error) {
-            console.error('Error al cargar ventas:', error);
-        } finally {
-            setLoadingLista(false);
-        }
-    };
-
-    const fetchDatosFormulario = async () => {
-        try {
-            setLoadingFormDatos(true);
-
-            const [productosRes, cajasRes] = await Promise.all([
-                axios.get('/productos', { params: { all: 'true' } }),
-                axios.get('cajas', { params: { estado: 'abierta' } }),
-            ]);
-
-            let clientesData = [];
-            try {
-                const clientesRes = await axios.get('/clientes');
-                clientesData = clientesRes.data?.data || clientesRes.data || [];
-            } catch {
-                clientesData = [];
-            }
-
-            const productosData = productosRes.data?.data || productosRes.data || [];
-            const cajasData = cajasRes.data?.data || cajasRes.data || [];
-
-            setClientes(Array.isArray(clientesData) ? clientesData.filter(c => c.activo !== false) : []);
-            setProductos(Array.isArray(productosData) ? productosData.filter(p => p.activo !== false) : []);
-            const cajasOpen = Array.isArray(cajasData) ? cajasData.filter(c => c.estado === 'abierta') : [];
-            setCajasAbiertas(cajasOpen);
-            // Seleccionar la primera caja abierta por defecto si hay alguna
-            if (cajasOpen.length > 0 && !cajaSeleccionada) {
-                setCajaSeleccionada(cajasOpen[0]);
-            } else if (cajasOpen.length === 0) {
-                setCajaSeleccionada(null);
-            }
-        } catch (error) {
-            console.error('Error al cargar datos para nueva venta:', error);
-            setError('Error al cargar datos para nueva venta. Verifica la conexión o que exista una caja abierta.');
-        } finally {
-            setLoadingFormDatos(false);
-        }
-    };
-
-    const resetForm = () => {
-        setClienteId('');
-        setTipoPago('efectivo');
-        setMontoTarjeta('');
-        setMontoEfectivo('');
-        setMontoTransferencia('');
-        setCuotas('');
-        setRecargoCuotas('');
-        setPagoCon('');
-        setDescuento(0);
-        setItems([{ producto_id: '', cantidad: 1 }]);
-        setAdjuntos([]);
-        setBusquedaProducto({});
-        setError('');
-    };
-
-    const handleAddItem = () => {
-        setItems([...items, { producto_id: '', cantidad: 1 }]);
-    };
-
-    const handleRemoveItem = (index) => {
-        if (items.length === 1) return;
-        const nuevos = items.filter((_, i) => i !== index);
-        setItems(nuevos);
-    };
-
-    const handleChangeItem = (index, field, value) => {
-        const nuevos = [...items];
-        nuevos[index] = { ...nuevos[index], [field]: field === 'cantidad' ? parseInt(value) || 0 : value };
-        setItems(nuevos);
-    };
-
-    const handleAdjuntosChange = (e) => {
-        const files = Array.from(e.target.files || []);
-        setAdjuntos(files);
-    };
-
-    const obtenerProducto = (id) => productos.find(p => String(p.id) === String(id));
-
-    const filtrarProductos = (index) => {
-        const busqueda = busquedaProducto[index] || '';
-        if (!busqueda) return productos;
-        
-        const busquedaLower = busqueda.toLowerCase();
-        return productos.filter(p => 
-            p.nombre?.toLowerCase().includes(busquedaLower) ||
-            p.codigo?.toLowerCase().includes(busquedaLower) ||
-            p.descripcion?.toLowerCase().includes(busquedaLower)
-        );
-    };
-
-    const calcularSubtotal = (item) => {
-        const prod = obtenerProducto(item.producto_id);
-        if (!prod) return 0;
-        return (parseFloat(prod.precio_venta || 0) * (parseInt(item.cantidad) || 0)) || 0;
-    };
-
-    const calcularTotal = () => {
-        const totalBruto = items.reduce((acc, item) => acc + calcularSubtotal(item), 0);
-        return totalBruto - (parseFloat(descuento) || 0);
-    };
-
-    const totalFinalCalculadora = calcularTotal();
-    const montoObjetivoEfectivo = tipoPago === 'mixto'
-        ? (parseFloat(montoEfectivo) || 0)
-        : (tipoPago === 'efectivo' ? totalFinalCalculadora : 0);
-    const pagoConNumero = parseFloat(pagoCon) || 0;
-    const vueltoCalculado = pagoConNumero - montoObjetivoEfectivo;
-
-    const imprimirPresupuesto = () => {
-        const itemsValidos = items
-            .filter(item => item.producto_id && (parseInt(item.cantidad) || 0) > 0)
-            .map(item => {
-                const prod = obtenerProducto(item.producto_id);
-                return {
-                    producto: prod,
-                    cantidad: parseInt(item.cantidad) || 0,
-                    precio: parseFloat(prod?.precio_venta || 0),
-                    subtotal: calcularSubtotal(item)
-                };
-            });
-
-        if (itemsValidos.length === 0) {
-            setError('Debe agregar al menos un producto para imprimir el presupuesto.');
-            return;
-        }
-
-        const clienteSeleccionado = clienteId ? clientes.find(c => c.id === parseInt(clienteId)) : null;
-        const totalBruto = itemsValidos.reduce((acc, item) => acc + item.subtotal, 0);
-        const descuentoNum = parseFloat(descuento) || 0;
-        const totalFinal = totalBruto - descuentoNum;
-        const fechaActual = new Date().toLocaleString('es-AR');
-
-        // Crear contenido HTML para el presupuesto
-        const contenidoHTML = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Danielles</title>
+const TICKET_THERMAL_STYLES = `
                 <style>
-                    /* Ticket térmico: papel 58 mm, ancho útil impresión ~48 mm (ej. IT02 / 203 dpi) */
                     * { box-sizing: border-box; }
                     @media print {
                         @page {
@@ -360,15 +174,38 @@ export default function Ventas() {
                         background-color: #0056b3;
                     }
                 </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h1>Danielles</h1>
-                    <p>Fecha: ${fechaActual}</p>
-                </div>
+`;
 
-                <div class="info-section">
-                    ${clienteSeleccionado ? `
+function construirHtmlTicketDesdeVentaGuardada(venta) {
+    const fechaStr = venta.fecha
+        ? new Date(venta.fecha).toLocaleString('es-AR')
+        : new Date().toLocaleString('es-AR');
+    const clienteSeleccionado = venta.cliente;
+    const totalBruto = parseFloat(venta.total || 0) || 0;
+    const descuentoNum = parseFloat(venta.descuento || 0) || 0;
+    const totalFinal =
+        parseFloat(venta.total_final != null ? venta.total_final : totalBruto - descuentoNum) || 0;
+    const tipoPagoV = venta.tipo_pago || 'efectivo';
+
+    const itemsRows = (venta.items || [])
+        .map((item) => {
+            const p = item.producto;
+            const cant = parseInt(item.cantidad, 10) || 0;
+            const pu = parseFloat(item.precio_unitario || 0) || 0;
+            const sub = parseFloat(item.subtotal || 0) || 0;
+            return `
+                            <tr>
+                                <td>${p?.codigo || '-'}</td>
+                                <td>${p?.nombre || '-'}</td>
+                                <td class="text-right">${cant}</td>
+                                <td class="text-right">$${pu.toFixed(2)}</td>
+                                <td class="text-right">$${sub.toFixed(2)}</td>
+                            </tr>`;
+        })
+        .join('');
+
+    const bloqueCliente = clienteSeleccionado
+        ? `
                         <div class="info-row">
                             <span class="info-label">Cliente:</span>
                             <span class="info-value">${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido || ''}</span>
@@ -384,68 +221,24 @@ export default function Ventas() {
                                 <span class="info-label">Teléfono:</span>
                                 <span class="info-value">${clienteSeleccionado.telefono}</span>
                             </div>
-                        ` : ''}
-                    ` : `
+                        ` : ''}`
+        : `
                         <div class="info-row">
                             <span class="info-label">Cliente:</span>
                             <span class="info-value">Consumidor Final</span>
-                        </div>
-                    `}
-                    <div class="info-row">
-                        <span class="info-label">Tipo de Pago:</span>
-                        <span class="info-value">${etiquetaTipoPago(tipoPago)}</span>
-                    </div>
-                </div>
+                        </div>`;
 
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Producto</th>
-                            <th class="text-right">Cantidad</th>
-                            <th class="text-right">Precio Unit.</th>
-                            <th class="text-right">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${itemsValidos.map(item => `
-                            <tr>
-                                <td>${item.producto?.codigo || '-'}</td>
-                                <td>${item.producto?.nombre || '-'}</td>
-                                <td class="text-right">${item.cantidad}</td>
-                                <td class="text-right">$${item.precio.toFixed(2)}</td>
-                                <td class="text-right">$${item.subtotal.toFixed(2)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+    const montoTarjetaNum = parseFloat(venta.monto_tarjeta || 0) || 0;
+    const montoEfectivoNum = parseFloat(venta.monto_efectivo || 0) || 0;
+    const montoTransferenciaNum = parseFloat(venta.monto_transferencia || 0) || 0;
+    const cuotasNum = venta.cuotas != null && venta.cuotas !== '' ? parseInt(venta.cuotas, 10) : 0;
+    const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
+    const restante = totalFinal - sumaMontos;
 
-                <div class="totals">
-                    <div class="total-row">
-                        <span>Subtotal:</span>
-                        <span>$${totalBruto.toFixed(2)}</span>
-                    </div>
-                    ${descuentoNum > 0 ? `
-                        <div class="total-row">
-                            <span>Descuento:</span>
-                            <span>-$${descuentoNum.toFixed(2)}</span>
-                        </div>
-                    ` : ''}
-                    <div class="total-row total-final">
-                        <span>TOTAL:</span>
-                        <span>$${totalFinal.toFixed(2)}</span>
-                    </div>
-                </div>
-
-                ${tipoPago === 'mixto' ? (() => {
-                    const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
-                    const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
-                    const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
-                    const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
-                    const restante = totalFinal - sumaMontos;
-                    
-                    if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || montoTransferenciaNum > 0 || (cuotas && parseFloat(cuotas) > 0)) {
-                        return `
+    let bloquePagoExtra = '';
+    if (tipoPagoV === 'mixto') {
+        if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || montoTransferenciaNum > 0 || cuotasNum > 0) {
+            bloquePagoExtra = `
                             <div class="totals" style="margin-top: 2mm; padding-top: 2mm; border-top: 1px dashed #333;">
                                 <h3 style="margin: 0 0 1mm 0; font-size: 9px; font-weight: bold; color: #333;">Detalle de Pago:</h3>
                                 ${montoEfectivoNum > 0 ? `
@@ -466,36 +259,88 @@ export default function Ventas() {
                                         <span>$${montoTransferenciaNum.toFixed(2)}</span>
                                     </div>
                                 ` : ''}
-                                ${cuotas && parseFloat(cuotas) > 0 ? `
+                                ${cuotasNum > 0 ? `
                                     <div class="total-row">
                                         <span>Cuotas:</span>
-                                        <span>${cuotas} cuota(s)</span>
+                                        <span>${cuotasNum} cuota(s)</span>
                                     </div>
-                                    ${restante > 0 ? `
+                                    ${restante > 0.01 ? `
                                         <div class="total-row">
                                             <span>Monto en cuotas:</span>
                                             <span>$${restante.toFixed(2)}</span>
                                         </div>
                                     ` : ''}
                                 ` : ''}
-                            </div>
-                        `;
-                    }
-                    return '';
-                })() : ''}
-
-                ${tipoPago === 'tarjeta' && cuotas && parseFloat(cuotas) > 0 ? `
+                            </div>`;
+        }
+    } else if (tipoPagoV === 'tarjeta' && cuotasNum > 0) {
+        bloquePagoExtra = `
                     <div class="totals" style="margin-top: 2mm; padding-top: 2mm; border-top: 1px dashed #333;">
                         <div class="total-row">
                             <span>Cuotas:</span>
-                            <span>${cuotas} cuota(s) de $${(totalFinal / parseFloat(cuotas)).toFixed(2)}</span>
+                            <span>${cuotasNum} cuota(s) de $${(totalFinal / cuotasNum).toFixed(2)}</span>
                         </div>
+                    </div>`;
+    }
+
+    return `<!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Danielles</title>
+                ${TICKET_THERMAL_STYLES}
+            </head>
+            <body>
+                <div class="header">
+                    <h1>Danielles</h1>
+                    <p>${venta.numero_factura ? `Nº ${venta.numero_factura} · ` : ''}Fecha: ${fechaStr}</p>
+                </div>
+
+                <div class="info-section">
+                    ${bloqueCliente}
+                    <div class="info-row">
+                        <span class="info-label">Tipo de Pago:</span>
+                        <span class="info-value">${etiquetaTipoPago(tipoPagoV)}</span>
                     </div>
-                ` : ''}
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th class="text-right">Cantidad</th>
+                            <th class="text-right">Precio Unit.</th>
+                            <th class="text-right">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsRows}
+                    </tbody>
+                </table>
+
+                <div class="totals">
+                    <div class="total-row">
+                        <span>Subtotal:</span>
+                        <span>$${totalBruto.toFixed(2)}</span>
+                    </div>
+                    ${descuentoNum > 0 ? `
+                        <div class="total-row">
+                            <span>Descuento:</span>
+                            <span>-$${descuentoNum.toFixed(2)}</span>
+                        </div>
+                    ` : ''}
+                    <div class="total-row total-final">
+                        <span>TOTAL:</span>
+                        <span>$${totalFinal.toFixed(2)}</span>
+                    </div>
+                </div>
+
+                ${bloquePagoExtra}
 
                 <div class="footer">
-                    <p>Danielles. Los precios pueden variar sin previo aviso.</p>
-                    <p>Válido por 30 días desde la fecha de emisión.</p>
+                    <p>Danielles. Venta registrada en el sistema.</p>
+                    <p>Conserve este comprobante.</p>
                 </div>
 
                 <div class="button-container no-print">
@@ -503,71 +348,204 @@ export default function Ventas() {
                     <button onclick="window.close()" style="background-color: #6c757d; margin-left: 10px;">Cerrar</button>
                 </div>
             </body>
-            </html>
-        `;
+            </html>`;
+}
 
-        const ventanaImpresion = window.open('', '_blank');
-        if (!ventanaImpresion) {
-            setError('El navegador bloqueó la ventana emergente. Permita ventanas para imprimir.');
-            return;
+export default function Ventas() {
+    const navigate = useNavigate();
+    const [ventas, setVentas] = useState([]);
+    const [clientes, setClientes] = useState([]);
+    const [productos, setProductos] = useState([]);
+    const [cajasAbiertas, setCajasAbiertas] = useState([]);
+    const [cajaSeleccionada, setCajaSeleccionada] = useState(null);
+
+    const [loadingLista, setLoadingLista] = useState(true);
+    const [loadingFormDatos, setLoadingFormDatos] = useState(true);
+    const [loadingSubmit, setLoadingSubmit] = useState(false);
+
+    const [showModal, setShowModal] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    const [clienteId, setClienteId] = useState('');
+    const [tipoPago, setTipoPago] = useState('efectivo');
+    const [montoTarjeta, setMontoTarjeta] = useState('');
+    const [montoEfectivo, setMontoEfectivo] = useState('');
+    const [montoTransferencia, setMontoTransferencia] = useState('');
+    const [cuotas, setCuotas] = useState('');
+    const [recargoCuotas, setRecargoCuotas] = useState('');
+    const [pagoCon, setPagoCon] = useState('');
+    const [descuento, setDescuento] = useState(0);
+    const [items, setItems] = useState([
+        { producto_id: '', cantidad: 1 },
+    ]);
+    const [adjuntos, setAdjuntos] = useState([]);
+    const [busquedaProducto, setBusquedaProducto] = useState({});
+
+    useEffect(() => {
+        fetchVentas();
+        fetchDatosFormulario();
+    }, []);
+
+    const fetchVentas = async () => {
+        try {
+            setLoadingLista(true);
+            const response = await axios.get('/ventas');
+            setVentas(response.data.data || response.data);
+        } catch (error) {
+            console.error('Error al cargar ventas:', error);
+        } finally {
+            setLoadingLista(false);
         }
-        ventanaImpresion.document.open();
-        ventanaImpresion.document.write(contenidoHTML);
-        ventanaImpresion.document.close();
-        setTimeout(() => {
-            try {
-                ventanaImpresion.focus();
-                ventanaImpresion.print();
-            } catch (e) {
-                /* ignore */
-            }
-        }, 450);
     };
 
-    const handleSubmitVenta = async (e) => {
-        e.preventDefault();
+    const fetchDatosFormulario = async () => {
         try {
-            setError('');
-            setSuccess('');
+            setLoadingFormDatos(true);
 
-            if (!cajaSeleccionada) {
-                setError('Debe seleccionar una caja abierta para registrar una venta.');
-                return;
+            const [productosRes, cajasRes] = await Promise.all([
+                axios.get('/productos', { params: { all: 'true' } }),
+                axios.get('cajas', { params: { estado: 'abierta' } }),
+            ]);
+
+            let clientesData = [];
+            try {
+                const clientesRes = await axios.get('/clientes');
+                clientesData = clientesRes.data?.data || clientesRes.data || [];
+            } catch {
+                clientesData = [];
             }
 
-            const itemsValidos = items
-                .filter(item => item.producto_id && (parseInt(item.cantidad) || 0) > 0)
-                .map(item => ({
-                    producto_id: item.producto_id,
-                    cantidad: parseInt(item.cantidad) || 0,
-                }));
+            const productosData = productosRes.data?.data || productosRes.data || [];
+            const cajasData = cajasRes.data?.data || cajasRes.data || [];
 
-            if (itemsValidos.length === 0) {
-                setError('Debe agregar al menos un producto con cantidad mayor a 0.');
-                return;
+            setClientes(Array.isArray(clientesData) ? clientesData.filter(c => c.activo !== false) : []);
+            setProductos(Array.isArray(productosData) ? productosData.filter(p => p.activo !== false) : []);
+            const cajasOpen = Array.isArray(cajasData) ? cajasData.filter(c => c.estado === 'abierta') : [];
+            setCajasAbiertas(cajasOpen);
+            // Seleccionar la primera caja abierta por defecto si hay alguna
+            if (cajasOpen.length > 0 && !cajaSeleccionada) {
+                setCajaSeleccionada(cajasOpen[0]);
+            } else if (cajasOpen.length === 0) {
+                setCajaSeleccionada(null);
             }
+        } catch (error) {
+            console.error('Error al cargar datos para nueva venta:', error);
+            setError('Error al cargar datos para nueva venta. Verifica la conexión o que exista una caja abierta.');
+        } finally {
+            setLoadingFormDatos(false);
+        }
+    };
 
-            if (tipoPago === 'cuenta_corriente' && !clienteId) {
-                setError('En cuenta corriente debe seleccionar un cliente.');
-                return;
+    const resetForm = () => {
+        setClienteId('');
+        setTipoPago('efectivo');
+        setMontoTarjeta('');
+        setMontoEfectivo('');
+        setMontoTransferencia('');
+        setCuotas('');
+        setRecargoCuotas('');
+        setPagoCon('');
+        setDescuento(0);
+        setItems([{ producto_id: '', cantidad: 1 }]);
+        setAdjuntos([]);
+        setBusquedaProducto({});
+        setError('');
+    };
+
+    const handleAddItem = () => {
+        setItems([...items, { producto_id: '', cantidad: 1 }]);
+    };
+
+    const handleRemoveItem = (index) => {
+        if (items.length === 1) return;
+        const nuevos = items.filter((_, i) => i !== index);
+        setItems(nuevos);
+    };
+
+    const handleChangeItem = (index, field, value) => {
+        const nuevos = [...items];
+        nuevos[index] = { ...nuevos[index], [field]: field === 'cantidad' ? parseInt(value) || 0 : value };
+        setItems(nuevos);
+    };
+
+    const handleAdjuntosChange = (e) => {
+        const files = Array.from(e.target.files || []);
+        setAdjuntos(files);
+    };
+
+    const obtenerProducto = (id) => productos.find(p => String(p.id) === String(id));
+
+    const filtrarProductos = (index) => {
+        const busqueda = busquedaProducto[index] || '';
+        if (!busqueda) return productos;
+        
+        const busquedaLower = busqueda.toLowerCase();
+        return productos.filter(p => 
+            p.nombre?.toLowerCase().includes(busquedaLower) ||
+            p.codigo?.toLowerCase().includes(busquedaLower) ||
+            p.descripcion?.toLowerCase().includes(busquedaLower)
+        );
+    };
+
+    const calcularSubtotal = (item) => {
+        const prod = obtenerProducto(item.producto_id);
+        if (!prod) return 0;
+        return (parseFloat(prod.precio_venta || 0) * (parseInt(item.cantidad) || 0)) || 0;
+    };
+
+    const calcularTotal = () => {
+        const totalBruto = items.reduce((acc, item) => acc + calcularSubtotal(item), 0);
+        return totalBruto - (parseFloat(descuento) || 0);
+    };
+
+    const totalFinalCalculadora = calcularTotal();
+    const montoObjetivoEfectivo = tipoPago === 'mixto'
+        ? (parseFloat(montoEfectivo) || 0)
+        : (tipoPago === 'efectivo' ? totalFinalCalculadora : 0);
+    const pagoConNumero = parseFloat(pagoCon) || 0;
+    const vueltoCalculado = pagoConNumero - montoObjetivoEfectivo;
+
+    const persistirVentaDesdeFormulario = async () => {
+        setError('');
+        setSuccess('');
+
+        if (!cajaSeleccionada) {
+            setError('Debe seleccionar una caja abierta para registrar una venta.');
+            return null;
+        }
+
+        const itemsValidos = items
+            .filter(item => item.producto_id && (parseInt(item.cantidad) || 0) > 0)
+            .map(item => ({
+                producto_id: item.producto_id,
+                cantidad: parseInt(item.cantidad) || 0,
+            }));
+
+        if (itemsValidos.length === 0) {
+            setError('Debe agregar al menos un producto con cantidad mayor a 0.');
+            return null;
+        }
+
+        if (tipoPago === 'cuenta_corriente' && !clienteId) {
+            setError('En cuenta corriente debe seleccionar un cliente.');
+            return null;
+        }
+
+        const totalFinal = calcularTotal();
+        if (tipoPago === 'mixto') {
+            const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
+            const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
+            const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
+            const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
+            if (Math.abs(sumaMontos - totalFinal) > 0.01) {
+                setError('La suma de efectivo, tarjeta y transferencia debe ser igual al total de la venta.');
+                return null;
             }
+        }
 
-            setLoadingSubmit(true);
-
-            const totalFinal = calcularTotal();
-            if (tipoPago === 'mixto') {
-                const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
-                const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
-                const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
-                const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
-                if (Math.abs(sumaMontos - totalFinal) > 0.01) {
-                    setError('La suma de efectivo, tarjeta y transferencia debe ser igual al total de la venta.');
-                    setLoadingSubmit(false);
-                    return;
-                }
-            }
-
-            // 1) Crear venta (JSON)
+        setLoadingSubmit(true);
+        try {
             const payload = {
                 caja_id: cajaSeleccionada.id,
                 cliente_id: clienteId || null,
@@ -576,7 +554,6 @@ export default function Ventas() {
                 items: itemsValidos,
             };
 
-            // Agregar campos de pago mixto si aplica
             if (tipoPago === 'mixto') {
                 payload.monto_tarjeta = parseFloat(montoTarjeta) || 0;
                 payload.monto_efectivo = parseFloat(montoEfectivo) || 0;
@@ -594,36 +571,89 @@ export default function Ventas() {
             const ventaRes = await axios.post('/ventas', payload);
             const ventaCreada = ventaRes.data;
 
-            // 2) Adjuntar archivos si hay
             if (adjuntos.length > 0 && ventaCreada?.id) {
                 const formData = new FormData();
                 adjuntos.forEach((file) => {
                     formData.append('adjuntos[]', file);
                 });
-
                 await axios.post(`/ventas/${ventaCreada.id}/adjuntos`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
             }
 
-            setSuccess('Venta registrada correctamente');
-            setShowModal(false);
-            resetForm();
-            fetchVentas();
-
-            // Ir al detalle de la venta recién creada
-            if (ventaCreada?.id) {
-                navigate(`/ventas/${ventaCreada.id}`);
-            }
-
-            setTimeout(() => setSuccess(''), 3000);
+            return ventaCreada;
         } catch (error) {
             console.error('Error al registrar venta:', error);
             const errorMessage = error.response?.data?.message || 'Error al registrar la venta. Verifique los datos.';
             setError(errorMessage);
+            return null;
         } finally {
             setLoadingSubmit(false);
         }
+    };
+
+    const imprimirPresupuesto = async () => {
+        const ventaGuardada = await persistirVentaDesdeFormulario();
+        if (!ventaGuardada) {
+            return;
+        }
+
+        const contenidoHTML = construirHtmlTicketDesdeVentaGuardada(ventaGuardada);
+
+        const ventanaImpresion = window.open('', '_blank');
+        if (!ventanaImpresion) {
+            setError(
+                'La venta ya quedó registrada, pero el navegador bloqueó la ventana para imprimir. Permita ventanas emergentes e intente imprimir desde el detalle de la venta si hace falta.'
+            );
+            setSuccess(`Venta ${ventaGuardada.numero_factura || ''} guardada.`);
+            setShowModal(false);
+            resetForm();
+            fetchVentas();
+            if (ventaGuardada?.id) {
+                navigate(`/ventas/${ventaGuardada.id}`);
+            }
+            setTimeout(() => setSuccess(''), 5000);
+            return;
+        }
+        ventanaImpresion.document.open();
+        ventanaImpresion.document.write(contenidoHTML);
+        ventanaImpresion.document.close();
+        setTimeout(() => {
+            try {
+                ventanaImpresion.focus();
+                ventanaImpresion.print();
+            } catch (e) {
+                /* ignore */
+            }
+        }, 450);
+
+        setSuccess('Venta registrada. Se abrió el ticket para imprimir.');
+        setShowModal(false);
+        resetForm();
+        fetchVentas();
+        if (ventaGuardada?.id) {
+            navigate(`/ventas/${ventaGuardada.id}`);
+        }
+        setTimeout(() => setSuccess(''), 4000);
+    };
+
+    const handleSubmitVenta = async (e) => {
+        e.preventDefault();
+        const ventaCreada = await persistirVentaDesdeFormulario();
+        if (!ventaCreada) {
+            return;
+        }
+
+        setSuccess('Venta registrada correctamente');
+        setShowModal(false);
+        resetForm();
+        fetchVentas();
+
+        if (ventaCreada?.id) {
+            navigate(`/ventas/${ventaCreada.id}`);
+        }
+
+        setTimeout(() => setSuccess(''), 3000);
     };
 
     const ventasListRaw = Array.isArray(ventas) ? ventas : (ventas.data || []);
@@ -828,6 +858,9 @@ export default function Ventas() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Pago</label>
+                                    <p className="text-xs text-gray-500 mb-1">
+                                        Se guarda al confirmar la venta o al usar el botón verde de imprimir (ambos registran la venta).
+                                    </p>
                                     <select
                                         value={tipoPago}
                                         onChange={(e) => {
@@ -1066,10 +1099,11 @@ export default function Ventas() {
                                         <button
                                             type="button"
                                             onClick={imprimirPresupuesto}
-                                            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 flex items-center gap-1"
-                                            title="Imprimir presupuesto con los productos actuales"
+                                            disabled={loadingSubmit}
+                                            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            title="Guarda la venta en el sistema y abre el comprobante para imprimir"
                                         >
-                                            🖨️ Imprimir Presupuesto
+                                            {loadingSubmit ? 'Guardando…' : '🖨️ Imprimir y guardar venta'}
                                         </button>
                                         <button
                                             type="button"
@@ -1269,10 +1303,11 @@ export default function Ventas() {
                                 <button
                                     type="button"
                                     onClick={imprimirPresupuesto}
-                                    className="w-full sm:w-auto px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center justify-center gap-2"
-                                    title="Imprimir presupuesto con los productos actuales"
+                                    disabled={loadingSubmit}
+                                    className="w-full sm:w-auto px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Guarda la venta en el sistema y abre el comprobante para imprimir"
                                 >
-                                    🖨️ Imprimir Presupuesto
+                                    {loadingSubmit ? 'Guardando…' : '🖨️ Imprimir y guardar venta'}
                                 </button>
                                 <button
                                     type="button"

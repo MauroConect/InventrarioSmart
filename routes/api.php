@@ -17,6 +17,7 @@ use App\Http\Controllers\ChequeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ConfiguracionFiscalController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\AuditoriaController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -100,6 +101,8 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     });
 
     Route::middleware('permission:admin')->group(function () {
+        Route::get('auditoria/timeline', [AuditoriaController::class, 'timeline'])->name('api.auditoria.timeline');
+
         Route::apiResource('usuarios', UserController::class)->only(['index', 'store', 'update', 'destroy']);
 
         Route::get('configuracion-fiscal', [ConfiguracionFiscalController::class, 'show']);

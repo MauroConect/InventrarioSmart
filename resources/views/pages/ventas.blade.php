@@ -85,7 +85,7 @@
     </div>
 
     <!-- Modal Nueva Venta -->
-    <div x-show="showModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" @click.away="closeModal()">
+    <div x-show="showModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" @click.self="closeModal()">
         <div class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="sticky top-0 bg-white border-b px-6 py-4">
                 <h3 class="text-xl font-bold">Nueva Venta</h3>
@@ -106,6 +106,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Pago *</label>
+                        <p class="text-xs text-gray-500 mb-1">Se guarda al confirmar o al imprimir el ticket (el botón verde registra la venta).</p>
                         <select x-model="tipoPago" @change="pagoCon = ''" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                             <option value="efectivo">Efectivo</option>
                             <option value="tarjeta">Tarjeta</option>
@@ -144,8 +145,9 @@
                     <div class="flex justify-between items-center mb-4">
                         <h4 class="font-semibold">Helados</h4>
                         <div class="flex gap-2">
-                            <button type="button" @click="imprimirPresupuesto()" class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1">
-                                🖨️ Imprimir Presupuesto
+                            <button type="button" @click="imprimirPresupuesto()" :disabled="loadingSubmit" class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <span x-show="!loadingSubmit">🖨️ Imprimir y guardar venta</span>
+                                <span x-show="loadingSubmit" x-cloak>Guardando…</span>
                             </button>
                             <button type="button" @click="agregarItem()" class="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300">+ Agregar</button>
                         </div>
@@ -262,8 +264,9 @@
                 </div>
 
                 <div class="flex justify-end gap-2 pt-4 border-t">
-                    <button type="button" @click="imprimirPresupuesto()" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2">
-                        🖨️ Imprimir Presupuesto
+                    <button type="button" @click="imprimirPresupuesto()" :disabled="loadingSubmit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span x-show="!loadingSubmit">🖨️ Imprimir y guardar venta</span>
+                        <span x-show="loadingSubmit" x-cloak>Guardando…</span>
                     </button>
                     <button type="button" @click="closeModal()" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
                     <button type="submit" :disabled="loadingSubmit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
@@ -278,6 +281,355 @@
 
 @push('scripts')
 <script>
+const TIPO_PAGO_LABELS = {
+    efectivo: 'Efectivo',
+    tarjeta: 'Tarjeta',
+    transferencia: 'Transferencia',
+    cuenta_corriente: 'Cuenta Corriente',
+    mixto: 'Mixto',
+};
+
+function etiquetaTipoPagoTicket(tipo) {
+    return TIPO_PAGO_LABELS[tipo] ?? tipo ?? '-';
+}
+
+const TICKET_THERMAL_STYLES = `
+                <style>
+                    * { box-sizing: border-box; }
+                    @media print {
+                        @page {
+                            size: auto;
+                            margin: 3mm;
+                        }
+                        * {
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                        }
+                        html, body {
+                            width: auto !important;
+                            max-width: 220px !important;
+                            margin: 0 auto !important;
+                            padding: 0 !important;
+                            background: #fff !important;
+                            color: #000 !important;
+                        }
+                        .header h1, .header p, .info-label, .info-value,
+                        th, td, .total-row, .total-final, .footer, .footer p {
+                            color: #000 !important;
+                        }
+                        .info-row, .total-row {
+                            display: table !important;
+                            width: 100% !important;
+                        }
+                        .info-row .info-label, .info-row .info-value,
+                        .total-row > span {
+                            display: table-cell !important;
+                            vertical-align: top !important;
+                        }
+                        .info-row .info-value, .total-row > span:last-child {
+                            text-align: right !important;
+                        }
+                        .no-print {
+                            display: none !important;
+                        }
+                    }
+                    html, body {
+                        margin: 0;
+                        padding: 0;
+                    }
+                    body {
+                        font-family: Arial, Helvetica, sans-serif;
+                        max-width: 48mm;
+                        width: 100%;
+                        margin: 0 auto;
+                        padding: 2mm;
+                        font-size: 10px;
+                        line-height: 1.25;
+                        background: #fff;
+                        color: #000;
+                    }
+                    .header {
+                        text-align: center;
+                        border-bottom: 1px dashed #333;
+                        padding-bottom: 2mm;
+                        margin-bottom: 2mm;
+                    }
+                    .header h1 {
+                        margin: 0;
+                        font-size: 12px;
+                        color: #333;
+                    }
+                    .header p {
+                        margin: 2px 0;
+                        color: #666;
+                        font-size: 9px;
+                    }
+                    .info-section {
+                        margin-bottom: 2mm;
+                    }
+                    .info-row {
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 1mm;
+                        margin-bottom: 1mm;
+                        font-size: 9px;
+                    }
+                    .info-label {
+                        font-weight: bold;
+                        color: #333;
+                        flex-shrink: 0;
+                    }
+                    .info-value {
+                        color: #666;
+                        text-align: right;
+                        max-width: 28mm;
+                        word-break: break-word;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 2mm 0;
+                        table-layout: fixed;
+                    }
+                    th {
+                        border-bottom: 1px dashed #333;
+                        padding: 2px 0;
+                        text-align: left;
+                        font-size: 8px;
+                        color: #333;
+                    }
+                    td {
+                        padding: 1px 0;
+                        font-size: 8px;
+                        word-break: break-word;
+                        vertical-align: top;
+                    }
+                    .text-right {
+                        text-align: right;
+                    }
+                    .totals {
+                        margin-top: 2mm;
+                        padding-top: 2mm;
+                        border-top: 1px dashed #333;
+                    }
+                    .total-row {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-bottom: 1mm;
+                        font-size: 9px;
+                        gap: 1mm;
+                    }
+                    .total-final {
+                        font-size: 10px;
+                        font-weight: bold;
+                        color: #333;
+                        margin-top: 1mm;
+                        padding-top: 1mm;
+                        border-top: 1px solid #ddd;
+                    }
+                    .footer {
+                        margin-top: 3mm;
+                        text-align: center;
+                        color: #666;
+                        font-size: 7px;
+                        border-top: 1px dashed #ddd;
+                        padding-top: 2mm;
+                        line-height: 1.3;
+                    }
+                    .button-container {
+                        text-align: center;
+                        margin: 5mm 0 0;
+                    }
+                    button {
+                        background-color: #007bff;
+                        color: white;
+                        border: none;
+                        padding: 4px 8px;
+                        font-size: 10px;
+                        cursor: pointer;
+                        border-radius: 4px;
+                    }
+                    button:hover {
+                        background-color: #0056b3;
+                    }
+                </style>
+`;
+
+function construirHtmlTicketDesdeVentaGuardada(venta) {
+    const fechaStr = venta.fecha
+        ? new Date(venta.fecha).toLocaleString('es-AR')
+        : new Date().toLocaleString('es-AR');
+    const clienteSeleccionado = venta.cliente;
+    const totalBruto = parseFloat(venta.total || 0) || 0;
+    const descuentoNum = parseFloat(venta.descuento || 0) || 0;
+    const totalFinal =
+        parseFloat(venta.total_final != null ? venta.total_final : totalBruto - descuentoNum) || 0;
+    const tipoPagoV = venta.tipo_pago || 'efectivo';
+
+    const itemsRows = (venta.items || [])
+        .map((item) => {
+            const p = item.producto;
+            const cant = parseInt(item.cantidad, 10) || 0;
+            const pu = parseFloat(item.precio_unitario || 0) || 0;
+            const sub = parseFloat(item.subtotal || 0) || 0;
+            return `
+                            <tr>
+                                <td>${p?.codigo || '-'}</td>
+                                <td>${p?.nombre || '-'}</td>
+                                <td class="text-right">${cant}</td>
+                                <td class="text-right">${pu.toFixed(2)}</td>
+                                <td class="text-right">${sub.toFixed(2)}</td>
+                            </tr>`;
+        })
+        .join('');
+
+    const bloqueCliente = clienteSeleccionado
+        ? `
+                        <div class="info-row">
+                            <span class="info-label">Cliente:</span>
+                            <span class="info-value">${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido || ''}</span>
+                        </div>
+                        ${clienteSeleccionado.dni ? `
+                            <div class="info-row">
+                                <span class="info-label">DNI:</span>
+                                <span class="info-value">${clienteSeleccionado.dni}</span>
+                            </div>
+                        ` : ''}
+                        ${clienteSeleccionado.telefono ? `
+                            <div class="info-row">
+                                <span class="info-label">Teléfono:</span>
+                                <span class="info-value">${clienteSeleccionado.telefono}</span>
+                            </div>
+                        ` : ''}`
+        : `
+                        <div class="info-row">
+                            <span class="info-label">Cliente:</span>
+                            <span class="info-value">Consumidor Final</span>
+                        </div>`;
+
+    const montoTarjetaNum = parseFloat(venta.monto_tarjeta || 0) || 0;
+    const montoEfectivoNum = parseFloat(venta.monto_efectivo || 0) || 0;
+    const montoTransferenciaNum = parseFloat(venta.monto_transferencia || 0) || 0;
+    const cuotasNum = venta.cuotas != null && venta.cuotas !== '' ? parseInt(venta.cuotas, 10) : 0;
+    const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
+    const restante = totalFinal - sumaMontos;
+
+    let bloquePagoExtra = '';
+    if (tipoPagoV === 'mixto') {
+        if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || montoTransferenciaNum > 0 || cuotasNum > 0) {
+            bloquePagoExtra = `
+                            <div class="totals" style="margin-top: 2mm; padding-top: 2mm; border-top: 1px dashed #333;">
+                                <h3 style="margin: 0 0 1mm 0; font-size: 9px; font-weight: bold; color: #333;">Detalle de Pago:</h3>
+                                ${montoEfectivoNum > 0 ? `
+                                    <div class="total-row">
+                                        <span>Efectivo:</span>
+                                        <span>${montoEfectivoNum.toFixed(2)}</span>
+                                    </div>
+                                ` : ''}
+                                ${montoTarjetaNum > 0 ? `
+                                    <div class="total-row">
+                                        <span>Tarjeta:</span>
+                                        <span>${montoTarjetaNum.toFixed(2)}</span>
+                                    </div>
+                                ` : ''}
+                                ${montoTransferenciaNum > 0 ? `
+                                    <div class="total-row">
+                                        <span>Transferencia:</span>
+                                        <span>${montoTransferenciaNum.toFixed(2)}</span>
+                                    </div>
+                                ` : ''}
+                                ${cuotasNum > 0 ? `
+                                    <div class="total-row">
+                                        <span>Cuotas:</span>
+                                        <span>${cuotasNum} cuota(s)</span>
+                                    </div>
+                                    ${restante > 0.01 ? `
+                                        <div class="total-row">
+                                            <span>Monto en cuotas:</span>
+                                            <span>${restante.toFixed(2)}</span>
+                                        </div>
+                                    ` : ''}
+                                ` : ''}
+                            </div>`;
+        }
+    } else if (tipoPagoV === 'tarjeta' && cuotasNum > 0) {
+        bloquePagoExtra = `
+                    <div class="totals" style="margin-top: 2mm; padding-top: 2mm; border-top: 1px dashed #333;">
+                        <div class="total-row">
+                            <span>Cuotas:</span>
+                            <span>${cuotasNum} cuota(s) de ${(totalFinal / cuotasNum).toFixed(2)}</span>
+                        </div>
+                    </div>`;
+    }
+
+    return `<!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Danielles</title>
+                ${TICKET_THERMAL_STYLES}
+            </head>
+            <body>
+                <div class="header">
+                    <h1>Danielles</h1>
+                    <p>${venta.numero_factura ? `Nº ${venta.numero_factura} · ` : ''}Fecha: ${fechaStr}</p>
+                </div>
+
+                <div class="info-section">
+                    ${bloqueCliente}
+                    <div class="info-row">
+                        <span class="info-label">Tipo de Pago:</span>
+                        <span class="info-value">${etiquetaTipoPagoTicket(tipoPagoV)}</span>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th class="text-right">Cantidad</th>
+                            <th class="text-right">Precio Unit.</th>
+                            <th class="text-right">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsRows}
+                    </tbody>
+                </table>
+
+                <div class="totals">
+                    <div class="total-row">
+                        <span>Subtotal:</span>
+                        <span>${totalBruto.toFixed(2)}</span>
+                    </div>
+                    ${descuentoNum > 0 ? `
+                        <div class="total-row">
+                            <span>Descuento:</span>
+                            <span>-${descuentoNum.toFixed(2)}</span>
+                        </div>
+                    ` : ''}
+                    <div class="total-row total-final">
+                        <span>TOTAL:</span>
+                        <span>${totalFinal.toFixed(2)}</span>
+                    </div>
+                </div>
+
+                ${bloquePagoExtra}
+
+                <div class="footer">
+                    <p>Danielles. Venta registrada en el sistema.</p>
+                    <p>Conserve este comprobante.</p>
+                </div>
+
+                <div class="button-container no-print">
+                    <button onclick="window.print()">Imprimir</button>
+                    <button onclick="window.close()" style="background-color: #6c757d; margin-left: 10px;">Cerrar</button>
+                </div>
+            </body>
+            </html>`;
+}
+
 function ventas() {
     return {
         ventas: [],
@@ -301,6 +653,11 @@ function ventas() {
         items: [{ producto_id: '', cantidad: 1 }],
         busquedaProducto: {},
         adjuntos: [],
+
+        authHeaders() {
+            const t = localStorage.getItem('token');
+            return t ? { Authorization: 'Bearer ' + t } : {};
+        },
         
         async init() {
             await Promise.all([this.fetchVentas(), this.fetchDatosFormulario()]);
@@ -309,9 +666,8 @@ function ventas() {
         async fetchVentas() {
             try {
                 this.loadingLista = true;
-                const token = localStorage.getItem('token');
                 const response = await axios.get('/api/ventas', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: this.authHeaders()
                 });
                 const ventas = response.data?.data || response.data || [];
                 this.ventas = [...ventas].sort((a, b) => {
@@ -331,12 +687,11 @@ function ventas() {
         async fetchDatosFormulario() {
             try {
                 this.loadingFormDatos = true;
-                const token = localStorage.getItem('token');
-                const headers = { 'Authorization': `Bearer ${token}` };
+                const headers = this.authHeaders();
 
                 const [productosRes, cajasRes] = await Promise.all([
                     axios.get('/api/productos', { params: { all: 'true' }, headers }),
-                    axios.get(@json(rtrim(url('/api/cajas'), '/')), { params: { estado: 'abierta' } })
+                    axios.get(@json(rtrim(url('/api/cajas'), '/')), { params: { estado: 'abierta' }, headers })
                 ]);
 
                 let clientes = [];
@@ -402,336 +757,115 @@ function ventas() {
             return totalBruto - (parseFloat(this.descuento) || 0);
         },
 
+        async persistirVentaDesdeFormulario() {
+            if (!this.cajaSeleccionada) {
+                this.error = 'Debe seleccionar una caja';
+                return null;
+            }
+
+            const itemsValidos = this.items
+                .filter(item => item.producto_id && (parseInt(item.cantidad) || 0) > 0)
+                .map(item => ({
+                    producto_id: item.producto_id,
+                    cantidad: parseInt(item.cantidad) || 0,
+                }));
+
+            if (itemsValidos.length === 0) {
+                this.error = 'Debe agregar al menos un producto';
+                return null;
+            }
+
+            if (this.tipoPago === 'cuenta_corriente' && !this.clienteId) {
+                this.error = 'En cuenta corriente debe seleccionar un cliente.';
+                return null;
+            }
+
+            const totalVenta = this.calcularTotal();
+            if (this.tipoPago === 'mixto') {
+                const mt = parseFloat(this.montoTarjeta) || 0;
+                const me = parseFloat(this.montoEfectivo) || 0;
+                const mtr = parseFloat(this.montoTransferencia) || 0;
+                if (Math.abs(mt + me + mtr - totalVenta) > 0.01) {
+                    this.error = 'La suma de efectivo, tarjeta y transferencia debe ser igual al total de la venta.';
+                    return null;
+                }
+            }
+
+            this.loadingSubmit = true;
+            this.error = '';
+            this.success = '';
+            const headers = this.authHeaders();
+
+            try {
+                const payload = {
+                    caja_id: this.cajaSeleccionada,
+                    cliente_id: this.clienteId || null,
+                    tipo_pago: this.tipoPago,
+                    descuento: parseFloat(this.descuento) || 0,
+                    items: itemsValidos,
+                };
+
+                if (this.tipoPago === 'mixto') {
+                    payload.monto_tarjeta = parseFloat(this.montoTarjeta) || 0;
+                    payload.monto_efectivo = parseFloat(this.montoEfectivo) || 0;
+                    payload.monto_transferencia = parseFloat(this.montoTransferencia) || 0;
+                }
+
+                const response = await axios.post('/api/ventas', payload, {
+                    headers
+                });
+
+                if (this.adjuntos && this.adjuntos.length > 0 && response.data?.id) {
+                    try {
+                        const formData = new FormData();
+                        this.adjuntos.forEach((file) => {
+                            formData.append('adjuntos[]', file);
+                        });
+
+                        await axios.post(`/api/ventas/${response.data.id}/adjuntos`, formData, {
+                            headers: {
+                                ...headers,
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        });
+                    } catch (adjuntoError) {
+                        console.error('Error al subir adjuntos:', adjuntoError);
+                    }
+                }
+
+                return response.data;
+            } catch (error) {
+                this.error = error.response?.data?.message || 'Error al registrar la venta';
+                return null;
+            } finally {
+                this.loadingSubmit = false;
+            }
+        },
+
         etiquetaTipoPago(tipo) {
             const m = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', cuenta_corriente: 'Cuenta Corriente', mixto: 'Mixto' };
             return m[tipo] || tipo || '-';
         },
         
-        imprimirPresupuesto() {
-            const itemsValidos = this.items
-                .filter(item => item.producto_id && (parseInt(item.cantidad) || 0) > 0)
-                .map(item => {
-                    const prod = this.obtenerProducto(item.producto_id);
-                    return {
-                        producto: prod,
-                        cantidad: parseInt(item.cantidad) || 0,
-                        precio: parseFloat(prod?.precio_venta || 0),
-                        subtotal: this.calcularSubtotal(item)
-                    };
-                });
-
-            if (itemsValidos.length === 0) {
-                this.error = 'Debe agregar al menos un producto para imprimir el presupuesto.';
+        async imprimirPresupuesto() {
+            const ventaGuardada = await this.persistirVentaDesdeFormulario();
+            if (!ventaGuardada) {
                 return;
             }
 
-            const clienteSeleccionado = this.clienteId ? this.clientes.find(c => c.id === parseInt(this.clienteId)) : null;
-            const totalBruto = itemsValidos.reduce((acc, item) => acc + item.subtotal, 0);
-            const descuentoNum = parseFloat(this.descuento) || 0;
-            const totalFinal = totalBruto - descuentoNum;
-            const fechaActual = new Date().toLocaleString('es-AR');
-
-            // Crear contenido HTML para el presupuesto
-            const contenidoHTML = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>Danielles</title>
-                    <style>
-                        /* Ticket térmico: papel 58 mm, ancho útil ~48 mm */
-                        * { box-sizing: border-box; }
-                        @media print {
-                            /* size: 58mm rompe muchos drivers USB térmicos (página en blanco) */
-                            @page {
-                                size: auto;
-                                margin: 3mm;
-                            }
-                            * {
-                                -webkit-print-color-adjust: exact !important;
-                                print-color-adjust: exact !important;
-                            }
-                            html, body {
-                                width: auto !important;
-                                max-width: 220px !important;
-                                margin: 0 auto !important;
-                                padding: 0 !important;
-                                background: #fff !important;
-                                color: #000 !important;
-                            }
-                            .header h1, .header p, .info-label, .info-value,
-                            th, td, .total-row, .total-final, .footer, .footer p {
-                                color: #000 !important;
-                            }
-                            .info-row, .total-row {
-                                display: table !important;
-                                width: 100% !important;
-                            }
-                            .info-row .info-label, .info-row .info-value,
-                            .total-row > span {
-                                display: table-cell !important;
-                                vertical-align: top !important;
-                            }
-                            .info-row .info-value, .total-row > span:last-child {
-                                text-align: right !important;
-                            }
-                            .no-print {
-                                display: none !important;
-                            }
-                        }
-                        html, body {
-                            margin: 0;
-                            padding: 0;
-                        }
-                        body {
-                            font-family: Arial, Helvetica, sans-serif;
-                            max-width: 48mm;
-                            width: 100%;
-                            margin: 0 auto;
-                            padding: 2mm;
-                            font-size: 10px;
-                            line-height: 1.25;
-                            background: #fff;
-                            color: #000;
-                        }
-                        .header {
-                            text-align: center;
-                            border-bottom: 1px dashed #333;
-                            padding-bottom: 2mm;
-                            margin-bottom: 2mm;
-                        }
-                        .header h1 {
-                            margin: 0;
-                            font-size: 12px;
-                            color: #333;
-                        }
-                        .header p {
-                            margin: 2px 0;
-                            color: #666;
-                            font-size: 9px;
-                        }
-                        .info-section {
-                            margin-bottom: 2mm;
-                        }
-                        .info-row {
-                            display: flex;
-                            justify-content: space-between;
-                            gap: 1mm;
-                            margin-bottom: 1mm;
-                            font-size: 9px;
-                        }
-                        .info-label {
-                            font-weight: bold;
-                            color: #333;
-                            flex-shrink: 0;
-                        }
-                        .info-value {
-                            color: #666;
-                            text-align: right;
-                            max-width: 28mm;
-                            word-break: break-word;
-                        }
-                        table {
-                            width: 100%;
-                            border-collapse: collapse;
-                            margin: 2mm 0;
-                            table-layout: fixed;
-                        }
-                        th {
-                            border-bottom: 1px dashed #333;
-                            padding: 2px 0;
-                            text-align: left;
-                            font-size: 8px;
-                            color: #333;
-                        }
-                        td {
-                            padding: 1px 0;
-                            font-size: 8px;
-                            word-break: break-word;
-                            vertical-align: top;
-                        }
-                        .text-right {
-                            text-align: right;
-                        }
-                        .totals {
-                            margin-top: 2mm;
-                            padding-top: 2mm;
-                            border-top: 1px dashed #333;
-                        }
-                        .total-row {
-                            display: flex;
-                            justify-content: space-between;
-                            margin-bottom: 1mm;
-                            font-size: 10px;
-                        }
-                        .total-final {
-                            font-size: 11px;
-                            font-weight: bold;
-                            color: #333;
-                            margin-top: 1mm;
-                            padding-top: 1mm;
-                            border-top: 1px solid #ddd;
-                        }
-                        .footer {
-                            margin-top: 3mm;
-                            text-align: center;
-                            color: #666;
-                            font-size: 7px;
-                            border-top: 1px dashed #ddd;
-                            padding-top: 2mm;
-                            line-height: 1.3;
-                        }
-                        .button-container {
-                            text-align: center;
-                            margin: 5mm 0 0;
-                        }
-                        button {
-                            background-color: #007bff;
-                            color: white;
-                            border: none;
-                            padding: 4px 8px;
-                            font-size: 10px;
-                            cursor: pointer;
-                            border-radius: 4px;
-                        }
-                        button:hover {
-                            background-color: #0056b3;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <h1>Danielles</h1>
-                        <p>Fecha: ${fechaActual}</p>
-                    </div>
-
-                    <div class="info-section">
-                        ${clienteSeleccionado ? `
-                            <div class="info-row">
-                                <span class="info-label">Cliente:</span>
-                                <span class="info-value">${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido || ''}</span>
-                            </div>
-                            ${clienteSeleccionado.dni ? `
-                                <div class="info-row">
-                                    <span class="info-label">DNI:</span>
-                                    <span class="info-value">${clienteSeleccionado.dni}</span>
-                                </div>
-                            ` : ''}
-                            ${clienteSeleccionado.telefono ? `
-                                <div class="info-row">
-                                    <span class="info-label">Teléfono:</span>
-                                    <span class="info-value">${clienteSeleccionado.telefono}</span>
-                                </div>
-                            ` : ''}
-                        ` : `
-                            <div class="info-row">
-                                <span class="info-label">Cliente:</span>
-                                <span class="info-value">Consumidor Final</span>
-                            </div>
-                        `}
-                        <div class="info-row">
-                            <span class="info-label">Tipo de Pago:</span>
-                            <span class="info-value">${this.etiquetaTipoPago(this.tipoPago)}</span>
-                        </div>
-                    </div>
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Producto</th>
-                                <th class="text-right">Cantidad</th>
-                                <th class="text-right">Precio Unit.</th>
-                                <th class="text-right">Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${itemsValidos.map(item => `
-                                <tr>
-                                    <td>${item.producto?.codigo || '-'}</td>
-                                    <td>${item.producto?.nombre || '-'}</td>
-                                    <td class="text-right">${item.cantidad}</td>
-                                    <td class="text-right">$${item.precio.toFixed(2)}</td>
-                                    <td class="text-right">$${item.subtotal.toFixed(2)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-
-                    <div class="totals">
-                        <div class="total-row">
-                            <span>Subtotal:</span>
-                            <span>$${totalBruto.toFixed(2)}</span>
-                        </div>
-                        ${descuentoNum > 0 ? `
-                            <div class="total-row">
-                                <span>Descuento:</span>
-                                <span>-$${descuentoNum.toFixed(2)}</span>
-                            </div>
-                        ` : ''}
-                        <div class="total-row total-final">
-                            <span>TOTAL:</span>
-                            <span>$${totalFinal.toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    ${this.tipoPago === 'mixto' ? (() => {
-                        const montoTarjetaNum = parseFloat(this.montoTarjeta) || 0;
-                        const montoEfectivoNum = parseFloat(this.montoEfectivo) || 0;
-                        const montoTransferenciaNum = parseFloat(this.montoTransferencia) || 0;
-                        const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
-                        const restante = totalFinal - sumaMontos;
-                        
-                        if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || montoTransferenciaNum > 0) {
-                            return `
-                                <div class="totals" style="margin-top: 2mm; padding-top: 2mm; border-top: 1px dashed #333;">
-                                    <h3 style="margin: 0 0 1mm 0; font-size: 9px; font-weight: bold; color: #333;">Detalle de Pago:</h3>
-                                    ${montoEfectivoNum > 0 ? `
-                                        <div class="total-row">
-                                            <span>Efectivo:</span>
-                                            <span>$${montoEfectivoNum.toFixed(2)}</span>
-                                        </div>
-                                    ` : ''}
-                                    ${montoTarjetaNum > 0 ? `
-                                        <div class="total-row">
-                                            <span>Tarjeta:</span>
-                                            <span>$${montoTarjetaNum.toFixed(2)}</span>
-                                        </div>
-                                    ` : ''}
-                                    ${montoTransferenciaNum > 0 ? `
-                                        <div class="total-row">
-                                            <span>Transferencia:</span>
-                                            <span>$${montoTransferenciaNum.toFixed(2)}</span>
-                                        </div>
-                                    ` : ''}
-                                    ${restante > 0.01 ? `
-                                        <div class="total-row">
-                                            <span>Restante:</span>
-                                            <span>$${restante.toFixed(2)}</span>
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            `;
-                        }
-                        return '';
-                    })() : ''}
-
-                    <div class="footer">
-                        <p>Danielles. Los precios pueden variar sin previo aviso.</p>
-                        <p>Válido por 30 días desde la fecha de emisión.</p>
-                    </div>
-
-                    <div class="button-container no-print">
-                        <button onclick="window.print()">Imprimir</button>
-                        <button onclick="window.close()" style="background-color: #6c757d; margin-left: 10px;">Cerrar</button>
-                    </div>
-                </body>
-                </html>
-            `;
+            const contenidoHTML = construirHtmlTicketDesdeVentaGuardada(ventaGuardada);
 
             const ventanaImpresion = window.open('', '_blank');
             if (!ventanaImpresion) {
-                this.error = 'El navegador bloqueó la ventana emergente. Permita ventanas para imprimir.';
+                this.error = 'La venta ya quedó registrada, pero el navegador bloqueó la ventana para imprimir. Permita ventanas emergentes.';
+                this.success = 'Venta ' + (ventaGuardada.numero_factura || ('#' + ventaGuardada.id)) + ' guardada.';
+                await this.fetchVentas();
+                this.closeModal();
+                if (ventaGuardada.id) {
+                    setTimeout(() => {
+                        window.location.href = '/ventas/' + ventaGuardada.id;
+                    }, 400);
+                }
                 return;
             }
             ventanaImpresion.document.open();
@@ -743,8 +877,17 @@ function ventas() {
                     ventanaImpresion.print();
                 } catch (e) {}
             }, 450);
+
+            this.success = 'Venta registrada. Se abrió el ticket para imprimir.';
+            await this.fetchVentas();
+            this.closeModal();
+            if (ventaGuardada.id) {
+                setTimeout(() => {
+                    window.location.href = '/ventas/' + ventaGuardada.id;
+                }, 800);
+            }
         },
-        
+
         openModal() {
             if (this.cajasAbiertas.length === 0) return;
             this.showModal = true;
@@ -777,96 +920,19 @@ function ventas() {
         },
         
         async guardarVenta() {
-            if (!this.cajaSeleccionada) {
-                this.error = 'Debe seleccionar una caja';
-                return;
-            }
-            
-            const itemsValidos = this.items
-                .filter(item => item.producto_id && (parseInt(item.cantidad) || 0) > 0)
-                .map(item => ({
-                    producto_id: item.producto_id,
-                    cantidad: parseInt(item.cantidad) || 0,
-                }));
-            
-            if (itemsValidos.length === 0) {
-                this.error = 'Debe agregar al menos un producto';
+            const responseData = await this.persistirVentaDesdeFormulario();
+            if (!responseData) {
                 return;
             }
 
-            if (this.tipoPago === 'cuenta_corriente' && !this.clienteId) {
-                this.error = 'En cuenta corriente debe seleccionar un cliente.';
-                return;
-            }
+            this.success = 'Venta registrada correctamente';
+            await this.fetchVentas();
+            this.closeModal();
 
-            const totalVenta = this.calcularTotal();
-            if (this.tipoPago === 'mixto') {
-                const mt = parseFloat(this.montoTarjeta) || 0;
-                const me = parseFloat(this.montoEfectivo) || 0;
-                const mtr = parseFloat(this.montoTransferencia) || 0;
-                if (Math.abs(mt + me + mtr - totalVenta) > 0.01) {
-                    this.error = 'La suma de efectivo, tarjeta y transferencia debe ser igual al total de la venta.';
-                    return;
-                }
-            }
-            
-            try {
-                this.loadingSubmit = true;
-                this.error = '';
-                this.success = '';
-                const token = localStorage.getItem('token');
-                
-                const payload = {
-                    caja_id: this.cajaSeleccionada,
-                    cliente_id: this.clienteId || null,
-                    tipo_pago: this.tipoPago,
-                    descuento: parseFloat(this.descuento) || 0,
-                    items: itemsValidos,
-                };
-                
-                if (this.tipoPago === 'mixto') {
-                    payload.monto_tarjeta = parseFloat(this.montoTarjeta) || 0;
-                    payload.monto_efectivo = parseFloat(this.montoEfectivo) || 0;
-                    payload.monto_transferencia = parseFloat(this.montoTransferencia) || 0;
-                }
-                
-                const response = await axios.post('/api/ventas', payload, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                // Si hay adjuntos, subirlos después de crear la venta
-                if (this.adjuntos && this.adjuntos.length > 0 && response.data?.id) {
-                    try {
-                        const formData = new FormData();
-                        this.adjuntos.forEach((file) => {
-                            formData.append('adjuntos[]', file);
-                        });
-                        
-                        await axios.post(`/api/ventas/${response.data.id}/adjuntos`, formData, {
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'multipart/form-data'
-                            }
-                        });
-                    } catch (adjuntoError) {
-                        console.error('Error al subir adjuntos:', adjuntoError);
-                        // No fallar la venta si falla la subida de adjuntos
-                    }
-                }
-                
-                this.success = 'Venta registrada correctamente';
-                await this.fetchVentas();
-                this.closeModal();
-                
-                if (response.data?.id) {
-                    setTimeout(() => {
-                        window.location.href = `/ventas/${response.data.id}`;
-                    }, 1000);
-                }
-            } catch (error) {
-                this.error = error.response?.data?.message || 'Error al registrar la venta';
-            } finally {
-                this.loadingSubmit = false;
+            if (responseData.id) {
+                setTimeout(() => {
+                    window.location.href = `/ventas/${responseData.id}`;
+                }, 1000);
             }
         }
     }
