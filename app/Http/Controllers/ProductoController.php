@@ -7,6 +7,28 @@ use Illuminate\Http\Request;
 
 class ProductoController extends Controller
 {
+    /**
+     * Siguiente código interno incremental (prefijo INT + dígitos) para productos sin código de fábrica.
+     */
+    public function siguienteCodigoInterno()
+    {
+        $prefix = 'INT';
+        $prefixLen = strlen($prefix);
+        $maxNum = 0;
+
+        foreach (Producto::query()->where('codigo', 'like', $prefix.'%')->pluck('codigo') as $codigo) {
+            $suffix = substr((string) $codigo, $prefixLen);
+            if ($suffix !== '' && ctype_digit($suffix)) {
+                $maxNum = max($maxNum, (int) $suffix);
+            }
+        }
+
+        $next = $maxNum + 1;
+        $codigo = $prefix.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+
+        return response()->json(['codigo' => $codigo]);
+    }
+
     public function index(Request $request)
     {
         $query = Producto::with(['categoria', 'proveedor']);

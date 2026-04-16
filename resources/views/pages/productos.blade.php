@@ -164,7 +164,7 @@
                         <button type="button" @click="abrirEscanerCodigoProducto()" class="mt-2 w-full sm:w-auto px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-sm font-medium">
                             Escanear con cámara
                         </button>
-                        <p class="text-xs text-gray-500 mt-1">Leé el código de barras con el celular (HTTPS).</p>
+                        <p class="text-xs text-gray-500 mt-1">Se propone un código interno automático (INT…). Si el producto trae otro en la etiqueta, escanealo o escribilo y reemplaza este. La cámara requiere HTTPS.</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
@@ -407,11 +407,23 @@ function productos(canManage) {
             }
         },
         
-        openModal() {
+        async fetchSiguienteCodigoInterno() {
+            try {
+                const r = await axios.get('/api/productos/siguiente-codigo', { withCredentials: true });
+                return (r.data && r.data.codigo) ? String(r.data.codigo) : '';
+            } catch (e) {
+                console.error(e);
+                return '';
+            }
+        },
+
+        async openModal() {
             if (!this.canManage) return;
             this.editing = null;
+            const codigoSugerido = await this.fetchSiguienteCodigoInterno();
             this.formData = {
-                codigo: '', nombre: '', descripcion: '', precio_compra: 0, precio_venta: 0,
+                codigo: codigoSugerido,
+                nombre: '', descripcion: '', precio_compra: 0, precio_venta: 0,
                 stock_minimo: 0, stock_actual: 0, categoria_id: '', proveedor_id: '', activo: true,
                 tipo_venta: 'unidad', unidad_medida: 'u'
             };

@@ -93,6 +93,7 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     });
 
     Route::middleware('permission:productos.manage')->group(function () {
+        Route::get('productos/siguiente-codigo', [ProductoController::class, 'siguienteCodigoInterno'])->name('api.productos.siguiente-codigo');
         Route::post('productos', [ProductoController::class, 'store']);
         Route::put('productos/{producto}', [ProductoController::class, 'update']);
         Route::patch('productos/{producto}', [ProductoController::class, 'update']);
