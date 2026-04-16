@@ -539,6 +539,17 @@ function productos(canManage) {
                 this.error = 'No se cargó el lector de cámara. Recargá la página.';
                 return;
             }
+            const origenPermiteCamara = () => {
+                if (typeof window.isSecureContext === 'boolean') {
+                    return window.isSecureContext;
+                }
+                return window.location.protocol === 'https:'
+                    || /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+            };
+            if (!origenPermiteCamara()) {
+                this.error = 'La cámara no está disponible con HTTP (solo en https:// o en http://localhost). Configurá HTTPS en el servidor, o escribí el código a mano / lectora pistola.';
+                return;
+            }
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 this.error = 'Tu navegador no permite usar la cámara desde aquí.';
                 return;
