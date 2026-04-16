@@ -16,6 +16,40 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->app->booted(function () {
+            if ($this->app->runningInConsole()) {
+                return;
+            }
+
+            try {
+                $req = request();
+                if (! $req) {
+                    return;
+                }
+
+                $stateful = config('sanctum.stateful', []);
+                if (! is_array($stateful)) {
+                    return;
+                }
+
+                $hostsToAdd = array_filter([
+                    $req->getHost(),
+                    $req->getHttpHost(),
+                    parse_url((string) config('app.url'), PHP_URL_HOST),
+                ]);
+
+                foreach ($hostsToAdd as $h) {
+                    if ($h !== '' && ! in_array($h, $stateful, true)) {
+                        $stateful[] = $h;
+                    }
+                }
+
+                config(['sanctum.stateful' => array_values(array_unique($stateful))]);
+            } catch (\Throwable) {
+                // ignorar si no hay request válido
+            }
+        });
+
         View::composer('layouts.app', function ($view) {
             try {
                 if (Schema::hasTable('configuracion_comercio')) {

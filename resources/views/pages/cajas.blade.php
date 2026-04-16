@@ -206,8 +206,8 @@ function initCajasPage(puedeOperarCaja) {
                 console.error('Error:', error);
                 const s = error.response?.status;
                 this.error = s === 401
-                    ? 'Sesi?n no v?lida o expirada. Cerr? sesi?n y volv? a ingresar.'
-                    : (s === 419 ? 'Sesi?n de seguridad vencida. Recarg? la p?gina e intent? de nuevo.' : (error.response?.data?.message || 'Error al cargar las cajas'));
+                    ? 'Sesión no válida o expirada. Cerrá sesión y volvé a ingresar.'
+                    : (s === 419 ? 'Sesión de seguridad vencida. Recargá la página e intentá de nuevo.' : (error.response?.data?.message || 'Error al cargar las cajas'));
             } finally {
                 this.loading = false;
             }
@@ -271,7 +271,7 @@ function initCajasPage(puedeOperarCaja) {
             } catch (error) {
                 const s = error.response?.status;
                 this.error = s === 419
-                    ? 'Recarg? la p?gina (token de seguridad) e intent? otra vez.'
+                    ? 'Recargá la página (token de seguridad) e intentá de nuevo.'
                     : (error.response?.data?.message || 'Error al abrir caja');
             }
         },

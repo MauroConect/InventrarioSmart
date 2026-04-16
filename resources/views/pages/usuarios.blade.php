@@ -188,7 +188,10 @@ function usuariosAdmin() {
                     this.pagination = { current_page: 1, last_page: 1, total: this.usuarios.length, from: 1, to: this.usuarios.length };
                 }
             } catch (e) {
-                this.error = e.response?.data?.message || 'Error al cargar usuarios.';
+                const s = e.response?.status;
+                this.error = s === 401
+                    ? 'Sesión no válida o expirada. Recargá la página o cerrá sesión y volvé a ingresar.'
+                    : (s === 419 ? 'Sesión de seguridad vencida. Recargá la página e intentá de nuevo.' : (e.response?.data?.message || 'Error al cargar usuarios.'));
             } finally {
                 this.loading = false;
             }

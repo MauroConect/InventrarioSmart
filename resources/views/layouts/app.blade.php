@@ -4,16 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', $comercio->nombre_comercio ?? 'Mi Comercio')</title>
+    <title>@yield('title', 'Danielles')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         [x-cloak] { display: none !important; }
-        :root {
-            --color-primario: {{ $comercio->color_primario ?? '#1e40af' }};
-            --color-sidebar: {{ $comercio->color_sidebar ?? '#1f2937' }};
-        }
     </style>
     @stack('styles')
 </head>
@@ -28,15 +24,11 @@
                 x-transition:leave="transition ease-in duration-300"
                 x-transition:leave-start="translate-x-0"
                 x-transition:leave-end="-translate-x-full"
-                class="fixed lg:static inset-y-0 left-0 z-50 w-64 text-white flex flex-col"
-                style="background-color: var(--color-sidebar)"
+                class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white flex flex-col"
                 x-cloak
             >
-                <div class="flex items-center justify-between h-16 px-6 border-b border-white/10">
-                    @if($comercio->logo_url)
-                        <img src="{{ $comercio->logo_url }}" alt="{{ $comercio->nombre_comercio }}" class="h-9 w-9 object-contain rounded">
-                    @endif
-                    <h1 class="text-xl font-bold truncate">{{ $comercio->nombre_comercio ?? 'Mi Comercio' }}</h1>
+                <div class="flex items-center justify-between h-16 px-6 border-b border-gray-700">
+                    <h1 class="text-xl font-bold">Danielles</h1>
                     <button @click="sidebarOpen = false" class="lg:hidden text-gray-400 hover:text-white">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -52,12 +44,12 @@
                     @endif
                     @if(Auth::user()->hasPermission('categorias.view'))
                         <a href="{{ route('categorias.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('categorias.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">📁</span> Categorías
+                            <span class="mr-3">📁</span> Sabores
                         </a>
                     @endif
                     @if(Auth::user()->hasPermission('productos.view'))
                         <a href="{{ route('productos.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('productos.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">📦</span> Productos
+                            <span class="mr-3">🍨</span> Sabores y Productos
                         </a>
                     @endif
                     @if(Auth::user()->hasPermission('productos.manage'))
@@ -111,14 +103,14 @@
                         </a>
                     @endif
                     @if(Auth::user()->hasPermission('admin'))
+                        <a href="{{ route('auditoria.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('auditoria.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">📜</span> Auditoría
+                        </a>
                         <a href="{{ route('usuarios.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('usuarios.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">👤</span> Usuarios
                         </a>
                         <a href="{{ route('configuracion-fiscal.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('configuracion-fiscal.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">🧾</span> Configuracion Fiscal
-                        </a>
-                        <a href="{{ route('configuracion-comercio.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('configuracion-comercio.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">🏪</span> Mi Comercio
                         </a>
                     @endif
                 </nav>
@@ -156,7 +148,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
-                    <h2 class="text-xl font-semibold text-gray-800">@yield('page-title', $comercio->nombre_comercio ?? 'Mi Comercio')</h2>
+                    <h2 class="text-xl font-semibold text-gray-800">@yield('page-title', 'Danielles')</h2>
                 </header>
 
                 <main class="flex-1 overflow-y-auto p-4 lg:p-6">
@@ -196,6 +188,20 @@
         axios.defaults.headers.common['Accept'] = 'application/json';
         axios.defaults.headers.common['Content-Type'] = 'application/json';
         axios.defaults.withCredentials = true;
+
+        axios.interceptors.response.use(
+            (r) => r,
+            (error) => {
+                const s = error.response?.status;
+                if (s === 401) {
+                    try {
+                        localStorage.removeItem('token');
+                    } catch (e) {}
+                    delete axios.defaults.headers.common['Authorization'];
+                }
+                return Promise.reject(error);
+            }
+        );
     </script>
     @stack('scripts')
 </body>
