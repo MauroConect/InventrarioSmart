@@ -150,7 +150,21 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Código *</label>
-                        <input type="text" x-model="formData.codigo" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                        <input
+                            type="text"
+                            x-model="formData.codigo"
+                            x-ref="inputCodigoProducto"
+                            autocomplete="off"
+                            autocorrect="off"
+                            spellcheck="false"
+                            placeholder="Código interno o de etiqueta"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-base"
+                            required
+                        >
+                        <button type="button" @click="abrirEscanerCodigoProducto()" class="mt-2 w-full sm:w-auto px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-sm font-medium">
+                            Escanear con cámara
+                        </button>
+                        <p class="text-xs text-gray-500 mt-1">Leé el código de barras con el celular (HTTPS).</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
@@ -233,6 +247,17 @@
                     <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" x-text="editing ? 'Actualizar' : 'Guardar'"></button>
                 </div>
             </form>
+
+            <template x-if="scannerCodigoFormAbierto">
+                <div class="fixed inset-0 z-[55] flex flex-col bg-black/95 text-white p-3" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
+                    <div class="flex justify-between items-center mb-2 shrink-0">
+                        <span class="text-sm font-medium">Enfocá el código de barras</span>
+                        <button type="button" @click="cerrarEscanerCodigoProducto()" class="px-3 py-1.5 rounded bg-white/10 hover:bg-white/20 text-sm">Cerrar</button>
+                    </div>
+                    <div id="productos-form-barcode-reader" class="w-full flex-1 min-h-[220px] max-w-lg mx-auto rounded-lg overflow-hidden bg-black"></div>
+                    <p class="text-xs text-center text-slate-300 mt-2 shrink-0">El código se cargará en el campo al leerlo.</p>
+                </div>
+            </template>
         </div>
     </div>
 
@@ -271,6 +296,7 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script>
 function productos(canManage) {
@@ -297,6 +323,9 @@ function productos(canManage) {
         },
         showBarcodeModal: false,
         barcodeProducto: null,
+        scannerCodigoFormAbierto: false,
+        _html5QrProductoForm: null,
+        _html5QrProductoFormLock: false,
         
         async init() {
             const tasks = [this.fetch(), this.fetchCategorias()];
@@ -490,7 +519,88 @@ function productos(canManage) {
             }
         },
         
-        closeModal() {
+        async cerrarEscanerCodigoProducto() {
+            this._html5QrProductoFormLock = false;
+            const q = this._html5QrProductoForm;
+            this._html5QrProductoForm = null;
+            if (q) {
+                try {
+                    await q.stop();
+                } catch (e) {}
+                try {
+                    q.clear();
+                } catch (e) {}
+            }
+            this.scannerCodigoFormAbierto = false;
+        },
+
+        async abrirEscanerCodigoProducto() {
+            if (typeof Html5Qrcode !== 'function') {
+                this.error = 'No se cargó el lector de cámara. Recargá la página.';
+                return;
+            }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                this.error = 'Tu navegador no permite usar la cámara desde aquí.';
+                return;
+            }
+            this.error = '';
+            await this.cerrarEscanerCodigoProducto();
+            this.scannerCodigoFormAbierto = true;
+            this.$nextTick(async () => {
+                try {
+                    const elId = 'productos-form-barcode-reader';
+                    const html5QrCode = new Html5Qrcode(elId, false);
+                    this._html5QrProductoForm = html5QrCode;
+                    const qrbox = Math.min(280, Math.max(200, window.innerWidth - 32));
+                    const config = {
+                        fps: 8,
+                        qrbox: { width: qrbox, height: Math.min(160, Math.floor(qrbox * 0.45)) },
+                    };
+                    const F = window.Html5QrcodeSupportedFormats;
+                    if (F) {
+                        config.formatsToSupport = [
+                            F.CODE_128,
+                            F.EAN_13,
+                            F.EAN_8,
+                            F.UPC_A,
+                            F.UPC_E,
+                            F.CODE_39,
+                        ].filter(Boolean);
+                    }
+                    const onOk = async (decodedText) => {
+                        if (this._html5QrProductoFormLock) return;
+                        const t = String(decodedText || '').trim();
+                        if (!t) return;
+                        this._html5QrProductoFormLock = true;
+                        try {
+                            await this.cerrarEscanerCodigoProducto();
+                            this.formData.codigo = t;
+                            this.success = 'Código cargado desde la cámara.';
+                            setTimeout(() => { this.success = ''; }, 2500);
+                            this.$nextTick(() => {
+                                const el = this.$refs.inputCodigoProducto;
+                                if (el) try { el.focus(); } catch (e) {}
+                            });
+                        } finally {
+                            this._html5QrProductoFormLock = false;
+                        }
+                    };
+                    await html5QrCode.start(
+                        { facingMode: 'environment' },
+                        config,
+                        onOk,
+                        () => {}
+                    );
+                } catch (e) {
+                    console.error(e);
+                    this.error = (e && e.message) ? e.message : 'No se pudo abrir la cámara. Revisá permisos y que uses HTTPS.';
+                    await this.cerrarEscanerCodigoProducto();
+                }
+            });
+        },
+
+        async closeModal() {
+            await this.cerrarEscanerCodigoProducto();
             this.showModal = false;
             this.editing = null;
             this.error = '';
