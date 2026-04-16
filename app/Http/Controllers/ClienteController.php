@@ -10,6 +10,52 @@ use Illuminate\Support\Facades\DB;
 
 class ClienteController extends Controller
 {
+    /**
+     * Normaliza CUIT (solo dígitos o null) antes de validar.
+     */
+    protected function normalizeClienteRequest(Request $request): void
+    {
+        if (! $request->has('cuit')) {
+            return;
+        }
+
+        $raw = $request->input('cuit');
+        if ($raw === null || $raw === '') {
+            $request->merge(['cuit' => null]);
+
+            return;
+        }
+
+        $digits = CuitValidator::normalize((string) $raw);
+
+        $request->merge(['cuit' => $digits === '' ? null : $digits]);
+    }
+
+    /**
+     * @return array<int, \Closure|string>
+     */
+    protected function cuitRules(): array
+    {
+        return [
+            'nullable',
+            'string',
+            'max:11',
+            function (string $attribute, mixed $value, callable $fail): void {
+                if ($value === null || $value === '') {
+                    return;
+                }
+                if (strlen((string) $value) !== 11 || ! ctype_digit((string) $value)) {
+                    $fail('El CUIT debe tener 11 digitos.');
+
+                    return;
+                }
+                if (! CuitValidator::isValid((string) $value)) {
+                    $fail('El CUIT del cliente no es valido.');
+                }
+            },
+        ];
+    }
+
     public function index(Request $request)
     {
         $query = Cliente::with('cuentaCorriente');
@@ -33,15 +79,13 @@ class ClienteController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizeClienteRequest($request);
+
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
             'apellido' => 'required|string|max:255',
             'dni' => 'required|string|unique:clientes,dni|max:20',
-            'cuit' => ['nullable', 'string', 'regex:/^[0-9]{11}$/', function ($attribute, $value, $fail) {
-                if ($value !== null && $value !== '' && ! CuitValidator::isValid($value)) {
-                    $fail('El CUIT del cliente no es valido.');
-                }
-            }],
+            'cuit' => $this->cuitRules(),
             'telefono' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'direccion' => 'nullable|string',
@@ -133,20 +177,18 @@ class ClienteController extends Controller
     public function update(Request $request, $id)
     {
         $cliente = Cliente::findOrFail($id);
-        
+
+        $this->normalizeClienteRequest($request);
+
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
             'apellido' => 'required|string|max:255',
             'dni' => 'required|string|unique:clientes,dni,' . $id . '|max:20',
-            'cuit' => ['nullable', 'string', 'regex:/^[0-9]{11}$/', function ($attribute, $value, $fail) {
-                if ($value !== null && $value !== '' && ! CuitValidator::isValid($value)) {
-                    $fail('El CUIT del cliente no es valido.');
-                }
-            }],
+            'cuit' => $this->cuitRules(),
             'telefono' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'direccion' => 'nullable|string',
-            'activo' => 'boolean',
+            'activo' => 'sometimes|boolean',
         ]);
 
         if (isset($validated['cuit'])) {

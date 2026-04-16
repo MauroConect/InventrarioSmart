@@ -125,7 +125,16 @@ function clientes(canManage) {
         
         edit(cliente) {
             this.editing = cliente.id;
-            this.formData = { ...cliente };
+            this.formData = {
+                nombre: cliente.nombre ?? '',
+                apellido: cliente.apellido ?? '',
+                dni: cliente.dni ?? '',
+                cuit: cliente.cuit ?? '',
+                telefono: cliente.telefono ?? '',
+                email: cliente.email ?? '',
+                direccion: cliente.direccion ?? '',
+                activo: cliente.activo !== false && cliente.activo !== 0,
+            };
             this.showModal = true;
         },
         
@@ -134,18 +143,42 @@ function clientes(canManage) {
             this.editing = null;
         },
         
+        payloadCliente() {
+            return {
+                nombre: this.formData.nombre,
+                apellido: this.formData.apellido,
+                dni: this.formData.dni,
+                cuit: this.formData.cuit || null,
+                telefono: this.formData.telefono || null,
+                email: this.formData.email || null,
+                direccion: this.formData.direccion || null,
+                activo: this.formData.activo !== false && this.formData.activo !== 0,
+            };
+        },
+
+        mensajeErrorGuardado(error) {
+            const d = error.response?.data;
+            if (d?.errors && typeof d.errors === 'object') {
+                const first = Object.values(d.errors).flat().find(Boolean);
+                if (first) return String(first);
+            }
+            return d?.message || error.message || 'Error al guardar';
+        },
+
         async save() {
             if (!this.canManage) return;
             try {
+                const body = this.payloadCliente();
                 if (this.editing) {
-                    await axios.put('/api/clientes/' + this.editing, this.formData);
+                    await axios.put('/api/clientes/' + this.editing, body);
                 } else {
-                    await axios.post('/api/clientes', this.formData);
+                    await axios.post('/api/clientes', body);
                 }
                 await this.fetch();
                 this.closeModal();
             } catch (error) {
-                alert('Error al guardar');
+                console.error(error);
+                alert(this.mensajeErrorGuardado(error));
             }
         },
 
