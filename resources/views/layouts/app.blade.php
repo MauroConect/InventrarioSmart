@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Danielles')</title>
+    <title>@yield('title', 'El Cristo')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -28,7 +28,7 @@
                 x-cloak
             >
                 <div class="flex items-center justify-between h-16 px-6 border-b border-gray-700">
-                    <h1 class="text-xl font-bold">Danielles</h1>
+                    <h1 class="text-xl font-bold">El Cristo</h1>
                     <button @click="sidebarOpen = false" class="lg:hidden text-gray-400 hover:text-white">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -44,12 +44,12 @@
                     @endif
                     @if(Auth::user()->hasPermission('categorias.view'))
                         <a href="{{ route('categorias.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('categorias.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">📁</span> Sabores
+                            <span class="mr-3">📁</span> Categorías
                         </a>
                     @endif
                     @if(Auth::user()->hasPermission('productos.view'))
                         <a href="{{ route('productos.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('productos.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">🍨</span> Sabores y Productos
+                            <span class="mr-3">📦</span> Productos
                         </a>
                     @endif
                     @if(Auth::user()->hasPermission('productos.manage'))
@@ -148,7 +148,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
-                    <h2 class="text-xl font-semibold text-gray-800">@yield('page-title', 'Danielles')</h2>
+                    <h2 class="text-xl font-semibold text-gray-800">@yield('page-title', 'El Cristo')</h2>
                 </header>
 
                 <main class="flex-1 overflow-y-auto p-4 lg:p-6">

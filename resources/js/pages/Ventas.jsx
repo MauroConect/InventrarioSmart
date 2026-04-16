@@ -287,12 +287,12 @@ function construirHtmlTicketDesdeVentaGuardada(venta) {
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>Danielles</title>
+                <title>El Cristo</title>
                 ${TICKET_THERMAL_STYLES}
             </head>
             <body>
                 <div class="header">
-                    <h1>Danielles</h1>
+                    <h1>El Cristo</h1>
                     <p>${venta.numero_factura ? `Nº ${venta.numero_factura} · ` : ''}Fecha: ${fechaStr}</p>
                 </div>
 
@@ -339,7 +339,7 @@ function construirHtmlTicketDesdeVentaGuardada(venta) {
                 ${bloquePagoExtra}
 
                 <div class="footer">
-                    <p>Danielles. Venta registrada en el sistema.</p>
+                    <p>El Cristo. Venta registrada en el sistema.</p>
                     <p>Conserve este comprobante.</p>
                 </div>
 

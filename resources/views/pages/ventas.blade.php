@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ventas de Helado - Danielles')
+@section('title', 'Ventas - El Cristo')
 @section('page-title', 'Ventas')
 
 @section('content')
@@ -13,7 +13,7 @@
             :class="cajasAbiertas.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'"
             class="w-full sm:w-auto px-4 py-2 rounded text-white"
         >
-            + Nueva Venta de Helado
+            + Nueva venta
         </button>
     </div>
 
@@ -143,7 +143,7 @@
 
                 <div class="border-t pt-4">
                     <div class="flex justify-between items-center mb-4">
-                        <h4 class="font-semibold">Helados</h4>
+                        <h4 class="font-semibold">Productos</h4>
                         <div class="flex gap-2">
                             <button type="button" @click="imprimirPresupuesto()" :disabled="loadingSubmit" class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <span x-show="!loadingSubmit">🖨️ Imprimir y guardar venta</span>
@@ -566,12 +566,12 @@ function construirHtmlTicketDesdeVentaGuardada(venta) {
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>Danielles</title>
+                <title>El Cristo</title>
                 ${TICKET_THERMAL_STYLES}
             </head>
             <body>
                 <div class="header">
-                    <h1>Danielles</h1>
+                    <h1>El Cristo</h1>
                     <p>${venta.numero_factura ? `Nº ${venta.numero_factura} · ` : ''}Fecha: ${fechaStr}</p>
                 </div>
 
@@ -618,7 +618,7 @@ function construirHtmlTicketDesdeVentaGuardada(venta) {
                 ${bloquePagoExtra}
 
                 <div class="footer">
-                    <p>Danielles. Venta registrada en el sistema.</p>
+                    <p>El Cristo. Venta registrada en el sistema.</p>
                     <p>Conserve este comprobante.</p>
                 </div>
 
