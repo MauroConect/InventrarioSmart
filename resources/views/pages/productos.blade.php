@@ -92,7 +92,7 @@
                                           x-text="producto.activo ? 'Activo' : 'Inactivo'"></span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" x-show="canManage">
-                                    <button @click="showQr(producto)" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Generar QR">QR</button>
+                                    <button type="button" @click="showBarcode(producto)" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Código de barras">Barras</button>
                                     <button @click="edit(producto)" class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
                                     <button @click="remove(producto.id)" class="text-red-600 hover:text-red-900">Eliminar</button>
                                 </td>
@@ -236,31 +236,33 @@
         </div>
     </div>
 
-    <!-- Modal QR -->
-    <div x-show="showQrModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-        <template x-if="qrProducto">
+    <!-- Modal código de barras -->
+    <div x-show="showBarcodeModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+        <template x-if="barcodeProducto">
             <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md" @click.stop>
                 <div class="bg-white border-b px-6 py-4 flex justify-between items-center rounded-t-lg">
-                    <h3 class="text-lg font-bold text-gray-800">Código QR del Producto</h3>
-                    <button @click="showQrModal = false; qrProducto = null" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                    <h3 class="text-lg font-bold text-gray-800">Código de barras del producto</h3>
+                    <button type="button" @click="closeBarcodeModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
                 </div>
                 <div class="p-6 text-center">
-                    <h4 class="text-xl font-bold text-gray-800 mb-1" x-text="qrProducto.nombre"></h4>
-                    <p class="text-sm text-gray-500 mb-4">Código: <span x-text="qrProducto.codigo"></span></p>
-                    <div x-ref="qrContainer" class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg"></div>
+                    <h4 class="text-xl font-bold text-gray-800 mb-1" x-text="barcodeProducto.nombre"></h4>
+                    <p class="text-sm text-gray-500 mb-4">Código: <span x-text="barcodeProducto.codigo"></span></p>
+                    <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg overflow-x-auto max-w-full">
+                        <svg x-ref="barcodeSvg" class="block mx-auto min-h-[80px]"></svg>
+                    </div>
                     <div class="mt-4 space-y-1">
                         <p class="text-2xl font-bold text-gray-900">
-                            <span x-text="'$' + parseFloat(qrProducto.precio_venta || 0).toFixed(2)"></span>
-                            <span x-show="qrProducto.tipo_venta === 'peso'" class="text-base text-orange-600" x-text="'/' + (qrProducto.unidad_medida || 'kg')"></span>
+                            <span x-text="'$' + parseFloat(barcodeProducto.precio_venta || 0).toFixed(2)"></span>
+                            <span x-show="barcodeProducto.tipo_venta === 'peso'" class="text-base text-orange-600" x-text="'/' + (barcodeProducto.unidad_medida || 'kg')"></span>
                         </p>
-                        <p x-show="qrProducto.tipo_venta === 'peso'" class="text-sm text-orange-600 font-medium">Producto por peso</p>
-                        <p x-show="qrProducto.categoria && qrProducto.categoria.nombre" class="text-sm text-gray-500" x-text="'Categoría: ' + (qrProducto.categoria ? qrProducto.categoria.nombre : '')"></p>
+                        <p x-show="barcodeProducto.tipo_venta === 'peso'" class="text-sm text-orange-600 font-medium">Producto por peso</p>
+                        <p x-show="barcodeProducto.categoria && barcodeProducto.categoria.nombre" class="text-sm text-gray-500" x-text="'Categoría: ' + (barcodeProducto.categoria ? barcodeProducto.categoria.nombre : '')"></p>
                     </div>
-                    <div class="mt-6 flex justify-center gap-3">
-                        <button @click="imprimirQr()" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium">
-                            Imprimir Etiqueta QR
+                    <div class="mt-6 flex justify-center gap-3 flex-wrap">
+                        <button type="button" @click="imprimirBarcode()" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium">
+                            Imprimir etiqueta
                         </button>
-                        <button @click="showQrModal = false; qrProducto = null" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cerrar</button>
+                        <button type="button" @click="closeBarcodeModal()" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cerrar</button>
                     </div>
                 </div>
             </div>
@@ -269,7 +271,7 @@
 </div>
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script>
 function productos(canManage) {
     return {
@@ -293,9 +295,8 @@ function productos(canManage) {
             stock_minimo: 0, stock_actual: 0, categoria_id: '', proveedor_id: '', activo: true,
             tipo_venta: 'unidad', unidad_medida: 'u'
         },
-        showQrModal: false,
-        qrProducto: null,
-        qrInstance: null,
+        showBarcodeModal: false,
+        barcodeProducto: null,
         
         async init() {
             const tasks = [this.fetch(), this.fetchCategorias()];
@@ -412,59 +413,71 @@ function productos(canManage) {
             this.showModal = true;
         },
 
-        showQr(producto) {
-            this.qrProducto = producto;
-            this.showQrModal = true;
+        barcodeValue(producto) {
+            const c = String(producto?.codigo ?? '').trim();
+            if (c.length > 0) return c;
+            return 'ID' + String(producto?.id ?? '');
+        },
+
+        closeBarcodeModal() {
+            this.showBarcodeModal = false;
+            this.barcodeProducto = null;
+        },
+
+        showBarcode(producto) {
+            this.barcodeProducto = producto;
+            this.showBarcodeModal = true;
             this.$nextTick(() => {
-                const container = this.$refs.qrContainer;
-                if (container) {
-                    container.innerHTML = '';
-                    const esPeso = producto.tipo_venta === 'peso';
-                    const unidad = producto.unidad_medida || (esPeso ? 'kg' : 'u');
-                    const qrData = JSON.stringify({
-                        codigo: producto.codigo,
-                        nombre: producto.nombre,
-                        precio: parseFloat(producto.precio_venta || 0),
-                        tipo: producto.tipo_venta || 'unidad',
-                        unidad: unidad,
-                        categoria: producto.categoria?.nombre || ''
+                const svg = this.$refs.barcodeSvg;
+                if (!svg || typeof JsBarcode !== 'function') return;
+                while (svg.firstChild) svg.removeChild(svg.firstChild);
+                const value = this.barcodeValue(producto);
+                try {
+                    JsBarcode(svg, value, {
+                        format: 'CODE128',
+                        width: 2,
+                        height: 72,
+                        displayValue: true,
+                        fontSize: 14,
+                        margin: 8,
+                        background: '#ffffff',
                     });
-                    this.qrInstance = new QRCode(container, {
-                        text: qrData,
-                        width: 200,
-                        height: 200,
-                        correctLevel: QRCode.CorrectLevel.M
-                    });
+                } catch (e) {
+                    console.error(e);
+                    alert('No se pudo generar el código de barras. Revisá que el código del producto sea válido.');
                 }
             });
         },
 
-        imprimirQr() {
-            if (!this.qrProducto) return;
-            const p = this.qrProducto;
+        imprimirBarcode() {
+            if (!this.barcodeProducto) return;
+            const p = this.barcodeProducto;
+            const esc = (s) => String(s ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
             const esPeso = p.tipo_venta === 'peso';
             const unidad = p.unidad_medida || (esPeso ? 'kg' : 'u');
             const precioLabel = esPeso
                 ? '$' + parseFloat(p.precio_venta || 0).toFixed(2) + '/' + unidad
                 : '$' + parseFloat(p.precio_venta || 0).toFixed(2);
-            const imgEl = this.$refs.qrContainer?.querySelector('img') || this.$refs.qrContainer?.querySelector('canvas');
-            let imgSrc = '';
-            if (imgEl?.tagName === 'IMG') imgSrc = imgEl.src;
-            else if (imgEl?.tagName === 'CANVAS') imgSrc = imgEl.toDataURL();
+            const svg = this.$refs.barcodeSvg;
+            const svgHtml = svg ? svg.outerHTML : '';
 
-            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>QR - ' + p.nombre + '</title>' +
+            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiqueta - ' + esc(p.nombre) + '</title>' +
                 '<style>body{font-family:Arial,sans-serif;text-align:center;padding:10mm;margin:0}' +
-                '.qr-label{display:inline-block;border:1px solid #ccc;padding:5mm;border-radius:3mm}' +
-                '.qr-label h3{margin:0 0 2mm;font-size:14px}.qr-label p{margin:1mm 0;font-size:11px;color:#333}' +
-                '.qr-label .precio{font-size:16px;font-weight:bold;color:#000;margin-top:2mm}' +
-                '.qr-label .codigo{font-size:9px;color:#666}img{width:40mm;height:40mm}' +
+                '.barcode-label{display:inline-block;border:1px solid #ccc;padding:5mm;border-radius:3mm;max-width:90mm}' +
+                '.barcode-label h3{margin:0 0 2mm;font-size:14px}.barcode-label p{margin:1mm 0;font-size:11px;color:#333}' +
+                '.barcode-label .precio{font-size:16px;font-weight:bold;color:#000;margin-top:2mm}' +
+                '.barcode-label .codigo{font-size:9px;color:#666}.barcode-label svg{max-width:100%;height:auto}' +
                 '@media print{body{padding:2mm}button{display:none!important}}</style></head><body>' +
-                '<div class="qr-label"><h3>' + p.nombre + '</h3>' +
-                (imgSrc ? '<img src="' + imgSrc + '" />' : '') +
-                '<p class="precio">' + precioLabel + '</p>' +
-                (esPeso ? '<p style="font-size:10px;color:#e65100">Producto por peso (' + unidad + ')</p>' : '') +
-                '<p class="codigo">Cód: ' + p.codigo + '</p>' +
-                (p.categoria?.nombre ? '<p class="codigo">Cat: ' + p.categoria.nombre + '</p>' : '') +
+                '<div class="barcode-label"><h3>' + esc(p.nombre) + '</h3>' +
+                svgHtml +
+                '<p class="precio">' + esc(precioLabel) + '</p>' +
+                (esPeso ? '<p style="font-size:10px;color:#e65100">Producto por peso (' + esc(unidad) + ')</p>' : '') +
+                '<p class="codigo">Cód: ' + esc(p.codigo) + '</p>' +
+                (p.categoria?.nombre ? '<p class="codigo">Cat: ' + esc(p.categoria.nombre) + '</p>' : '') +
                 '</div><br/><button onclick="window.print()" style="margin-top:5mm;padding:5px 15px;cursor:pointer">Imprimir</button>' +
                 '<button onclick="window.close()" style="margin-top:5mm;padding:5px 15px;cursor:pointer;margin-left:5px">Cerrar</button></body></html>';
 
