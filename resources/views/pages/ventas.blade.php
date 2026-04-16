@@ -141,6 +141,44 @@
                     <input type="number" step="0.01" x-model.number="descuento" class="w-full px-3 py-2 border border-gray-300 rounded-md" value="0">
                 </div>
 
+                <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <label class="block text-sm font-medium text-gray-800">Código de barras</label>
+                    <p class="text-xs text-gray-600">Enfocá este campo y escaneá con la pistola o el celular; o usá la cámara del teléfono.</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input
+                            type="text"
+                            x-ref="inputScanVentas"
+                            x-model="codigoScanBuffer"
+                            autocomplete="off"
+                            autocorrect="off"
+                            spellcheck="false"
+                            inputmode="text"
+                            enterkeyhint="done"
+                            placeholder="Código (escáner o pegar)"
+                            class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-md text-base"
+                            @keydown.enter.prevent="aplicarCodigoEscaneado()"
+                            @paste="$nextTick(() => { setTimeout(() => aplicarCodigoEscaneado(), 80); })"
+                        >
+                        <button type="button" @click="aplicarCodigoEscaneado()" class="px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-800 text-sm font-medium shrink-0">
+                            Agregar por código
+                        </button>
+                        <button type="button" @click="abrirEscanerCamara()" class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-sm font-medium shrink-0">
+                            Escanear con cámara
+                        </button>
+                    </div>
+                </div>
+
+                <template x-if="scannerCameraAbierto">
+                    <div class="fixed inset-0 z-[60] flex flex-col bg-black/95 text-white p-3" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
+                        <div class="flex justify-between items-center mb-2 shrink-0">
+                            <span class="text-sm font-medium">Apuntá al código de barras</span>
+                            <button type="button" @click="cerrarEscanerCamara()" class="px-3 py-1.5 rounded bg-white/10 hover:bg-white/20 text-sm">Cerrar</button>
+                        </div>
+                        <div id="ventas-barcode-reader" class="w-full flex-1 min-h-[220px] max-w-lg mx-auto rounded-lg overflow-hidden bg-black"></div>
+                        <p class="text-xs text-center text-slate-300 mt-2 shrink-0">Se agrega el producto al detectar el código.</p>
+                    </div>
+                </template>
+
                 <div class="border-t pt-4">
                     <div class="flex justify-between items-center mb-4">
                         <h4 class="font-semibold">Productos</h4>
@@ -280,6 +318,7 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 const TIPO_PAGO_LABELS = {
     efectivo: 'Efectivo',
@@ -653,6 +692,10 @@ function ventas() {
         items: [{ producto_id: '', cantidad: 1 }],
         busquedaProducto: {},
         adjuntos: [],
+        codigoScanBuffer: '',
+        scannerCameraAbierto: false,
+        _html5QrVentas: null,
+        _html5QrVentasLock: false,
 
         authHeaders() {
             const t = localStorage.getItem('token');
@@ -722,6 +765,127 @@ function ventas() {
         
         agregarItem() {
             this.items.push({ producto_id: '', cantidad: 1 });
+        },
+
+        buscarProductoPorCodigoEscaneado(raw) {
+            const t = String(raw ?? '').trim();
+            if (!t) return null;
+            let p = this.productos.find((x) => String(x.codigo ?? '').trim() === t);
+            if (!p && /^ID\d+$/i.test(t)) {
+                const id = parseInt(t.replace(/^ID/i, ''), 10);
+                if (!Number.isNaN(id)) {
+                    p = this.productos.find((x) => Number(x.id) === id);
+                }
+            }
+            return p || null;
+        },
+
+        asignarProductoEscaneado(prod) {
+            let idx = this.items.findIndex((it) => !it.producto_id);
+            if (idx === -1) {
+                this.agregarItem();
+                idx = this.items.length - 1;
+            }
+            this.items[idx].producto_id = String(prod.id);
+            this.busquedaProducto[idx] = '';
+            this.error = '';
+        },
+
+        aplicarCodigoEscaneado(codigoOpcional) {
+            const raw = String(codigoOpcional != null ? codigoOpcional : this.codigoScanBuffer ?? '').trim();
+            if (!raw) {
+                this.error = 'Ingresá o escaneá un código de barras.';
+                return;
+            }
+            const prod = this.buscarProductoPorCodigoEscaneado(raw);
+            if (!prod) {
+                this.error = 'No hay producto con ese código.';
+                this.codigoScanBuffer = raw;
+                return;
+            }
+            this.asignarProductoEscaneado(prod);
+            this.codigoScanBuffer = '';
+            this.success = 'Agregado: ' + (prod.nombre || prod.codigo);
+            setTimeout(() => { this.success = ''; }, 2000);
+            this.$nextTick(() => {
+                const el = this.$refs.inputScanVentas;
+                if (el) try { el.focus(); } catch (e) {}
+            });
+        },
+
+        async cerrarEscanerCamara() {
+            this._html5QrVentasLock = false;
+            const q = this._html5QrVentas;
+            this._html5QrVentas = null;
+            if (q) {
+                try {
+                    await q.stop();
+                } catch (e) {}
+                try {
+                    q.clear();
+                } catch (e) {}
+            }
+            this.scannerCameraAbierto = false;
+        },
+
+        async abrirEscanerCamara() {
+            if (typeof Html5Qrcode !== 'function') {
+                this.error = 'No se cargó el lector de cámara. Recargá la página.';
+                return;
+            }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                this.error = 'Tu navegador no permite usar la cámara desde aquí.';
+                return;
+            }
+            this.error = '';
+            await this.cerrarEscanerCamara();
+            this.scannerCameraAbierto = true;
+            this.$nextTick(async () => {
+                try {
+                    const elId = 'ventas-barcode-reader';
+                    const html5QrCode = new Html5Qrcode(elId, false);
+                    this._html5QrVentas = html5QrCode;
+                    const qrbox = Math.min(280, Math.max(200, window.innerWidth - 32));
+                    const config = {
+                        fps: 8,
+                        qrbox: { width: qrbox, height: Math.min(160, Math.floor(qrbox * 0.45)) },
+                    };
+                    const F = window.Html5QrcodeSupportedFormats;
+                    if (F) {
+                        config.formatsToSupport = [
+                            F.CODE_128,
+                            F.EAN_13,
+                            F.EAN_8,
+                            F.UPC_A,
+                            F.UPC_E,
+                            F.CODE_39,
+                        ].filter(Boolean);
+                    }
+                    const onOk = async (decodedText) => {
+                        if (this._html5QrVentasLock) return;
+                        const t = String(decodedText || '').trim();
+                        if (!t) return;
+                        if (!this.buscarProductoPorCodigoEscaneado(t)) return;
+                        this._html5QrVentasLock = true;
+                        try {
+                            await this.cerrarEscanerCamara();
+                            this.aplicarCodigoEscaneado(t);
+                        } finally {
+                            this._html5QrVentasLock = false;
+                        }
+                    };
+                    await html5QrCode.start(
+                        { facingMode: 'environment' },
+                        config,
+                        onOk,
+                        () => {}
+                    );
+                } catch (e) {
+                    console.error(e);
+                    this.error = (e && e.message) ? e.message : 'No se pudo abrir la cámara. Revisá permisos y que uses HTTPS.';
+                    await this.cerrarEscanerCamara();
+                }
+            });
         },
         
         eliminarItem(index) {
@@ -894,9 +1058,14 @@ function ventas() {
             this.error = '';
             this.success = '';
             this.resetForm();
+            this.$nextTick(() => {
+                const el = this.$refs.inputScanVentas;
+                if (el) try { el.focus(); } catch (e) {}
+            });
         },
         
-        closeModal() {
+        async closeModal() {
+            await this.cerrarEscanerCamara();
             this.showModal = false;
             this.resetForm();
         },
@@ -912,6 +1081,7 @@ function ventas() {
             this.items = [{ producto_id: '', cantidad: 1 }];
             this.busquedaProducto = {};
             this.adjuntos = [];
+            this.codigoScanBuffer = '';
             // Limpiar el input file
             const fileInput = document.querySelector('input[type="file"]');
             if (fileInput) {
