@@ -74,6 +74,11 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     });
     Route::post('movimientos-stock', [MovimientoStockController::class, 'store'])->middleware('permission:stock.manage')->name('api.movimientos-stock.store');
 
+    // Literal antes de productos/{producto} para que no capture "siguiente-codigo" como id.
+    Route::get('productos/siguiente-codigo', [ProductoController::class, 'siguienteCodigoInterno'])
+        ->middleware('permission:productos.manage')
+        ->name('api.productos.siguiente-codigo');
+
     Route::middleware('permission:productos.view')->group(function () {
         Route::get('productos', [ProductoController::class, 'index']);
         Route::get('productos/{producto}', [ProductoController::class, 'show']);
@@ -93,7 +98,6 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     });
 
     Route::middleware('permission:productos.manage')->group(function () {
-        Route::get('productos/siguiente-codigo', [ProductoController::class, 'siguienteCodigoInterno'])->name('api.productos.siguiente-codigo');
         Route::post('productos', [ProductoController::class, 'store']);
         Route::put('productos/{producto}', [ProductoController::class, 'update']);
         Route::patch('productos/{producto}', [ProductoController::class, 'update']);
