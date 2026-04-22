@@ -813,7 +813,7 @@ export default function Ventas() {
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Caja</label>
                                     {cajasAbiertas.length > 0 ? (
@@ -856,242 +856,7 @@ export default function Ventas() {
                                         ))}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Pago</label>
-                                    <p className="text-xs text-gray-500 mb-1">
-                                        Se guarda al confirmar la venta o al usar el botón verde de imprimir (ambos registran la venta).
-                                    </p>
-                                    <select
-                                        value={tipoPago}
-                                        onChange={(e) => {
-                                            setTipoPago(e.target.value);
-                                            setPagoCon('');
-                                            // Limpiar campos de pago mixto si cambia el tipo
-                                            if (e.target.value !== 'mixto') {
-                                                setMontoTarjeta('');
-                                                setMontoEfectivo('');
-                                                setMontoTransferencia('');
-                                                setRecargoCuotas('');
-                                            }
-                                            if (e.target.value !== 'mixto' && e.target.value !== 'tarjeta') {
-                                                setCuotas('');
-                                            }
-                                        }}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                    >
-                                        <option value="efectivo">Efectivo</option>
-                                        <option value="tarjeta">Tarjeta</option>
-                                        <option value="transferencia">Transferencia</option>
-                                        <option value="cuenta_corriente">Cuenta Corriente</option>
-                                        <option value="mixto">Mixto</option>
-                                    </select>
-                                </div>
                             </div>
-
-                            {tipoPago === 'cuenta_corriente' && (
-                                <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                                    El cliente debe tener una cuenta corriente activa (la crea un administrador en Cuentas
-                                    corrientes). Se cargará el importe en el saldo de esa cuenta.
-                                </p>
-                            )}
-
-                            {/* Campos para pago mixto */}
-                            {tipoPago === 'mixto' && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 sm:p-4">
-                                    <h4 className="font-semibold text-gray-800 mb-3 text-sm sm:text-base">Detalles de Pago Mixto</h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Monto en Tarjeta (opcional)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                value={montoTarjeta}
-                                                onChange={(e) => setMontoTarjeta(e.target.value)}
-                                                placeholder="0.00"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Monto en Efectivo (opcional)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                value={montoEfectivo}
-                                                onChange={(e) => setMontoEfectivo(e.target.value)}
-                                                placeholder="0.00"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Monto en Transferencia (opcional)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                value={montoTransferencia}
-                                                onChange={(e) => setMontoTransferencia(e.target.value)}
-                                                placeholder="0.00"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Cuotas (opcional)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max="24"
-                                                value={cuotas}
-                                                onChange={(e) => setCuotas(e.target.value)}
-                                                placeholder="Ej: 3, 6, 12"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            />
-                                            {cuotas && parseFloat(cuotas) > 0 && (() => {
-                                                const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
-                                                const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
-                                                const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
-                                                const totalFinal = calcularTotal();
-                                                const montoRestante = totalFinal - montoEfectivoNum - montoTarjetaNum - montoTransferenciaNum;
-                                                const montoCuotas = montoTarjetaNum > 0 ? montoTarjetaNum : (montoRestante > 0 ? montoRestante : 0);
-                                                
-                                                if (montoCuotas > 0) {
-                                                    return (
-                                                        <p className="mt-1 text-xs text-gray-600">
-                                                            Monto por cuota: <span className="font-semibold text-blue-600">
-                                                                ${(montoCuotas / parseFloat(cuotas)).toFixed(2)}
-                                                            </span>
-                                                        </p>
-                                                    );
-                                                }
-                                                return null;
-                                            })()}
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Interés por cuotas (%)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                max="100"
-                                                value={recargoCuotas}
-                                                onChange={(e) => setRecargoCuotas(e.target.value)}
-                                                placeholder="Ej: 5.5, 10, 15"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            />
-                                            {recargoCuotas && parseFloat(recargoCuotas) > 0 && cuotas && parseFloat(cuotas) > 0 && (() => {
-                                                const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
-                                                const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
-                                                const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
-                                                const totalFinal = calcularTotal();
-                                                const montoRestante = totalFinal - montoEfectivoNum - montoTarjetaNum - montoTransferenciaNum;
-                                                const montoCuotas = montoTarjetaNum > 0 ? montoTarjetaNum : (montoRestante > 0 ? montoRestante : 0);
-                                                
-                                                if (montoCuotas > 0) {
-                                                    const recargoTotal = (montoCuotas * parseFloat(recargoCuotas)) / 100;
-                                                    const montoConRecargo = montoCuotas + recargoTotal;
-                                                    
-                                                    return (
-                                                        <div className="mt-2 space-y-1">
-                                                            <p className="text-xs text-gray-600">
-                                                                Interés total: <span className="font-semibold text-orange-600">
-                                                                    ${recargoTotal.toFixed(2)}
-                                                                </span>
-                                                            </p>
-                                                            <p className="text-xs text-gray-600">
-                                                                Monto con interés: <span className="font-semibold text-green-600">
-                                                                    ${montoConRecargo.toFixed(2)}
-                                                                </span>
-                                                            </p>
-                                                            <p className="text-xs text-gray-600">
-                                                                Monto por cuota con interés: <span className="font-semibold text-blue-600">
-                                                                    ${(montoConRecargo / parseFloat(cuotas)).toFixed(2)}
-                                                                </span>
-                                                            </p>
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            })()}
-                                        </div>
-                                    </div>
-                                    <div className="mt-2 text-xs text-gray-600">
-                                        <div className="mb-1">
-                                            Total a pagar: <span className="font-semibold">${calcularTotal().toFixed(2)}</span>
-                                        </div>
-                                        {(() => {
-                                            const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
-                                            const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
-                                            const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
-                                            const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
-                                            const totalFinal = calcularTotal();
-                                            const restante = totalFinal - sumaMontos;
-                                            
-                                            if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || montoTransferenciaNum > 0) {
-                                                return (
-                                                    <div className="space-y-1">
-                                                        <div>
-                                                            Suma pagada: <span className="font-semibold">${sumaMontos.toFixed(2)}</span>
-                                                            {montoTarjetaNum > 0 && <span className="ml-2 text-gray-500">(Tarjeta: ${montoTarjetaNum.toFixed(2)})</span>}
-                                                            {montoEfectivoNum > 0 && <span className="ml-2 text-gray-500">(Efectivo: ${montoEfectivoNum.toFixed(2)})</span>}
-                                                            {montoTransferenciaNum > 0 && <span className="ml-2 text-gray-500">(Transferencia: ${montoTransferenciaNum.toFixed(2)})</span>}
-                                                        </div>
-                                                        {restante > 0 && (
-                                                            <div className="text-blue-600">
-                                                                Restante: <span className="font-semibold">${restante.toFixed(2)}</span>
-                                                                {cuotas && parseFloat(cuotas) > 0 && <span className="ml-1">(en {cuotas} cuotas)</span>}
-                                                            </div>
-                                                        )}
-                                                        {restante < -0.01 && (
-                                                            <div className="text-red-600">
-                                                                Excede: <span className="font-semibold">${Math.abs(restante).toFixed(2)}</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            }
-                                            return null;
-                                        })()}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Campo de cuotas para pago con tarjeta (no mixto) */}
-                            {tipoPago === 'tarjeta' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Cuotas (opcional)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="24"
-                                        value={cuotas}
-                                        onChange={(e) => setCuotas(e.target.value)}
-                                        placeholder="Ej: 3, 6, 12"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                    />
-                                    {cuotas && parseFloat(cuotas) > 0 && (
-                                        <p className="mt-1 text-xs text-gray-600">
-                                            Monto por cuota: <span className="font-semibold text-blue-600">
-                                                ${(calcularTotal() / parseFloat(cuotas)).toFixed(2)}
-                                            </span>
-                                            {' '}(Total: ${calcularTotal().toFixed(2)})
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-
                             <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
                                 <div className="flex justify-between items-center mb-3">
                                     <h4 className="font-semibold text-gray-800">Items de la Venta</h4>
@@ -1281,6 +1046,241 @@ export default function Ventas() {
                                     </div>
                                 )}
                             </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Pago</label>
+                                <p className="text-xs text-gray-500 mb-1">
+                                    Elegilo al final, cuando la venta ya esta lista para cerrar.
+                                </p>
+                                <select
+                                    value={tipoPago}
+                                    onChange={(e) => {
+                                        setTipoPago(e.target.value);
+                                        setPagoCon('');
+                                        // Limpiar campos de pago mixto si cambia el tipo
+                                        if (e.target.value !== 'mixto') {
+                                            setMontoTarjeta('');
+                                            setMontoEfectivo('');
+                                            setMontoTransferencia('');
+                                            setRecargoCuotas('');
+                                        }
+                                        if (e.target.value !== 'mixto' && e.target.value !== 'tarjeta') {
+                                            setCuotas('');
+                                        }
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                >
+                                    <option value="efectivo">Efectivo</option>
+                                    <option value="tarjeta">Tarjeta</option>
+                                    <option value="transferencia">Transferencia</option>
+                                    <option value="cuenta_corriente">Cuenta Corriente</option>
+                                    <option value="mixto">Mixto</option>
+                                </select>
+                            </div>
+
+                            {tipoPago === 'cuenta_corriente' && (
+                                <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                                    El cliente debe tener una cuenta corriente activa (la crea un administrador en Cuentas
+                                    corrientes). Se cargará el importe en el saldo de esa cuenta.
+                                </p>
+                            )}
+
+                            {/* Campos para pago mixto */}
+                            {tipoPago === 'mixto' && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 sm:p-4">
+                                    <h4 className="font-semibold text-gray-800 mb-3 text-sm sm:text-base">Detalles de Pago Mixto</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Monto en Tarjeta (opcional)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={montoTarjeta}
+                                                onChange={(e) => setMontoTarjeta(e.target.value)}
+                                                placeholder="0.00"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Monto en Efectivo (opcional)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={montoEfectivo}
+                                                onChange={(e) => setMontoEfectivo(e.target.value)}
+                                                placeholder="0.00"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Monto en Transferencia (opcional)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={montoTransferencia}
+                                                onChange={(e) => setMontoTransferencia(e.target.value)}
+                                                placeholder="0.00"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Cuotas (opcional)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="24"
+                                                value={cuotas}
+                                                onChange={(e) => setCuotas(e.target.value)}
+                                                placeholder="Ej: 3, 6, 12"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            />
+                                            {cuotas && parseFloat(cuotas) > 0 && (() => {
+                                                const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
+                                                const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
+                                                const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
+                                                const totalFinal = calcularTotal();
+                                                const montoRestante = totalFinal - montoEfectivoNum - montoTarjetaNum - montoTransferenciaNum;
+                                                const montoCuotas = montoTarjetaNum > 0 ? montoTarjetaNum : (montoRestante > 0 ? montoRestante : 0);
+
+                                                if (montoCuotas > 0) {
+                                                    return (
+                                                        <p className="mt-1 text-xs text-gray-600">
+                                                            Monto por cuota: <span className="font-semibold text-blue-600">
+                                                                ${(montoCuotas / parseFloat(cuotas)).toFixed(2)}
+                                                            </span>
+                                                        </p>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Interés por cuotas (%)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                max="100"
+                                                value={recargoCuotas}
+                                                onChange={(e) => setRecargoCuotas(e.target.value)}
+                                                placeholder="Ej: 5.5, 10, 15"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            />
+                                            {recargoCuotas && parseFloat(recargoCuotas) > 0 && cuotas && parseFloat(cuotas) > 0 && (() => {
+                                                const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
+                                                const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
+                                                const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
+                                                const totalFinal = calcularTotal();
+                                                const montoRestante = totalFinal - montoEfectivoNum - montoTarjetaNum - montoTransferenciaNum;
+                                                const montoCuotas = montoTarjetaNum > 0 ? montoTarjetaNum : (montoRestante > 0 ? montoRestante : 0);
+
+                                                if (montoCuotas > 0) {
+                                                    const recargoTotal = (montoCuotas * parseFloat(recargoCuotas)) / 100;
+                                                    const montoConRecargo = montoCuotas + recargoTotal;
+
+                                                    return (
+                                                        <div className="mt-2 space-y-1">
+                                                            <p className="text-xs text-gray-600">
+                                                                Interés total: <span className="font-semibold text-orange-600">
+                                                                    ${recargoTotal.toFixed(2)}
+                                                                </span>
+                                                            </p>
+                                                            <p className="text-xs text-gray-600">
+                                                                Monto con interés: <span className="font-semibold text-green-600">
+                                                                    ${montoConRecargo.toFixed(2)}
+                                                                </span>
+                                                            </p>
+                                                            <p className="text-xs text-gray-600">
+                                                                Monto por cuota con interés: <span className="font-semibold text-blue-600">
+                                                                    ${(montoConRecargo / parseFloat(cuotas)).toFixed(2)}
+                                                                </span>
+                                                            </p>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 text-xs text-gray-600">
+                                        <div className="mb-1">
+                                            Total a pagar: <span className="font-semibold">${calcularTotal().toFixed(2)}</span>
+                                        </div>
+                                        {(() => {
+                                            const montoTarjetaNum = parseFloat(montoTarjeta) || 0;
+                                            const montoEfectivoNum = parseFloat(montoEfectivo) || 0;
+                                            const montoTransferenciaNum = parseFloat(montoTransferencia) || 0;
+                                            const sumaMontos = montoTarjetaNum + montoEfectivoNum + montoTransferenciaNum;
+                                            const totalFinal = calcularTotal();
+                                            const restante = totalFinal - sumaMontos;
+
+                                            if (montoTarjetaNum > 0 || montoEfectivoNum > 0 || montoTransferenciaNum > 0) {
+                                                return (
+                                                    <div className="space-y-1">
+                                                        <div>
+                                                            Suma pagada: <span className="font-semibold">${sumaMontos.toFixed(2)}</span>
+                                                            {montoTarjetaNum > 0 && <span className="ml-2 text-gray-500">(Tarjeta: ${montoTarjetaNum.toFixed(2)})</span>}
+                                                            {montoEfectivoNum > 0 && <span className="ml-2 text-gray-500">(Efectivo: ${montoEfectivoNum.toFixed(2)})</span>}
+                                                            {montoTransferenciaNum > 0 && <span className="ml-2 text-gray-500">(Transferencia: ${montoTransferenciaNum.toFixed(2)})</span>}
+                                                        </div>
+                                                        {restante > 0 && (
+                                                            <div className="text-blue-600">
+                                                                Restante: <span className="font-semibold">${restante.toFixed(2)}</span>
+                                                                {cuotas && parseFloat(cuotas) > 0 && <span className="ml-1">(en {cuotas} cuotas)</span>}
+                                                            </div>
+                                                        )}
+                                                        {restante < -0.01 && (
+                                                            <div className="text-red-600">
+                                                                Excede: <span className="font-semibold">${Math.abs(restante).toFixed(2)}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Campo de cuotas para pago con tarjeta (no mixto) */}
+                            {tipoPago === 'tarjeta' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Cuotas (opcional)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="24"
+                                        value={cuotas}
+                                        onChange={(e) => setCuotas(e.target.value)}
+                                        placeholder="Ej: 3, 6, 12"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    />
+                                    {cuotas && parseFloat(cuotas) > 0 && (
+                                        <p className="mt-1 text-xs text-gray-600">
+                                            Monto por cuota: <span className="font-semibold text-blue-600">
+                                                ${(calcularTotal() / parseFloat(cuotas)).toFixed(2)}
+                                            </span>
+                                            {' '}(Total: ${calcularTotal().toFixed(2)})
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
