@@ -297,6 +297,44 @@ class VentaController extends Controller
         }
     }
 
+    public function actualizarDescuento(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'descuento' => 'required|numeric|min:0',
+        ]);
+
+        $venta = Venta::with(['items'])->findOrFail($id);
+
+        if ($venta->estado === 'cancelada') {
+            return response()->json(['message' => 'No se puede actualizar el descuento de una venta cancelada.'], 400);
+        }
+
+        if ($venta->estado === 'cerrada') {
+            return response()->json(['message' => 'No se puede actualizar el descuento de una venta cerrada.'], 400);
+        }
+
+        if (($venta->estado_facturacion ?? 'pendiente') === 'facturada') {
+            return response()->json(['message' => 'No se puede actualizar el descuento de una venta facturada.'], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            $venta->descuento = (float) $validated['descuento'];
+            $this->recalcularTotalesVenta($venta);
+
+            DB::commit();
+
+            return response()->json(
+                $venta->fresh()->load(['caja', 'cliente', 'usuario', 'items.producto', 'adjuntos']),
+                200
+            );
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
+    }
+
     private function recalcularTotalesVenta(Venta $venta): void
     {
         $venta->load('items');

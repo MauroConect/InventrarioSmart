@@ -84,6 +84,10 @@
                         <p class="font-medium" x-text="'$' + parseFloat(venta.total || 0).toFixed(2)"></p>
                     </div>
                     <div>
+                        <p class="text-sm text-gray-600">Descuento</p>
+                        <p class="font-medium" x-text="'$' + parseFloat(venta.descuento || 0).toFixed(2)"></p>
+                    </div>
+                    <div>
                         <p class="text-sm text-gray-600">Total a pagar</p>
                         <p class="font-medium text-xl" x-text="'$' + parseFloat(venta.total_final != null ? venta.total_final : venta.total || 0).toFixed(2)"></p>
                     </div>
@@ -116,6 +120,35 @@
                             <span x-text="venta.comprobante_numero != null ? String(venta.comprobante_numero).padStart(8, '0') : ''"></span>
                         </p>
                     </div>
+                </div>
+                <div
+                    x-show="puedeEditarDescuento()"
+                    x-cloak
+                    class="mt-4 pt-4 border-t"
+                >
+                    <p class="text-sm font-medium text-gray-800 mb-2">Aplicar descuento</p>
+                    <div class="flex flex-col sm:flex-row gap-2 sm:items-end">
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">Monto descuento</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                x-model.number="descuentoEdit"
+                                class="w-full sm:w-40 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            >
+                        </div>
+                        <button
+                            type="button"
+                            @click="guardarDescuento()"
+                            :disabled="guardandoDescuento"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
+                        >
+                            <span x-show="!guardandoDescuento">Guardar descuento</span>
+                            <span x-show="guardandoDescuento" x-cloak>Guardando...</span>
+                        </button>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500">Atajos: V para agregar a la venta, Enter para guardar descuento y C para cerrar venta.</p>
                 </div>
                 <div class="mt-4 pt-4 border-t space-y-2 text-sm" x-show="venta.tipo_pago === 'mixto'">
                     <p class="font-medium text-gray-800">Detalle del pago</p>
@@ -253,6 +286,9 @@ function ventaDetalle(puedeAgregarItems) {
         nuevoItem: { producto_id: '', cantidad: 1 },
         accionMenu: '',
         ventasIndexUrl: @json(url('/ventas')),
+        descuentoEdit: 0,
+        guardandoDescuento: false,
+        _onKeydown: null,
         
         etiquetaTipoPago(tipo) {
             const m = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', cuenta_corriente: 'Cuenta Corriente', mixto: 'Mixto' };
@@ -274,6 +310,12 @@ function ventaDetalle(puedeAgregarItems) {
         },
         puedeAgregarLineas() {
             return this.motivoBloqueoAgregarItems() === null;
+        },
+        puedeEditarDescuento() {
+            if (!this.venta) return false;
+            if (this.venta.estado === 'cancelada') return false;
+            if (this.venta.estado === 'cerrada') return false;
+            return (this.venta.estado_facturacion || 'pendiente') !== 'facturada';
         },
 
         ejecutarAccionMenu() {
@@ -299,6 +341,73 @@ function ventaDetalle(puedeAgregarItems) {
             }
         },
 
+        async guardarDescuento() {
+            if (!this.venta || !this.puedeEditarDescuento()) return;
+
+            const descuentoNumero = parseFloat(this.descuentoEdit);
+            if (!Number.isFinite(descuentoNumero) || descuentoNumero < 0) {
+                this.error = 'El descuento debe ser un número mayor o igual a 0.';
+                return;
+            }
+
+            try {
+                this.guardandoDescuento = true;
+                this.error = '';
+                this.success = '';
+                const token = localStorage.getItem('token');
+                const response = await axios.post(
+                    `/api/ventas/${this.ventaId}/descuento`,
+                    { descuento: descuentoNumero },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                this.venta = response.data;
+                this.descuentoEdit = parseFloat(this.venta.descuento || 0);
+                this.success = 'Descuento actualizado correctamente.';
+                setTimeout(() => { this.success = ''; }, 3000);
+            } catch (error) {
+                this.error = error.response?.data?.message || 'No se pudo actualizar el descuento.';
+            } finally {
+                this.guardandoDescuento = false;
+            }
+        },
+
+        atajosHabilitados() {
+            const active = document.activeElement;
+            if (!active) return true;
+            const tag = (active.tagName || '').toLowerCase();
+            return tag !== 'input' && tag !== 'textarea' && tag !== 'select' && !active.isContentEditable;
+        },
+
+        async manejarAtajos(event) {
+            if (!this.venta) return;
+            if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+
+            const key = (event.key || '').toLowerCase();
+
+            if (key === 'enter' && this.atajosHabilitados() && this.puedeEditarDescuento()) {
+                event.preventDefault();
+                await this.guardarDescuento();
+                return;
+            }
+
+            if (!this.atajosHabilitados()) return;
+
+            if (key === 'v') {
+                event.preventDefault();
+                if (this.puedeAgregarLineas() && !this.agregandoItems && this.nuevoItem.producto_id && (parseInt(this.nuevoItem.cantidad, 10) > 0)) {
+                    await this.agregarLineasVenta();
+                }
+                return;
+            }
+
+            if (key === 'c') {
+                event.preventDefault();
+                if ((this.venta.estado || '').toLowerCase() === 'abierta') {
+                    await this.cerrarVenta();
+                }
+            }
+        },
+
         async init() {
             if (this.ventaId) {
                 const tasks = [this.fetch(), this.fetchFiscal()];
@@ -306,6 +415,14 @@ function ventaDetalle(puedeAgregarItems) {
                     tasks.push(this.fetchProductos());
                 }
                 await Promise.all(tasks);
+            }
+            this._onKeydown = (event) => { this.manejarAtajos(event); };
+            window.addEventListener('keydown', this._onKeydown);
+        },
+
+        destroy() {
+            if (this._onKeydown) {
+                window.removeEventListener('keydown', this._onKeydown);
             }
         },
 
@@ -370,6 +487,7 @@ function ventaDetalle(puedeAgregarItems) {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 this.venta = response.data;
+                this.descuentoEdit = parseFloat(this.venta.descuento || 0);
             } catch (error) {
                 this.error = error.response?.data?.message || 'Error al cargar la venta.';
             } finally {

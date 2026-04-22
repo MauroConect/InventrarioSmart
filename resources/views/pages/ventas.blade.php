@@ -696,6 +696,7 @@ function ventas() {
         scannerCameraAbierto: false,
         _html5QrVentas: null,
         _html5QrVentasLock: false,
+        _onShortcutOpenSale: null,
 
         authHeaders() {
             const t = localStorage.getItem('token');
@@ -704,6 +705,19 @@ function ventas() {
         
         async init() {
             await Promise.all([this.fetchVentas(), this.fetchDatosFormulario()]);
+            this._onShortcutOpenSale = () => { this.openModal(); };
+            window.addEventListener('shortcut-open-sale', this._onShortcutOpenSale);
+            this.abrirModalPorQuery();
+        },
+
+        abrirModalPorQuery() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('nueva') !== '1') return;
+            this.openModal();
+            params.delete('nueva');
+            const nuevaQuery = params.toString();
+            const nuevaUrl = `${window.location.pathname}${nuevaQuery ? '?' + nuevaQuery : ''}${window.location.hash || ''}`;
+            window.history.replaceState({}, '', nuevaUrl);
         },
         
         async fetchVentas() {
@@ -1079,6 +1093,12 @@ function ventas() {
             await this.cerrarEscanerCamara();
             this.showModal = false;
             this.resetForm();
+        },
+
+        destroy() {
+            if (this._onShortcutOpenSale) {
+                window.removeEventListener('shortcut-open-sale', this._onShortcutOpenSale);
+            }
         },
         
         resetForm() {

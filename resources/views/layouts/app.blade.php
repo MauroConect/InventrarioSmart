@@ -202,6 +202,30 @@
                 return Promise.reject(error);
             }
         );
+
+        (function () {
+            function isTypingTarget(el) {
+                if (!el) return false;
+                const tag = (el.tagName || '').toLowerCase();
+                return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
+            }
+
+            window.addEventListener('keydown', function (event) {
+                if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return;
+                if ((event.key || '').toLowerCase() !== 'v') return;
+                if (isTypingTarget(document.activeElement)) return;
+
+                const path = window.location.pathname || '';
+                if (path === '/ventas') {
+                    event.preventDefault();
+                    window.dispatchEvent(new CustomEvent('shortcut-open-sale'));
+                    return;
+                }
+
+                event.preventDefault();
+                window.location.href = '/ventas?nueva=1';
+            });
+        })();
     </script>
     @stack('scripts')
 </body>
