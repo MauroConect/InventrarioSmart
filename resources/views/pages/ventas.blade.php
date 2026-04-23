@@ -85,12 +85,13 @@
     </div>
 
     <!-- Modal Nueva Venta -->
-    <div x-show="showModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" @click.self="closeModal()">
-        <div class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" @click.stop>
-            <div class="sticky top-0 bg-white border-b px-6 py-4">
+    <div x-show="showModal" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 h-screen w-screen z-50 overflow-hidden" @click.self="closeModal()">
+        <div class="relative bg-white w-full h-full overflow-y-auto" @click.stop>
+            <div class="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex justify-between items-center">
                 <h3 class="text-xl font-bold">Nueva Venta</h3>
+                <button type="button" @click="closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">×</button>
             </div>
-            <form @submit.prevent="guardarVenta()" class="p-6 space-y-4">
+            <form @submit.prevent="guardarVenta()" class="p-4 sm:p-6 space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
