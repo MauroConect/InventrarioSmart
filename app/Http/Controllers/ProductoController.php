@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ItemVenta;
 use App\Models\Producto;
 use Illuminate\Http\Request;
 
@@ -123,6 +124,25 @@ class ProductoController extends Controller
     public function destroy($id)
     {
         $producto = Producto::findOrFail($id);
+
+        $tieneHistorialVentas = ItemVenta::where('producto_id', $producto->id)->exists();
+
+        if ($tieneHistorialVentas) {
+            if (!$producto->activo) {
+                return response()->json([
+                    'message' => 'El producto tiene historial de ventas y ya se encuentra inactivo.',
+                    'deactivated' => true,
+                ], 200);
+            }
+
+            $producto->update(['activo' => false]);
+
+            return response()->json([
+                'message' => 'El producto tiene historial de ventas y no puede eliminarse. Se desactivo correctamente.',
+                'deactivated' => true,
+            ], 200);
+        }
+
         $producto->delete();
         return response()->json(null, 204);
     }

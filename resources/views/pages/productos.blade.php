@@ -657,10 +657,12 @@ function productos(canManage) {
         async remove(id) {
             if (!confirm('¿Está seguro de eliminar este producto?')) return;
             try {
-                await axios.delete(`/api/productos/${id}`, {
+                const response = await axios.delete(`/api/productos/${id}`, {
                     withCredentials: true
                 });
-                this.success = 'Producto eliminado correctamente';
+                this.success = response.data?.deactivated
+                    ? (response.data?.message || 'Producto desactivado correctamente')
+                    : 'Producto eliminado correctamente';
                 await this.fetch();
                 if (this.productos.length === 0 && this.currentPage > 1) {
                     this.currentPage--;
