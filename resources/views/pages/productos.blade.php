@@ -136,16 +136,17 @@
         </template>
     </div>
 
-    <!-- Modal -->
-    <div x-show="showModal && canManage" 
+    <!-- Modal (mismo patrón que ventas: pantalla completa) -->
+    <div x-show="showModal && canManage"
          x-cloak
-         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
-         @click.away="closeModal()">
-        <div class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" @click.stop>
-            <div class="sticky top-0 bg-white border-b px-6 py-4">
+         class="fixed inset-0 bg-gray-600 bg-opacity-50 h-screen w-screen z-50 overflow-hidden"
+         @click.self="closeModal()">
+        <div class="relative bg-white w-full h-full overflow-y-auto" @click.stop>
+            <div class="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex justify-between items-center">
                 <h3 class="text-xl font-bold text-gray-800" x-text="editing ? 'Editar' : 'Nuevo' + ' Producto'"></h3>
+                <button type="button" @click="closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">×</button>
             </div>
-            <form @submit.prevent="save()" class="p-6 space-y-4">
+            <form @submit.prevent="save()" class="p-4 sm:p-6 space-y-4">
                 <div x-show="error" class="p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm" x-text="error"></div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
