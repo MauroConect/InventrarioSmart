@@ -15,10 +15,12 @@ class Categoria extends Model
         'nombre',
         'descripcion',
         'activa',
+        'descuento_porcentaje',
     ];
 
     protected $casts = [
         'activa' => 'boolean',
+        'descuento_porcentaje' => 'decimal:2',
     ];
 
     public function productos()

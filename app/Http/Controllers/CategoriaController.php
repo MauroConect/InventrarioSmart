@@ -18,6 +18,7 @@ class CategoriaController extends Controller
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
             'activa' => 'boolean',
+            'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $categoria = Categoria::create($validated);
@@ -38,6 +39,7 @@ class CategoriaController extends Controller
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
             'activa' => 'boolean',
+            'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $categoria->update($validated);

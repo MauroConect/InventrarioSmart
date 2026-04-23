@@ -376,6 +376,7 @@ export default function Ventas() {
     const [recargoCuotas, setRecargoCuotas] = useState('');
     const [pagoCon, setPagoCon] = useState('');
     const [descuento, setDescuento] = useState(0);
+    const [aplicarDescuentoCategoria, setAplicarDescuentoCategoria] = useState(false);
     const [items, setItems] = useState([
         { producto_id: '', cantidad: 1 },
     ]);
@@ -447,6 +448,7 @@ export default function Ventas() {
         setRecargoCuotas('');
         setPagoCon('');
         setDescuento(0);
+        setAplicarDescuentoCategoria(false);
         setItems([{ producto_id: '', cantidad: 1 }]);
         setAdjuntos([]);
         setBusquedaProducto({});
@@ -496,7 +498,26 @@ export default function Ventas() {
 
     const calcularTotal = () => {
         const totalBruto = items.reduce((acc, item) => acc + calcularSubtotal(item), 0);
-        return totalBruto - (parseFloat(descuento) || 0);
+        return totalBruto - calcularDescuentoTotal();
+    };
+
+    const calcularDescuentoPorCategoria = () => {
+        if (!aplicarDescuentoCategoria) return 0;
+
+        return items.reduce((acc, item) => {
+            const prod = obtenerProducto(item.producto_id);
+            if (!prod) return acc;
+
+            const subtotal = calcularSubtotal(item);
+            const porcentaje = parseFloat(prod.categoria?.descuento_porcentaje || 0) || 0;
+            return acc + (subtotal * porcentaje) / 100;
+        }, 0);
+    };
+
+    const calcularDescuentoTotal = () => {
+        const descuentoManual = parseFloat(descuento) || 0;
+        const descuentoCategoria = calcularDescuentoPorCategoria();
+        return descuentoManual + descuentoCategoria;
     };
 
     const totalFinalCalculadora = calcularTotal();
@@ -550,7 +571,7 @@ export default function Ventas() {
                 caja_id: cajaSeleccionada.id,
                 cliente_id: clienteId || null,
                 tipo_pago: tipoPago,
-                descuento: parseFloat(descuento) || 0,
+                descuento: calcularDescuentoTotal(),
                 items: itemsValidos,
             };
 
@@ -791,8 +812,8 @@ export default function Ventas() {
 
             {/* Modal Nueva Venta */}
             {showModal && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-3 sm:p-4">
-                    <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 h-screen w-screen z-50 overflow-hidden">
+                    <div className="relative bg-white w-full h-full overflow-y-auto">
                         <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex justify-between items-center">
                             <h3 className="text-lg sm:text-xl font-bold text-gray-800">Nueva Venta</h3>
                             <button
@@ -1222,12 +1243,26 @@ export default function Ventas() {
                                             className="w-32 px-2 py-1 border border-gray-300 rounded-md"
                                         />
                                     </div>
+                                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                                        <input
+                                            type="checkbox"
+                                            checked={aplicarDescuentoCategoria}
+                                            onChange={(e) => setAplicarDescuentoCategoria(e.target.checked)}
+                                        />
+                                        Aplicar descuento por categoría
+                                    </label>
                                     <div className="text-right">
                                         <div className="text-sm text-gray-600">
                                             Total bruto:{' '}
                                             <span className="font-medium">
                                                 ${items.reduce((acc, item) => acc + calcularSubtotal(item), 0).toFixed(2)}
                                             </span>
+                                        </div>
+                                        <div className="text-sm text-gray-600">
+                                            Desc. manual: <span className="font-medium">${(parseFloat(descuento) || 0).toFixed(2)}</span>
+                                        </div>
+                                        <div className="text-sm text-gray-600">
+                                            Desc. categorías: <span className="font-medium">${calcularDescuentoPorCategoria().toFixed(2)}</span>
                                         </div>
                                         <div className="text-lg font-bold text-gray-900">
                                             Total final: ${calcularTotal().toFixed(2)}

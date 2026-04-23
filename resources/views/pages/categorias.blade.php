@@ -31,6 +31,7 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descuento</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase" x-show="canManage">Acciones</th>
                         </tr>
@@ -40,6 +41,7 @@
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="categoria.nombre"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="categoria.descripcion || '-'"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="(parseFloat(categoria.descuento_porcentaje || 0).toFixed(2)) + '%'"></td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2 py-1 text-xs rounded-full" 
                                           :class="categoria.activa ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
@@ -65,12 +67,15 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+         class="fixed inset-0 bg-gray-600 bg-opacity-50 h-screen w-screen z-50 overflow-hidden"
          x-cloak
-         @click.away="closeModal()">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" @click.stop>
-            <h3 class="text-lg font-bold mb-4" x-text="editing ? 'Editar' : 'Nueva' + ' Categoría'"></h3>
-            <form @submit.prevent="save()">
+         @keydown.escape.window="closeModal()">
+        <div class="relative bg-white w-full h-full overflow-y-auto" @click.stop>
+            <div class="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold" x-text="editing ? 'Editar' : 'Nueva' + ' Categoría'"></h3>
+                <button type="button" @click="closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">×</button>
+            </div>
+            <form @submit.prevent="save()" class="p-4 sm:p-6 max-w-2xl">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
                     <input type="text" x-model="formData.nombre" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
@@ -78,6 +83,17 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
                     <textarea x-model="formData.descripcion" class="w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Descuento (%)</label>
+                    <input
+                        type="number"
+                        x-model="formData.descuento_porcentaje"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                    >
                 </div>
                 <div class="mb-4">
                     <label class="flex items-center">
@@ -103,7 +119,7 @@ function categorias(canManage) {
         loading: true,
         showModal: false,
         editing: null,
-        formData: { nombre: '', descripcion: '', activa: true },
+        formData: { nombre: '', descripcion: '', activa: true, descuento_porcentaje: 0 },
         
         async init() {
             await this.fetch();
@@ -127,7 +143,7 @@ function categorias(canManage) {
         openModal() {
             if (!this.canManage) return;
             this.editing = null;
-            this.formData = { nombre: '', descripcion: '', activa: true };
+            this.formData = { nombre: '', descripcion: '', activa: true, descuento_porcentaje: 0 };
             this.showModal = true;
         },
         
@@ -141,7 +157,7 @@ function categorias(canManage) {
         closeModal() {
             this.showModal = false;
             this.editing = null;
-            this.formData = { nombre: '', descripcion: '', activa: true };
+            this.formData = { nombre: '', descripcion: '', activa: true, descuento_porcentaje: 0 };
         },
         
         async save() {
