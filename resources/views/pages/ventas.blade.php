@@ -307,7 +307,6 @@
                         <span x-show="!loadingSubmit">🖨️ Imprimir y guardar venta</span>
                         <span x-show="loadingSubmit" x-cloak>Guardando…</span>
                     </button>
-                    <button type="button" @click="closeModal()" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
                     <button type="submit" :disabled="loadingSubmit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
                         <span x-show="!loadingSubmit">Guardar Venta</span>
                         <span x-show="loadingSubmit" x-cloak>Guardando...</span>
@@ -796,14 +795,25 @@ function ventas() {
         },
 
         asignarProductoEscaneado(prod) {
-            let idx = this.items.findIndex((it) => !it.producto_id);
+            const prodIdStr = String(prod.id);
+            let idx = this.items.findIndex((it) => String(it.producto_id) === prodIdStr);
+            if (idx !== -1) {
+                const nuevaCant = (parseInt(this.items[idx].cantidad) || 0) + 1;
+                this.items[idx].cantidad = nuevaCant;
+                this.busquedaProducto[idx] = '';
+                this.error = '';
+                return { sumado: true, cantidad: nuevaCant };
+            }
+            idx = this.items.findIndex((it) => !it.producto_id);
             if (idx === -1) {
                 this.agregarItem();
                 idx = this.items.length - 1;
             }
-            this.items[idx].producto_id = String(prod.id);
+            this.items[idx].producto_id = prodIdStr;
+            this.items[idx].cantidad = 1;
             this.busquedaProducto[idx] = '';
             this.error = '';
+            return { sumado: false, cantidad: 1 };
         },
 
         aplicarCodigoEscaneado(codigoOpcional) {
@@ -818,13 +828,18 @@ function ventas() {
                 this.codigoScanBuffer = raw;
                 return;
             }
-            this.asignarProductoEscaneado(prod);
+            const resultado = this.asignarProductoEscaneado(prod);
             this.codigoScanBuffer = '';
-            this.success = 'Agregado: ' + (prod.nombre || prod.codigo);
-            setTimeout(() => { this.success = ''; }, 2000);
+            const nombreProd = prod.nombre || prod.codigo;
+            if (resultado && resultado.sumado) {
+                this.success = nombreProd + ' x' + resultado.cantidad;
+            } else {
+                this.success = 'Agregado: ' + nombreProd;
+            }
+            setTimeout(() => { this.success = ''; }, 1500);
             this.$nextTick(() => {
                 const el = this.$refs.inputScanVentas;
-                if (el) try { el.focus(); } catch (e) {}
+                if (el) try { el.focus(); el.select && el.select(); } catch (e) {}
             });
         },
 
