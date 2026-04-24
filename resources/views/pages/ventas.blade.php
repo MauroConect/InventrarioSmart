@@ -796,22 +796,27 @@ function ventas() {
 
         asignarProductoEscaneado(prod) {
             const prodIdStr = String(prod.id);
-            let idx = this.items.findIndex((it) => String(it.producto_id) === prodIdStr);
+            const itemsCopia = this.items.map((it) => ({ ...it }));
+
+            let idx = itemsCopia.findIndex((it) => String(it.producto_id) === prodIdStr);
             if (idx !== -1) {
-                const nuevaCant = (parseInt(this.items[idx].cantidad) || 0) + 1;
-                this.items[idx].cantidad = nuevaCant;
-                this.busquedaProducto[idx] = '';
+                const nuevaCant = (parseInt(itemsCopia[idx].cantidad) || 0) + 1;
+                itemsCopia[idx] = { ...itemsCopia[idx], cantidad: nuevaCant };
+                this.items = itemsCopia;
+                this.busquedaProducto = { ...this.busquedaProducto, [idx]: '' };
                 this.error = '';
                 return { sumado: true, cantidad: nuevaCant };
             }
-            idx = this.items.findIndex((it) => !it.producto_id);
+
+            idx = itemsCopia.findIndex((it) => !it.producto_id);
             if (idx === -1) {
-                this.agregarItem();
-                idx = this.items.length - 1;
+                itemsCopia.push({ producto_id: prodIdStr, cantidad: 1 });
+                idx = itemsCopia.length - 1;
+            } else {
+                itemsCopia[idx] = { producto_id: prodIdStr, cantidad: 1 };
             }
-            this.items[idx].producto_id = prodIdStr;
-            this.items[idx].cantidad = 1;
-            this.busquedaProducto[idx] = '';
+            this.items = itemsCopia;
+            this.busquedaProducto = { ...this.busquedaProducto, [idx]: '' };
             this.error = '';
             return { sumado: false, cantidad: 1 };
         },
