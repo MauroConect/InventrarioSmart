@@ -212,18 +212,32 @@
 
             window.addEventListener('keydown', function (event) {
                 if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return;
-                if ((event.key || '').toLowerCase() !== 'v') return;
+                const key = (event.key || '').toLowerCase();
                 if (isTypingTarget(document.activeElement)) return;
 
                 const path = window.location.pathname || '';
-                if (path === '/ventas') {
+                if (key === 'v') {
+                    if (path === '/ventas') {
+                        event.preventDefault();
+                        window.dispatchEvent(new CustomEvent('shortcut-open-sale'));
+                        return;
+                    }
+
                     event.preventDefault();
-                    window.dispatchEvent(new CustomEvent('shortcut-open-sale'));
+                    window.location.href = '/ventas?nueva=1';
                     return;
                 }
 
-                event.preventDefault();
-                window.location.href = '/ventas?nueva=1';
+                if (key === 'n') {
+                    if (path === '/productos') {
+                        event.preventDefault();
+                        window.dispatchEvent(new CustomEvent('shortcut-open-product'));
+                        return;
+                    }
+
+                    event.preventDefault();
+                    window.location.href = '/productos?nuevo=1';
+                }
             });
         })();
     </script>

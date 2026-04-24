@@ -334,6 +334,22 @@ function productos(canManage) {
                 tasks.push(this.fetchProveedores());
             }
             await Promise.all(tasks);
+            this.registrarAtajos();
+            this.abrirModalDesdeQuerySiCorresponde();
+        },
+
+        registrarAtajos() {
+            window.addEventListener('shortcut-open-product', () => {
+                if (!this.canManage || this.showModal) return;
+                this.openModal();
+            });
+        },
+
+        abrirModalDesdeQuerySiCorresponde() {
+            if (!this.canManage || this.showModal) return;
+            const params = new URLSearchParams(window.location.search || '');
+            if (params.get('nuevo') !== '1') return;
+            this.openModal();
         },
 
         fetchFromSearch() {

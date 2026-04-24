@@ -490,6 +490,55 @@ export default function Ventas() {
         );
     };
 
+    const obtenerProductoPorCodigoEscaneado = (valorLeido) => {
+        const raw = String(valorLeido || '').trim();
+        if (!raw) return null;
+
+        const candidatos = new Set();
+        const pushCandidato = (valor) => {
+            const normalizado = String(valor || '').trim();
+            if (normalizado) {
+                candidatos.add(normalizado);
+            }
+        };
+
+        pushCandidato(raw);
+        try {
+            pushCandidato(decodeURIComponent(raw));
+        } catch (e) {
+            // Ignorar QR no codificados en URI.
+        }
+
+        const actuales = Array.from(candidatos);
+        actuales.forEach((valor) => {
+            const partes = valor.split(/[\s,;|/\\?#=&]+/).filter(Boolean);
+            partes.forEach(pushCandidato);
+            if (partes.length > 0) {
+                pushCandidato(partes[partes.length - 1]);
+            }
+        });
+
+        const codigosSet = new Set();
+        candidatos.forEach((c) => codigosSet.add(c.toLowerCase()));
+
+        return productos.find((p) => {
+            const codigo = String(p.codigo || '').trim().toLowerCase();
+            return codigo && codigosSet.has(codigo);
+        }) || null;
+    };
+
+    const seleccionarProductoDesdeBusqueda = (index, textoBusqueda) => {
+        const producto = obtenerProductoPorCodigoEscaneado(textoBusqueda);
+        if (!producto) return false;
+
+        handleChangeItem(index, 'producto_id', String(producto.id));
+        setBusquedaProducto((prev) => ({
+            ...prev,
+            [index]: '',
+        }));
+        return true;
+    };
+
     const calcularSubtotal = (item) => {
         const prod = obtenerProducto(item.producto_id);
         if (!prod) return 0;
@@ -1157,13 +1206,22 @@ export default function Ventas() {
                                                             <div className="space-y-1">
                                                                 <input
                                                                     type="text"
-                                                                    placeholder="Buscar producto..."
+                                                                    placeholder="Buscar producto o escanear QR..."
                                                                     value={busquedaProducto[index] || ''}
                                                                     onChange={(e) => {
                                                                         setBusquedaProducto({
                                                                             ...busquedaProducto,
                                                                             [index]: e.target.value
                                                                         });
+                                                                    }}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key !== 'Enter') return;
+                                                                        if (seleccionarProductoDesdeBusqueda(index, e.target.value)) {
+                                                                            e.preventDefault();
+                                                                        }
+                                                                    }}
+                                                                    onBlur={(e) => {
+                                                                        seleccionarProductoDesdeBusqueda(index, e.target.value);
                                                                     }}
                                                                     className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
                                                                 />
