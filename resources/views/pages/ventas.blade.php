@@ -155,9 +155,9 @@
                             spellcheck="false"
                             inputmode="text"
                             enterkeyhint="done"
-                            placeholder="Código (escáner o pegar)"
+                            placeholder="Código (escáner o pegar) — Enter vacío para guardar"
                             class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-md text-base"
-                            @keydown.enter.prevent="aplicarCodigoEscaneado()"
+                            @keydown.enter.prevent="(codigoScanBuffer || '').trim() ? aplicarCodigoEscaneado() : guardarVenta()"
                             @paste="$nextTick(() => { setTimeout(() => aplicarCodigoEscaneado(), 80); })"
                         >
                         <button type="button" @click="aplicarCodigoEscaneado()" class="px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-800 text-sm font-medium shrink-0">
@@ -809,15 +809,25 @@ function ventas() {
             }
 
             idx = itemsCopia.findIndex((it) => !it.producto_id);
-            if (idx === -1) {
-                itemsCopia.push({ producto_id: prodIdStr, cantidad: 1 });
+            const esNuevoItem = idx === -1;
+            if (esNuevoItem) {
+                itemsCopia.push({ producto_id: '', cantidad: 1 });
                 idx = itemsCopia.length - 1;
             } else {
-                itemsCopia[idx] = { producto_id: prodIdStr, cantidad: 1 };
+                itemsCopia[idx] = { producto_id: '', cantidad: 1 };
             }
             this.items = itemsCopia;
             this.busquedaProducto = { ...this.busquedaProducto, [idx]: '' };
             this.error = '';
+
+            const idxFinal = idx;
+            this.$nextTick(() => {
+                const itemsActualizados = this.items.map((it, i) =>
+                    i === idxFinal ? { ...it, producto_id: prodIdStr } : it
+                );
+                this.items = itemsActualizados;
+            });
+
             return { sumado: false, cantidad: 1 };
         },
 
