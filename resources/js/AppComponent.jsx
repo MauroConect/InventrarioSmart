@@ -19,6 +19,7 @@ import AumentoMasivoPrecios from './pages/AumentoMasivoPrecios';
 import Cheques from './pages/Cheques';
 import VentaDetalle from './pages/VentaDetalle';
 import Usuarios from './pages/Usuarios';
+import RankingVentas from './pages/RankingVentas';
 
 /** Panel Blade de caja; recarga completa para salir del SPA. */
 function FullPageBlade({ href }) {
@@ -81,6 +82,7 @@ function AppRoutes() {
                 <Route path="aumento-masivo-precios" element={<AumentoMasivoPrecios />} />
                 <Route path="cheques" element={<Cheques />} />
                 <Route path="usuarios" element={<Usuarios />} />
+                <Route path="ranking-ventas" element={<RankingVentas />} />
             </Route>
         </Routes>
     );

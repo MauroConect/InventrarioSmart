@@ -76,5 +76,6 @@ Route::middleware('auth')->group(function () use ($puntoCajaView) {
     Route::get('/configuracion-fiscal', function() { return view('pages.configuracion-fiscal'); })->middleware('permission:admin')->name('configuracion-fiscal.index');
     Route::get('/usuarios', function () { return view('pages.usuarios'); })->middleware('permission:admin')->name('usuarios.index');
     Route::get('/auditoria', function () { return view('pages.auditoria'); })->middleware('permission:admin')->name('auditoria.index');
+    Route::get('/ranking-ventas', function () { return view('pages.ranking-ventas'); })->middleware('permission:admin')->name('ranking-ventas.index');
     Route::get('/facturacion', function() { return view('pages.facturacion'); })->middleware('permission:ventas.facturar')->name('facturacion.index');
 });

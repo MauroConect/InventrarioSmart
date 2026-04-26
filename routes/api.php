@@ -102,6 +102,8 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     });
 
     Route::middleware('permission:admin')->group(function () {
+        Route::get('admin/ranking-ventas', [DashboardController::class, 'rankingVentas'])->name('api.admin.ranking-ventas');
+
         Route::get('auditoria/timeline', [AuditoriaController::class, 'timeline'])->name('api.auditoria.timeline');
 
         Route::apiResource('usuarios', UserController::class)->only(['index', 'store', 'update', 'destroy']);
