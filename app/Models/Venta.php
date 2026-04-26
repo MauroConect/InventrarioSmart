@@ -75,5 +75,10 @@ class Venta extends Model
     {
         return $this->hasMany(VentaAdjunto::class);
     }
+
+    public function movimientosCuentaCorriente()
+    {
+        return $this->hasMany(MovimientoCuentaCorriente::class);
+    }
 }
 

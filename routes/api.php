@@ -56,6 +56,7 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     Route::post('ventas/{id}/facturar-afip', [VentaController::class, 'facturarAfip'])->middleware('permission:ventas.facturar');
     Route::get('ventas-pendientes-facturacion', [VentaController::class, 'pendientesFacturacion'])->middleware('permission:ventas.facturar');
     Route::post('ventas-facturar-lote', [VentaController::class, 'facturarLote'])->middleware('permission:ventas.facturar');
+    Route::delete('ventas/{id}', [VentaController::class, 'destroy'])->middleware('permission:ventas.delete');
 
     Route::middleware('permission:clientes.view')->group(function () {
         Route::get('clientes', [ClienteController::class, 'index'])->name('api.clientes.index');

@@ -499,4 +499,67 @@ class VentaController extends Controller
             'resultados' => $resultados,
         ]);
     }
+
+    /**
+     * Elimina la venta, devuelve stock y revierte movimientos de cuenta corriente vinculados.
+     * No aplica a ventas ya facturadas en AFIP/ARCA.
+     */
+    public function destroy($id)
+    {
+        $venta = Venta::with([
+            'items.producto',
+            'adjuntos',
+            'movimientosCuentaCorriente.cuentaCorriente',
+        ])->findOrFail($id);
+
+        if (($venta->estado_facturacion ?? 'pendiente') === 'facturada') {
+            return response()->json([
+                'message' => 'No se puede eliminar una venta ya facturada en AFIP/ARCA.',
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($venta->items as $item) {
+                $producto = $item->producto;
+                if ($producto) {
+                    $producto->stock_actual += (int) $item->cantidad;
+                    $producto->save();
+                }
+            }
+
+            foreach ($venta->movimientosCuentaCorriente as $mov) {
+                $cuenta = $mov->cuentaCorriente;
+                if ($cuenta) {
+                    if ($mov->tipo === 'debe') {
+                        $cuenta->saldo = (float) $cuenta->saldo - (float) $mov->monto;
+                    } else {
+                        $cuenta->saldo = (float) $cuenta->saldo + (float) $mov->monto;
+                    }
+                    $cuenta->save();
+                }
+                $mov->delete();
+            }
+
+            foreach ($venta->adjuntos as $adj) {
+                if ($adj->ruta && Storage::disk('public')->exists($adj->ruta)) {
+                    Storage::disk('public')->delete($adj->ruta);
+                }
+            }
+
+            $venta->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Venta eliminada correctamente.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

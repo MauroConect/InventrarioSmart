@@ -6,8 +6,9 @@
 @section('content')
 @php
     $puedeAgregarItemsVenta = auth()->check() && auth()->user()->hasPermission('ventas.create');
+    $puedeEliminarVenta = auth()->check() && auth()->user()->hasPermission('ventas.delete');
 @endphp
-<div x-data="ventaDetalle({{ $puedeAgregarItemsVenta ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
+<div x-data="ventaDetalle({{ $puedeAgregarItemsVenta ? 'true' : 'false' }}, {{ $puedeEliminarVenta ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
             <h1 class="text-3xl font-bold">Venta #<span x-text="ventaId"></span></h1>
@@ -36,6 +37,17 @@
                 class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2"
             >
                 🖨️ Imprimir Comprobante
+            </button>
+            <button
+                type="button"
+                x-show="puedeEliminarVenta && venta"
+                x-cloak
+                @click="eliminarVenta()"
+                :disabled="eliminando || (venta.estado_facturacion || 'pendiente') === 'facturada'"
+                class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+            >
+                <span x-show="!eliminando">Eliminar venta</span>
+                <span x-show="eliminando" x-cloak>Eliminando…</span>
             </button>
             <a href="{{ route('ventas.index') }}" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Volver</a>
         </div>
@@ -280,7 +292,7 @@
 
 @push('scripts')
 <script>
-function ventaDetalle(puedeAgregarItems) {
+function ventaDetalle(puedeAgregarItems, puedeEliminarVenta) {
     return {
         venta: null,
         fiscal: null,
@@ -288,9 +300,11 @@ function ventaDetalle(puedeAgregarItems) {
         loading: true,
         facturando: false,
         agregandoItems: false,
+        eliminando: false,
         error: '',
         success: '',
         puedeAgregarItems: puedeAgregarItems === true,
+        puedeEliminarVenta: puedeEliminarVenta === true,
         productos: [],
         nuevoItem: { producto_id: '', cantidad: 1 },
         pagoCon: '',
@@ -355,6 +369,35 @@ function ventaDetalle(puedeAgregarItems) {
                     this.error = 'No se pudo cerrar la venta antes de imprimir el ticket.';
                 }
                 return false;
+            }
+        },
+
+        async eliminarVenta() {
+            if (!this.puedeEliminarVenta || !this.ventaId) return;
+            if ((this.venta?.estado_facturacion || 'pendiente') === 'facturada') {
+                this.error = 'No se puede eliminar una venta ya facturada en AFIP/ARCA.';
+                return;
+            }
+            const label = this.venta?.numero_factura || ('#' + this.ventaId);
+            if (!confirm('¿Eliminar la venta ' + label + '? Se revertirá el stock y los cargos en cuenta corriente si los hubiera.')) {
+                return;
+            }
+            this.eliminando = true;
+            this.error = '';
+            this.success = '';
+            try {
+                const token = localStorage.getItem('token');
+                await axios.delete('/api/ventas/' + this.ventaId, {
+                    headers: token ? { Authorization: 'Bearer ' + token } : {},
+                });
+                this.success = 'Venta eliminada. Redirigiendo…';
+                setTimeout(() => {
+                    window.location.href = this.ventasIndexUrl;
+                }, 600);
+            } catch (error) {
+                this.error = error.response?.data?.message || 'No se pudo eliminar la venta.';
+            } finally {
+                this.eliminando = false;
             }
         },
 

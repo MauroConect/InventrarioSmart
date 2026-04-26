@@ -4,7 +4,10 @@
 @section('page-title', 'Ventas')
 
 @section('content')
-<div x-data="ventas()" x-init="init()" class="space-y-6">
+@php
+    $puedeEliminarVenta = auth()->check() && auth()->user()->hasPermission('ventas.delete');
+@endphp
+<div x-data="ventas({{ $puedeEliminarVenta ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 class="text-2xl sm:text-3xl font-bold">Ventas</h1>
         <button
@@ -74,7 +77,18 @@
                                     ></span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <a :href="'/ventas/' + venta.id" class="text-blue-600 hover:text-blue-900">Ver Detalle</a>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <a :href="'/ventas/' + venta.id" class="text-blue-600 hover:text-blue-900">Ver Detalle</a>
+                                        <template x-if="puedeEliminarVenta">
+                                            <button
+                                                type="button"
+                                                class="text-red-600 hover:text-red-800 disabled:opacity-50 text-sm"
+                                                :disabled="eliminandoVentaId === venta.id || (venta.estado_facturacion || 'pendiente') === 'facturada'"
+                                                @click="eliminarVenta(venta)"
+                                                x-text="eliminandoVentaId === venta.id ? 'Eliminando…' : 'Eliminar'"
+                                            ></button>
+                                        </template>
+                                    </div>
                                 </td>
                             </tr>
                         </template>
@@ -630,8 +644,10 @@ function construirHtmlTicketDesdeVentaGuardada(venta) {
             </html>`;
 }
 
-function ventas() {
+function ventas(puedeEliminarVenta) {
     return {
+        puedeEliminarVenta: puedeEliminarVenta === true,
+        eliminandoVentaId: null,
         ventas: [],
         clientes: [],
         productos: [],
@@ -681,6 +697,31 @@ function ventas() {
                 console.error('Error:', error);
             } finally {
                 this.loadingLista = false;
+            }
+        },
+
+        async eliminarVenta(venta) {
+            if (!venta || !venta.id || !this.puedeEliminarVenta) return;
+            if ((venta.estado_facturacion || 'pendiente') === 'facturada') {
+                this.error = 'No se puede eliminar una venta ya facturada en AFIP/ARCA.';
+                return;
+            }
+            const label = venta.numero_factura || ('#' + venta.id);
+            if (!confirm('¿Eliminar la venta ' + label + '? Se revertirá el stock y los cargos en cuenta corriente si los hubiera.')) {
+                return;
+            }
+            this.eliminandoVentaId = venta.id;
+            this.error = '';
+            this.success = '';
+            try {
+                await axios.delete('/api/ventas/' + venta.id, { headers: this.authHeaders() });
+                this.success = 'Venta eliminada correctamente.';
+                await this.fetchVentas();
+                setTimeout(() => { this.success = ''; }, 4000);
+            } catch (error) {
+                this.error = error.response?.data?.message || 'No se pudo eliminar la venta.';
+            } finally {
+                this.eliminandoVentaId = null;
             }
         },
         

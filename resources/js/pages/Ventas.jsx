@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { canAccess } from '../utils/permissions';
 
 const TIPO_PAGO_LABELS = {
     efectivo: 'Efectivo',
@@ -353,6 +355,9 @@ function construirHtmlTicketDesdeVentaGuardada(venta) {
 
 export default function Ventas() {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const puedeEliminarVenta = canAccess(user, 'ventas.delete');
+    const [eliminandoId, setEliminandoId] = useState(null);
     const [ventas, setVentas] = useState([]);
     const [clientes, setClientes] = useState([]);
     const [productos, setProductos] = useState([]);
@@ -396,6 +401,38 @@ export default function Ventas() {
             console.error('Error al cargar ventas:', error);
         } finally {
             setLoadingLista(false);
+        }
+    };
+
+    const eliminarVenta = async (venta) => {
+        if (!venta?.id) return;
+        const fact = (venta.estado_facturacion || 'pendiente') === 'facturada';
+        if (fact) {
+            setError('No se puede eliminar una venta ya facturada en AFIP/ARCA.');
+            return;
+        }
+        if (
+            !window.confirm(
+                `¿Eliminar la venta ${venta.numero_factura || '#' + venta.id}? Se revertirá el stock y los cargos en cuenta corriente si los hubiera.`
+            )
+        ) {
+            return;
+        }
+        setEliminandoId(venta.id);
+        setError('');
+        setSuccess('');
+        try {
+            await axios.delete(`/ventas/${venta.id}`);
+            setSuccess('Venta eliminada correctamente.');
+            await fetchVentas();
+            setTimeout(() => setSuccess(''), 4000);
+        } catch (err) {
+            setError(
+                err.response?.data?.message ||
+                    'No se pudo eliminar la venta.'
+            );
+        } finally {
+            setEliminandoId(null);
         }
     };
 
@@ -774,12 +811,29 @@ export default function Ventas() {
                                             </span>
                                         </td>
                                         <td className="px-3 sm:px-6 py-4">
-                                            <button
-                                                onClick={() => navigate(`/ventas/${venta.id}`)}
-                                                className="text-blue-600 hover:text-blue-900 text-sm"
-                                            >
-                                                Ver Detalle
-                                            </button>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigate(`/ventas/${venta.id}`)}
+                                                    className="text-blue-600 hover:text-blue-900 text-sm"
+                                                >
+                                                    Ver Detalle
+                                                </button>
+                                                {puedeEliminarVenta && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={
+                                                            eliminandoId === venta.id ||
+                                                            (venta.estado_facturacion || 'pendiente') ===
+                                                                'facturada'
+                                                        }
+                                                        onClick={() => eliminarVenta(venta)}
+                                                        className="text-red-600 hover:text-red-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        {eliminandoId === venta.id ? 'Eliminando…' : 'Eliminar'}
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

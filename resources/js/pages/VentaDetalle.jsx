@@ -21,6 +21,7 @@ export default function VentaDetalle() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const puedeAgregarItems = canAccess(user, 'ventas.create');
+    const puedeEliminarVenta = canAccess(user, 'ventas.delete');
 
     const [venta, setVenta] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -29,6 +30,7 @@ export default function VentaDetalle() {
     const [productos, setProductos] = useState([]);
     const [nuevoItem, setNuevoItem] = useState({ producto_id: '', cantidad: 1 });
     const [agregandoItems, setAgregandoItems] = useState(false);
+    const [eliminando, setEliminando] = useState(false);
     const [accionMenu, setAccionMenu] = useState('');
 
     const motivoBloqueoAgregarItems = useCallback((v) => {
@@ -125,6 +127,36 @@ export default function VentaDetalle() {
             setError(
                 err.response?.data?.message || 'No se pudo cerrar la venta.'
             );
+        }
+    };
+
+    const eliminarVenta = async () => {
+        if (!venta?.id) return;
+        if ((venta.estado_facturacion || 'pendiente') === 'facturada') {
+            setError('No se puede eliminar una venta ya facturada en AFIP/ARCA.');
+            return;
+        }
+        if (
+            !window.confirm(
+                `¿Eliminar la venta ${venta.numero_factura || '#' + venta.id}? Se revertirá el stock y los cargos en cuenta corriente si los hubiera.`
+            )
+        ) {
+            return;
+        }
+        try {
+            setEliminando(true);
+            setError('');
+            setSuccess('');
+            await axios.delete(`/ventas/${id}`);
+            setSuccess('Venta eliminada. Redirigiendo al listado…');
+            setTimeout(() => navigate('/ventas'), 800);
+        } catch (err) {
+            setError(
+                err.response?.data?.message ||
+                    'No se pudo eliminar la venta.'
+            );
+        } finally {
+            setEliminando(false);
         }
     };
 
@@ -225,6 +257,20 @@ export default function VentaDetalle() {
                         <option value="">Acciones</option>
                         <option value="cerrar">Cerrar venta</option>
                     </select>
+                    {puedeEliminarVenta && (
+                        <button
+                            type="button"
+                            onClick={eliminarVenta}
+                            disabled={
+                                eliminando ||
+                                (venta.estado_facturacion || 'pendiente') ===
+                                    'facturada'
+                            }
+                            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
+                        >
+                            {eliminando ? 'Eliminando…' : 'Eliminar venta'}
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={handleVolver}

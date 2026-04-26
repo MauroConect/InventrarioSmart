@@ -4,6 +4,8 @@
  * Permisos por rol (clave = valor de users.role en minúsculas, salvo alias abajo).
  * admin: * = todo.
  * vendedor: operar caja, vender, consultar catálogo y clientes; ver stock sin ajustes.
+ *
+ * ventas.delete: eliminar venta (API); solo admin vía * — no asignar a vendedor.
  */
 return [
     'roles' => [
