@@ -35,6 +35,8 @@ class ProductoController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizeProductoRequest($request);
+
         $validated = $request->validate([
             'codigo' => 'required|string|unique:productos,codigo',
             'nombre' => 'required|string|max:255',
@@ -61,7 +63,9 @@ class ProductoController extends Controller
     public function update(Request $request, $id)
     {
         $producto = Producto::findOrFail($id);
-        
+
+        $this->normalizeProductoRequest($request);
+
         $validated = $request->validate([
             'codigo' => 'required|string|unique:productos,codigo,' . $id,
             'nombre' => 'required|string|max:255',
@@ -168,5 +172,52 @@ class ProductoController extends Controller
             'productos_actualizados' => $actualizados,
             'total_productos' => count($productoIds)
         ]);
+    }
+
+    /**
+     * Acepta comas como separador decimal, convierte stock a enteros y
+     * proveedor opcional vacío a null para evitar fallos silenciosos de exists.
+     */
+    private function normalizeProductoRequest(Request $request): void
+    {
+        $data = $request->all();
+
+        foreach (['precio_compra', 'precio_venta'] as $field) {
+            if (! array_key_exists($field, $data)) {
+                continue;
+            }
+            $raw = $data[$field];
+            if ($raw === null || $raw === '') {
+                continue;
+            }
+            if (is_string($raw)) {
+                $clean = preg_replace('/[^\d,.-]/', '', trim($raw));
+                $clean = str_replace(',', '.', $clean);
+                if ($clean !== '' && is_numeric($clean)) {
+                    $data[$field] = (float) $clean;
+                }
+            } elseif (is_numeric($raw)) {
+                $data[$field] = (float) $raw;
+            }
+        }
+
+        foreach (['stock_minimo', 'stock_actual'] as $field) {
+            if (! array_key_exists($field, $data)) {
+                continue;
+            }
+            $raw = $data[$field];
+            if ($raw === null || $raw === '') {
+                continue;
+            }
+            if (is_numeric($raw)) {
+                $data[$field] = (int) round((float) $raw);
+            }
+        }
+
+        if (array_key_exists('proveedor_id', $data) && $data['proveedor_id'] === '') {
+            $data['proveedor_id'] = null;
+        }
+
+        $request->merge($data);
     }
 }
