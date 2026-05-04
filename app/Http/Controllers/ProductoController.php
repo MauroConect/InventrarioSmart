@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Producto;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class ProductoController extends Controller
@@ -78,10 +79,31 @@ class ProductoController extends Controller
         return response()->json($producto->load(['categoria', 'proveedor']));
     }
 
+    public function updateActivo(Request $request, Producto $producto)
+    {
+        $validated = $request->validate([
+            'activo' => 'required|boolean',
+        ]);
+        $producto->activo = $validated['activo'];
+        $producto->save();
+
+        return response()->json($producto->load(['categoria', 'proveedor']));
+    }
+
     public function destroy($id)
     {
         $producto = Producto::findOrFail($id);
-        $producto->delete();
+        try {
+            $producto->delete();
+        } catch (QueryException $e) {
+            if (($e->errorInfo[0] ?? '') === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar: el producto tiene ventas u otros registros vinculados. Podés desactivarlo para ocultarlo sin perder el historial.',
+                ], 422);
+            }
+            throw $e;
+        }
+
         return response()->json(null, 204);
     }
 

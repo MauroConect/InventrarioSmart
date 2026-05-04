@@ -25,6 +25,7 @@ export default function Productos() {
     });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [removeModalProduct, setRemoveModalProduct] = useState(null);
     const [formData, setFormData] = useState({
         codigo: '',
         nombre: '',
@@ -187,13 +188,44 @@ export default function Productos() {
         setShowModal(true);
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('¿Está seguro de eliminar este producto?')) return;
+    const openRemoveModal = (producto) => {
+        setError('');
+        setRemoveModalProduct(producto);
+    };
+
+    const patchActivo = async (id, activo) => {
+        try {
+            setError('');
+            setSuccess('');
+            await axios.patch(`/productos/${id}/activo`, { activo });
+            setSuccess(activo ? 'Producto reactivado correctamente' : 'Producto desactivado correctamente');
+            setRemoveModalProduct(null);
+            await loadProductos();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (error) {
+            console.error('Error al cambiar estado del producto:', error);
+            const errorMessage =
+                error.response?.data?.message ||
+                'No se pudo actualizar el estado del producto.';
+            setError(errorMessage);
+            setTimeout(() => setError(''), 5000);
+        }
+    };
+
+    const handleHardDelete = async (id) => {
+        if (
+            !window.confirm(
+                '¿Eliminar definitivamente? Solo será posible si el producto no tiene ventas ni otros registros vinculados.'
+            )
+        ) {
+            return;
+        }
         try {
             setError('');
             setSuccess('');
             await axios.delete(`/productos/${id}`);
             setSuccess('Producto eliminado correctamente');
+            setRemoveModalProduct(null);
             const rows = await loadProductos();
             if (rows.length === 0 && page > 1) {
                 setPage((p) => p - 1);
@@ -201,8 +233,9 @@ export default function Productos() {
             setTimeout(() => setSuccess(''), 3000);
         } catch (error) {
             console.error('Error al eliminar producto:', error);
-            const errorMessage = error.response?.data?.message || 
-                                'Error al eliminar el producto. Verifica que no esté siendo utilizado.';
+            const errorMessage =
+                error.response?.data?.message ||
+                'Error al eliminar el producto. Podés desactivarlo en lugar de borrarlo.';
             setError(errorMessage);
             setTimeout(() => setError(''), 5000);
         }
@@ -341,7 +374,7 @@ export default function Productos() {
                                                         Editar
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(producto.id)}
+                                                        onClick={() => openRemoveModal(producto)}
                                                         className="text-red-600 hover:text-red-900 focus:outline-none text-left sm:text-center"
                                                     >
                                                         Eliminar
@@ -394,6 +427,71 @@ export default function Productos() {
                     </div>
                 )}
             </div>
+
+            {removeModalProduct && canManage && (
+                <div
+                    role="presentation"
+                    className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-3 sm:p-4"
+                    onClick={() => setRemoveModalProduct(null)}
+                >
+                    <div
+                        className="relative bg-white rounded-lg shadow-xl w-full max-w-md"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="border-b px-4 sm:px-6 py-4">
+                            <h3 className="text-lg font-bold text-gray-800">Quitar o desactivar producto</h3>
+                            <p className="mt-1 text-sm text-gray-600">
+                                <span className="font-medium text-gray-800">{removeModalProduct.nombre}</span>
+                                {' · código '}
+                                {removeModalProduct.codigo}
+                            </p>
+                        </div>
+                        <div className="p-4 sm:p-6 space-y-4 text-sm text-gray-700">
+                            <p>
+                                Si hay ventas, ítems o movimientos vinculados, el sistema no permite borrar el
+                                producto por las reglas de integridad de datos.
+                            </p>
+                            <p>
+                                Podés <strong className="font-semibold text-gray-900">desactivarlo</strong> para que no
+                                se use en listados de productos activos; el historial se mantiene.
+                            </p>
+                            <div className="flex flex-col gap-2 pt-2">
+                                {removeModalProduct.activo !== false ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => patchActivo(removeModalProduct.id, false)}
+                                        className="w-full px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                    >
+                                        Desactivar producto
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => patchActivo(removeModalProduct.id, true)}
+                                        className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    >
+                                        Reactivar producto
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => handleHardDelete(removeModalProduct.id)}
+                                    className="w-full px-4 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400"
+                                >
+                                    Eliminar definitivamente del sistema…
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setRemoveModalProduct(null)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {showModal && canManage && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-3 sm:p-4">

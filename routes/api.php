@@ -95,6 +95,7 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
 
     Route::middleware('permission:productos.manage')->group(function () {
         Route::post('productos', [ProductoController::class, 'store']);
+        Route::patch('productos/{producto}/activo', [ProductoController::class, 'updateActivo']);
         Route::put('productos/{producto}', [ProductoController::class, 'update']);
         Route::patch('productos/{producto}', [ProductoController::class, 'update']);
         Route::delete('productos/{producto}', [ProductoController::class, 'destroy']);

@@ -88,7 +88,7 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" x-show="canManage">
                                     <button @click="edit(producto)" class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
-                                    <button @click="remove(producto.id)" class="text-red-600 hover:text-red-900">Eliminar</button>
+                                    <button @click="openRemoveModal(producto)" class="text-red-600 hover:text-red-900">Eliminar</button>
                                 </td>
                             </tr>
                         </template>
@@ -128,6 +128,51 @@
                 </div>
             </div>
         </template>
+    </div>
+
+    <!-- Modal quitar / desactivar -->
+    <div x-show="removeTarget && canManage"
+         x-cloak
+         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
+         @click.self="closeRemoveModal()">
+        <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md" @click.stop>
+            <div class="border-b px-6 py-4">
+                <h3 class="text-lg font-bold text-gray-800">Quitar o desactivar producto</h3>
+                <p class="mt-1 text-sm text-gray-600" x-show="removeTarget">
+                    <span class="font-medium text-gray-800" x-text="removeTarget?.nombre"></span>
+                    <span> · código </span>
+                    <span x-text="removeTarget?.codigo"></span>
+                </p>
+            </div>
+            <div class="p-6 space-y-4 text-sm text-gray-700">
+                <p>Si hay ventas, ítems o movimientos vinculados, el sistema no permite borrar el producto por integridad de datos.</p>
+                <p>Podés <span class="font-semibold text-gray-900">desactivarlo</span> para ocultarlo en listados de productos activos; el historial se conserva.</p>
+                <div class="flex flex-col gap-2 pt-2">
+                    <button type="button"
+                            x-show="removeTarget?.activo !== false"
+                            @click="setProductoActivo(false)"
+                            class="w-full px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700">
+                        Desactivar producto
+                    </button>
+                    <button type="button"
+                            x-show="removeTarget?.activo === false"
+                            @click="setProductoActivo(true)"
+                            class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                        Reactivar producto
+                    </button>
+                    <button type="button"
+                            @click="hardRemove()"
+                            class="w-full px-4 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50">
+                        Eliminar definitivamente del sistema…
+                    </button>
+                    <button type="button"
+                            @click="closeRemoveModal()"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal -->
@@ -218,6 +263,7 @@ function productos(canManage) {
         proveedores: [],
         loading: true,
         showModal: false,
+        removeTarget: null,
         editing: null,
         search: '',
         currentPage: 1,
@@ -349,6 +395,55 @@ function productos(canManage) {
             this.editing = null;
             this.error = '';
         },
+
+        openRemoveModal(producto) {
+            if (!this.canManage) return;
+            this.removeTarget = producto;
+            this.error = '';
+        },
+
+        closeRemoveModal() {
+            this.removeTarget = null;
+        },
+
+        async setProductoActivo(activo) {
+            if (!this.removeTarget) return;
+            const id = this.removeTarget.id;
+            try {
+                this.error = '';
+                this.success = '';
+                await axios.patch(`/api/productos/${id}/activo`, { activo }, { withCredentials: true });
+                this.success = activo ? 'Producto reactivado correctamente' : 'Producto desactivado correctamente';
+                this.closeRemoveModal();
+                await this.fetch();
+                setTimeout(() => { this.success = ''; }, 3000);
+            } catch (error) {
+                this.error = error.response?.data?.message || 'No se pudo actualizar el estado del producto.';
+                setTimeout(() => { this.error = ''; }, 5000);
+            }
+        },
+
+        async hardRemove() {
+            if (!this.removeTarget) return;
+            const id = this.removeTarget.id;
+            if (!confirm('¿Eliminar definitivamente? Solo será posible si el producto no tiene ventas ni otros registros vinculados.')) return;
+            try {
+                this.error = '';
+                this.success = '';
+                await axios.delete(`/api/productos/${id}`, { withCredentials: true });
+                this.success = 'Producto eliminado correctamente';
+                this.closeRemoveModal();
+                await this.fetch();
+                if (this.productos.length === 0 && this.currentPage > 1) {
+                    this.currentPage--;
+                    await this.fetch();
+                }
+                setTimeout(() => { this.success = ''; }, 3000);
+            } catch (error) {
+                this.error = error.response?.data?.message || 'No se pudo eliminar. Podés desactivar el producto en su lugar.';
+                setTimeout(() => { this.error = ''; }, 5000);
+            }
+        },
         
         async save() {
             try {
@@ -375,24 +470,6 @@ function productos(canManage) {
             }
         },
         
-        async remove(id) {
-            if (!confirm('¿Está seguro de eliminar este producto?')) return;
-            try {
-                await axios.delete(`/api/productos/${id}`, {
-                    withCredentials: true
-                });
-                this.success = 'Producto eliminado correctamente';
-                await this.fetch();
-                if (this.productos.length === 0 && this.currentPage > 1) {
-                    this.currentPage--;
-                    await this.fetch();
-                }
-                setTimeout(() => this.success = '', 3000);
-            } catch (error) {
-                this.error = error.response?.data?.message || 'Error al eliminar';
-                setTimeout(() => this.error = '', 5000);
-            }
-        }
     }
 }
 </script>
