@@ -37,6 +37,7 @@ class ProductoController extends Controller
     {
         $this->normalizeProductoRequest($request);
 
+        // stock_actual puede ser negativo (sobrevendido); stock_minimo suele ser ≥ 0
         $validated = $request->validate([
             'codigo' => 'required|string|unique:productos,codigo',
             'nombre' => 'required|string|max:255',
@@ -44,11 +45,11 @@ class ProductoController extends Controller
             'precio_compra' => 'required|numeric|min:0',
             'precio_venta' => 'required|numeric|min:0',
             'stock_minimo' => 'required|integer|min:0',
-            'stock_actual' => 'required|integer|min:0',
+            'stock_actual' => 'required|integer',
             'categoria_id' => 'required|exists:categorias,id',
             'proveedor_id' => 'nullable|exists:proveedores,id',
             'activo' => 'boolean',
-        ]);
+        ], $this->productoValidationMessages());
 
         $producto = Producto::create($validated);
         return response()->json($producto->load(['categoria', 'proveedor']), 201);
@@ -73,11 +74,11 @@ class ProductoController extends Controller
             'precio_compra' => 'required|numeric|min:0',
             'precio_venta' => 'required|numeric|min:0',
             'stock_minimo' => 'required|integer|min:0',
-            'stock_actual' => 'required|integer|min:0',
+            'stock_actual' => 'required|integer',
             'categoria_id' => 'required|exists:categorias,id',
             'proveedor_id' => 'nullable|exists:proveedores,id',
             'activo' => 'boolean',
-        ]);
+        ], $this->productoValidationMessages());
 
         $producto->update($validated);
         return response()->json($producto->load(['categoria', 'proveedor']));
@@ -172,6 +173,34 @@ class ProductoController extends Controller
             'productos_actualizados' => $actualizados,
             'total_productos' => count($productoIds)
         ]);
+    }
+
+    /**
+     * Mensajes explícitos: si el servidor usa resources/lang vacío, igual no se ve la clave cruda.
+     *
+     * @return array<string, string>
+     */
+    private function productoValidationMessages(): array
+    {
+        return [
+            'codigo.required' => 'El código es obligatorio.',
+            'codigo.unique' => 'Ese código ya está registrado.',
+            'nombre.required' => 'El nombre es obligatorio.',
+            'precio_compra.required' => 'El precio de compra es obligatorio.',
+            'precio_compra.numeric' => 'El precio de compra debe ser un número.',
+            'precio_compra.min' => 'El precio de compra no puede ser negativo.',
+            'precio_venta.required' => 'El precio de venta es obligatorio.',
+            'precio_venta.numeric' => 'El precio de venta debe ser un número.',
+            'precio_venta.min' => 'El precio de venta no puede ser negativo.',
+            'stock_minimo.required' => 'El stock mínimo es obligatorio.',
+            'stock_minimo.integer' => 'El stock mínimo debe ser un número entero.',
+            'stock_minimo.min' => 'El stock mínimo no puede ser negativo.',
+            'stock_actual.required' => 'El stock actual es obligatorio.',
+            'stock_actual.integer' => 'El stock actual debe ser un número entero.',
+            'categoria_id.required' => 'La categoría es obligatoria.',
+            'categoria_id.exists' => 'La categoría seleccionada no es válida.',
+            'proveedor_id.exists' => 'El proveedor seleccionado no es válido.',
+        ];
     }
 
     /**
