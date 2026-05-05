@@ -21,17 +21,6 @@
             </div>
         </div>
         <div class="flex flex-wrap gap-2 items-center">
-            <div class="relative">
-                <label class="sr-only">Acciones</label>
-                <select
-                    x-model="accionMenu"
-                    @change="ejecutarAccionMenu()"
-                    class="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-800 min-w-[11rem]"
-                >
-                    <option value="">Acciones</option>
-                    <option value="cerrar">Cerrar venta</option>
-                </select>
-            </div>
             <button
                 @click="facturarAfip()"
                 x-show="venta && venta.estado_facturacion !== 'facturada'"
@@ -148,7 +137,7 @@
                             <span x-show="guardandoDescuento" x-cloak>Guardando...</span>
                         </button>
                     </div>
-                    <p class="mt-2 text-xs text-gray-500">Atajos: V para agregar a la venta, Enter para guardar descuento y C para cerrar venta.</p>
+                    <p class="mt-2 text-xs text-gray-500">Atajos: V para agregar a la venta y Enter para guardar descuento.</p>
                 </div>
                 <div class="mt-4 pt-4 border-t space-y-2 text-sm" x-show="venta.tipo_pago === 'mixto'">
                     <p class="font-medium text-gray-800">Detalle del pago</p>
@@ -284,7 +273,6 @@ function ventaDetalle(puedeAgregarItems) {
         puedeAgregarItems: puedeAgregarItems === true,
         productos: [],
         nuevoItem: { producto_id: '', cantidad: 1 },
-        accionMenu: '',
         ventasIndexUrl: @json(url('/ventas')),
         descuentoEdit: 0,
         guardandoDescuento: false,
@@ -316,29 +304,6 @@ function ventaDetalle(puedeAgregarItems) {
             if (this.venta.estado === 'cancelada') return false;
             if (this.venta.estado === 'cerrada') return false;
             return (this.venta.estado_facturacion || 'pendiente') !== 'facturada';
-        },
-
-        ejecutarAccionMenu() {
-            const v = this.accionMenu;
-            this.accionMenu = '';
-            if (v === 'cerrar') {
-                this.cerrarVenta();
-            }
-        },
-
-        async cerrarVenta() {
-            try {
-                this.error = '';
-                this.success = '';
-                const token = localStorage.getItem('token');
-                const response = await axios.post(`/api/ventas/${this.ventaId}/cerrar`, {}, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                this.success = response.data?.message || 'Venta cerrada correctamente.';
-                await this.fetch();
-            } catch (error) {
-                this.error = error.response?.data?.message || 'No se pudo cerrar la venta.';
-            }
         },
 
         async guardarDescuento() {
@@ -400,12 +365,6 @@ function ventaDetalle(puedeAgregarItems) {
                 return;
             }
 
-            if (key === 'c') {
-                event.preventDefault();
-                if ((this.venta.estado || '').toLowerCase() === 'abierta') {
-                    await this.cerrarVenta();
-                }
-            }
         },
 
         async init() {
