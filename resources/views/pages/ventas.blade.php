@@ -206,7 +206,7 @@
                                         />
                                         <select 
                                             x-model="item.producto_id" 
-                                            @change="busquedaProducto[index] = ''"
+                                            @change="seleccionarProductoManual(index)"
                                             class="w-full px-2 py-1 border border-gray-300 rounded-md text-sm" 
                                             required
                                         >
@@ -831,6 +831,25 @@ function ventas() {
             return { sumado: false, cantidad: 1 };
         },
 
+        seleccionarProductoManual(index) {
+            this.busquedaProducto[index] = '';
+            this.error = '';
+            this.enfocarInputScanVentas();
+        },
+
+        enfocarInputScanVentas() {
+            this.$nextTick(() => {
+                setTimeout(() => {
+                    const el = this.$refs.inputScanVentas;
+                    if (!this.showModal || !el) return;
+                    try {
+                        el.focus();
+                        if (el.select) el.select();
+                    } catch (e) {}
+                }, 0);
+            });
+        },
+
         aplicarCodigoEscaneado(codigoOpcional) {
             const raw = String(codigoOpcional != null ? codigoOpcional : this.codigoScanBuffer ?? '').trim();
             if (!raw) {
@@ -852,10 +871,7 @@ function ventas() {
                 this.success = 'Agregado: ' + nombreProd;
             }
             setTimeout(() => { this.success = ''; }, 1500);
-            this.$nextTick(() => {
-                const el = this.$refs.inputScanVentas;
-                if (el) try { el.focus(); el.select && el.select(); } catch (e) {}
-            });
+            this.enfocarInputScanVentas();
         },
 
         async cerrarEscanerCamara() {
@@ -1114,10 +1130,7 @@ function ventas() {
             this.error = '';
             this.success = '';
             this.resetForm();
-            this.$nextTick(() => {
-                const el = this.$refs.inputScanVentas;
-                if (el) try { el.focus(); } catch (e) {}
-            });
+            this.enfocarInputScanVentas();
         },
         
         async closeModal() {
