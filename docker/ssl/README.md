@@ -1,39 +1,60 @@
-# Certificado local (HTTPS para Chrome / PWA / modo sin conexión)
+# Certificados HTTPS (Chrome, PWA, modo sin conexión)
 
-Chrome **no activa** Service Worker ni PWA en `http://192.168.x.x` (solo en `https://` o `http://localhost` / `http://127.0.0.1`).
+Chrome **no activa** Service Worker ni PWA en `http://192.168.x.x` (sí en `https://` o en `http://localhost` / `http://127.0.0.1`).
 
-## Opción 1 — Misma PC que el servidor (sin generar certificados)
+## Si el shell te mostró `>` y no terminaba
 
-En el navegador de **esa** máquina abrí:
+Faltaba cerrar las comillas del `-addext "..."`. Copiá el comando **en una sola línea** (abajo) o asegurate de que la última línea termine en `"` y Enter.
 
-`http://127.0.0.1:8000`
+## Opción A — Misma PC que el servidor (sin certificados)
 
-(no uses `http://192.168...` en la misma PC).
+Abrí: `http://127.0.0.1:8000` (no uses `http://192.168...` en esa máquina).
 
-## Opción 2 — HTTPS en el puerto 8443 (otro dispositivo en la red o forzar HTTPS)
+## Opción B — Certificado solo para probar (localhost / 127.0.0.1)
 
-1. Generá el certificado (Git Bash, WSL o Linux; en Windows puede estar `openssl` con Git):
+Una sola línea (evita errores de comillas):
 
 ```bash
-openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-  -keyout docker/ssl/local.key \
-  -out docker/ssl/local.crt \
-  -subj "/CN=localhost" \
-  -addext "subjectAltName=DNS:localhost,DNS:127.0.0.1,IP:127.0.0.1"
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout docker/ssl/local.key -out docker/ssl/local.crt -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
 ```
 
-Para acceder desde otro equipo por IP, volvé a generar con tu IP, por ejemplo:
+Comprobá que existan `docker/ssl/local.crt` y `docker/ssl/local.key`:
 
-`-subj "/CN=192.168.1.50" -addext "subjectAltName=DNS:localhost,IP:192.168.1.50"`
+```bash
+ls -la docker/ssl/
+```
 
-2. Levantá los contenedores **con** el override HTTPS:
+## Opción C — VPS con dominio público (recomendado si entrás por `https://tudominio.com`)
+
+Regenerá el certificado con **tu dominio** (sin `https://`), para que el navegador no marque error de nombre:
+
+```bash
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout docker/ssl/local.key -out docker/ssl/local.crt -subj "/CN=tudominio.com" -addext "subjectAltName=DNS:tudominio.com,DNS:www.tudominio.com"
+```
+
+Reemplazá `tudominio.com` por el tuyo. Luego usá **HTTPS** en la URL con el que entrás (puerto **8443** si usás `docker-compose.https.yml`, o el que tengas en nginx del sistema).
+
+**Producción seria:** usá **Let's Encrypt** (Certbot) con nginx en el host o un proxy, en lugar de este certificado autofirmado.
+
+## Levantar Docker con HTTPS
+
+Desde la raíz del proyecto (donde está `docker-compose.yml`):
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
 ```
 
-3. Entrá a `https://127.0.0.1:8443` (o `https://TU_IP:8443`). Chrome mostrará “No es seguro”: en **Avanzado → Continuar a sitio** (es normal con certificado autofirmado).
+- **HTTP:** `http://TU_SERVIDOR:8000`
+- **HTTPS:** `https://TU_SERVIDOR:8443` (o el puerto que mapees)
 
-4. En `.env`, si hace falta cookies/sesión, podés poner `APP_URL=https://127.0.0.1:8443` mientras probás.
+La primera vez Chrome avisará que el certificado no es de una CA conocida: **Avanzado → continuar** (normal con autofirmado).
 
-El puerto **8000** sigue siendo HTTP por compatibilidad; **8443** es HTTPS.
+## `.env`
+
+Mientras probás HTTPS, alineá la URL, por ejemplo:
+
+```env
+APP_URL=https://tudominio.com:8443
+```
+
+(Ajustá dominio y puerto a lo que uses en producción.)
