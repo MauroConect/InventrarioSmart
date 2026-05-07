@@ -1,0 +1,19 @@
+{
+  "name": "Inventario — El Cristo",
+  "short_name": "Inventario",
+  "description": "Gestión de inventario, ventas y stock",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#1d4ed8",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/icons/app-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

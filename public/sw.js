@@ -1,7 +1,7 @@
 /* InventarioInteligente — app shell y datos para uso sin conexión.
  * Bump SW_CACHE_VERSION al desplegar para forzar actualización de cachés.
  */
-const SW_CACHE_VERSION = 'inv-offline-v2';
+const SW_CACHE_VERSION = 'inv-offline-v3';
 const PAGE_CACHE = 'pages-' + SW_CACHE_VERSION;
 const API_CACHE = 'api-get-' + SW_CACHE_VERSION;
 const STATIC_CACHE = 'static-' + SW_CACHE_VERSION;
@@ -27,7 +27,9 @@ function matchPage(request) {
 self.addEventListener('install', function (event) {
     event.waitUntil(
         caches.open(STATIC_CACHE).then(function (cache) {
-            return cache.addAll(['/offline.html']).catch(function () {});
+            return cache
+                .addAll(['/offline.html', '/manifest.webmanifest', '/icons/app-icon.svg'])
+                .catch(function () {});
         })
     );
     self.skipWaiting();
@@ -143,6 +145,9 @@ self.addEventListener('fetch', function (event) {
                             dest === 'style' ||
                             dest === 'font' ||
                             dest === 'image' ||
+                            dest === 'manifest' ||
+                            url.pathname.endsWith('.webmanifest') ||
+                            url.pathname.endsWith('.svg') ||
                             url.pathname.indexOf('/build/') === 0 ||
                             url.pathname.indexOf('/js/') === 0
                         ) {

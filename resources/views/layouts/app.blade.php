@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#1d4ed8">
+    <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <title>@yield('title', 'El Cristo')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -185,8 +187,6 @@
     <script>
         (function () {
             if (!('serviceWorker' in navigator)) return;
-            var h = location.hostname || '';
-            if (location.protocol !== 'https:' && h !== 'localhost' && h !== '127.0.0.1') return;
             window.addEventListener('load', function () {
                 navigator.serviceWorker.register(@json(asset('sw.js'))).catch(function () {});
             });
@@ -249,6 +249,68 @@
                     window.location.href = '/productos?nuevo=1';
                 }
             });
+        })();
+    </script>
+    <div id="pwa-install-wrap" class="fixed bottom-4 right-4 z-[100] flex flex-col items-end gap-2 max-w-[min(22rem,calc(100vw-2rem))]">
+        <button type="button" id="pwa-install-btn" class="hidden shadow-lg rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5">
+            Instalar aplicación (PWA)
+        </button>
+        <p id="pwa-install-tip" class="hidden text-xs text-gray-700 bg-white/95 border border-gray-200 rounded-lg px-3 py-2 shadow"></p>
+    </div>
+    <script>
+        (function () {
+            var btn = document.getElementById('pwa-install-btn');
+            var tip = document.getElementById('pwa-install-tip');
+            var deferred = null;
+
+            function isStandalone() {
+                return (
+                    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+                    window.navigator.standalone === true
+                );
+            }
+
+            function insecureHttp() {
+                if (location.protocol !== 'http:') return false;
+                var h = location.hostname || '';
+                return h !== 'localhost' && h !== '127.0.0.1';
+            }
+
+            if (!btn || isStandalone()) return;
+
+            window.addEventListener('beforeinstallprompt', function (e) {
+                e.preventDefault();
+                deferred = e;
+                btn.classList.remove('hidden');
+                if (tip) {
+                    tip.classList.remove('hidden');
+                    tip.textContent =
+                        'Instalá la app: Chrome guardará interfaz y últimas listas (Productos, APIs) para cuando se caiga el Wi‑Fi. Igual hay que abrir cada sección al menos una vez con Internet.';
+                }
+            });
+
+            btn.addEventListener('click', function () {
+                if (!deferred) return;
+                deferred.prompt();
+                deferred.userChoice.finally(function () {
+                    deferred = null;
+                    btn.classList.add('hidden');
+                });
+            });
+
+            if (tip && insecureHttp()) {
+                tip.classList.remove('hidden');
+                tip.textContent =
+                    'En esta dirección (HTTP en red local) Chrome suele no permitir modo offline. Usá https:// o abrí por http://127.0.0.1 si el servidor está en tu PC.';
+            } else if (tip && 'serviceWorker' in navigator) {
+                window.setTimeout(function () {
+                    if (isStandalone() || deferred) return;
+                    if (btn && !btn.classList.contains('hidden')) return;
+                    tip.classList.remove('hidden');
+                    tip.textContent =
+                        'Sin botón de instalar: en Chrome usá el menú ⋮ → «Instalar…» / «Crear acceso directo». Con Internet, entrá a Productos, Ventas y Stock una vez para que queden guardados en este equipo.';
+                }, 8000);
+            }
         })();
     </script>
     @stack('scripts')
