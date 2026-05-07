@@ -42,6 +42,7 @@ class VentaController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'client_request_id' => 'nullable|uuid',
             'caja_id' => 'required|exists:cajas,id',
             'cliente_id' => 'nullable|exists:clientes,id',
             'items' => 'required|array|min:1',
@@ -57,6 +58,15 @@ class VentaController extends Controller
             'adjuntos' => 'nullable|array',
             'adjuntos.*' => 'file|max:10240',
         ]);
+
+        if (! empty($validated['client_request_id'])) {
+            $existente = Venta::with(['caja', 'cliente', 'usuario', 'items.producto', 'adjuntos'])
+                ->where('client_request_id', $validated['client_request_id'])
+                ->first();
+            if ($existente) {
+                return response()->json($existente, 200);
+            }
+        }
 
         $caja = Caja::findOrFail($validated['caja_id']);
 
@@ -172,6 +182,7 @@ class VentaController extends Controller
             $venta = Venta::create([
                 'caja_id' => $validated['caja_id'],
                 'cliente_id' => $validated['cliente_id'] ?? null,
+                'client_request_id' => $validated['client_request_id'] ?? null,
                 'usuario_id' => $request->user()->id,
                 'numero_factura' => $numeroFactura,
                 'fecha' => now(),

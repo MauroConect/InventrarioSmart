@@ -14,6 +14,7 @@ class Venta extends Model
     protected $fillable = [
         'caja_id',
         'cliente_id',
+        'client_request_id',
         'usuario_id',
         'numero_factura',
         'fecha',

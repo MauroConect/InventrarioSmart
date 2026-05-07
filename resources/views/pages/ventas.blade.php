@@ -17,6 +17,16 @@
         </button>
     </div>
 
+    <div x-show="!esOnline || colaPendiente > 0" x-cloak class="space-y-2">
+        <div x-show="!esOnline" class="p-3 rounded border border-amber-300 bg-amber-50 text-amber-900 text-sm">
+            Sin conexión. Podés seguir registrando ventas con el catálogo guardado en este navegador. Las ventas quedan en cola y se envían al recuperar conexión con el servidor.
+        </div>
+        <div x-show="colaPendiente > 0" class="p-3 rounded border border-blue-300 bg-blue-50 text-blue-900 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <span><span x-text="colaPendiente"></span> venta(s) pendiente(s) de sincronizar.</span>
+            <button type="button" @click="syncPendingVentas()" :disabled="!esOnline || sincronizandoCola" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm disabled:opacity-50 shrink-0">Sincronizar ahora</button>
+        </div>
+    </div>
+
     <div x-show="cajasAbiertas.length === 0" x-cloak class="p-4 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
         No hay ninguna caja abierta. Debe abrir una caja para poder registrar ventas.
     </div>
@@ -318,6 +328,7 @@
 </div>
 
 @push('scripts')
+<script src="{{ asset('js/ventas-offline-cache.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 const TIPO_PAGO_LABELS = {
@@ -657,7 +668,7 @@ function construirHtmlTicketDesdeVentaGuardada(venta) {
                 ${bloquePagoExtra}
 
                 <div class="footer">
-                    <p>El Cristo. Venta registrada en el sistema.</p>
+                    <p>El Cristo. ${venta.offline_preview ? 'Borrador sin conexión (pendiente de sincronizar).' : 'Venta registrada en el sistema.'}</p>
                     <p>Conserve este comprobante.</p>
                 </div>
 
@@ -697,6 +708,11 @@ function ventas() {
         _html5QrVentas: null,
         _html5QrVentasLock: false,
         _onShortcutOpenSale: null,
+        _unsubOnline: null,
+        _onOffline: null,
+        esOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+        colaPendiente: 0,
+        sincronizandoCola: false,
 
         authHeaders() {
             const t = localStorage.getItem('token');
@@ -704,10 +720,64 @@ function ventas() {
         },
         
         async init() {
+            const self = this;
+            this._onOffline = function () { self.esOnline = false; };
+            window.addEventListener('offline', this._onOffline);
+            if (window.VentasOffline && typeof window.VentasOffline.onOnline === 'function') {
+                this._unsubOnline = window.VentasOffline.onOnline(function () {
+                    self.esOnline = true;
+                    self.syncPendingVentas();
+                });
+            } else {
+                window.addEventListener('online', function () {
+                    self.esOnline = true;
+                    self.syncPendingVentas();
+                });
+            }
             await Promise.all([this.fetchVentas(), this.fetchDatosFormulario()]);
+            await this.actualizarColaPendiente();
             this._onShortcutOpenSale = () => { this.openModal(); };
             window.addEventListener('shortcut-open-sale', this._onShortcutOpenSale);
             this.abrirModalPorQuery();
+        },
+
+        async actualizarColaPendiente() {
+            try {
+                if (!window.VentasOffline || typeof window.VentasOffline.listOutbox !== 'function') {
+                    this.colaPendiente = 0;
+                    return;
+                }
+                const rows = await window.VentasOffline.listOutbox();
+                this.colaPendiente = Array.isArray(rows) ? rows.length : 0;
+            } catch (e) {
+                this.colaPendiente = 0;
+            }
+        },
+
+        async syncPendingVentas() {
+            if (!window.VentasOffline || typeof window.VentasOffline.syncOutbox !== 'function') return;
+            if (!navigator.onLine) return;
+            this.sincronizandoCola = true;
+            this.error = '';
+            try {
+                const headers = this.authHeaders();
+                const res = await window.VentasOffline.syncOutbox(function (body) {
+                    return axios.post('/api/ventas', body, { headers: headers });
+                });
+                await this.actualizarColaPendiente();
+                await this.fetchVentas();
+                if (res && res.failed > 0) {
+                    this.error = 'Algunas ventas no se pudieron sincronizar. Revisá caja abierta, stock y límites de cuenta corriente.';
+                } else if (res && res.synced > 0) {
+                    this.success = 'Se sincronizaron ' + res.synced + ' venta(s).';
+                    setTimeout(() => { this.success = ''; }, 4000);
+                }
+            } catch (e) {
+                console.error(e);
+                this.error = 'No se pudo completar la sincronización.';
+            } finally {
+                this.sincronizandoCola = false;
+            }
         },
 
         abrirModalPorQuery() {
@@ -734,8 +804,20 @@ function ventas() {
                     if (estadoA !== 'abierta' && estadoB === 'abierta') return 1;
                     return 0;
                 });
+                if (window.VentasOffline && typeof window.VentasOffline.saveVentasList === 'function') {
+                    await window.VentasOffline.saveVentasList(this.ventas);
+                }
             } catch (error) {
                 console.error('Error:', error);
+                if (window.VentasOffline && typeof window.VentasOffline.loadVentasList === 'function') {
+                    try {
+                        const snap = await window.VentasOffline.loadVentasList();
+                        if (snap && Array.isArray(snap.ventas) && snap.ventas.length) {
+                            this.ventas = snap.ventas;
+                            this.error = this.error || 'Mostrando última lista de ventas guardada en este equipo (sin conexión).';
+                        }
+                    } catch (e) {}
+                }
             } finally {
                 this.loadingLista = false;
             }
@@ -765,9 +847,31 @@ function ventas() {
                 if (this.cajasAbiertas.length > 0) {
                     this.cajaSeleccionada = this.cajasAbiertas[0].id;
                 }
+                if (window.VentasOffline && typeof window.VentasOffline.saveCatalog === 'function') {
+                    await window.VentasOffline.saveCatalog(this.productos, this.clientes, this.cajasAbiertas);
+                }
             } catch (error) {
                 console.error('Error:', error);
-                this.error = 'Error al cargar datos';
+                if (window.VentasOffline && typeof window.VentasOffline.loadCatalog === 'function') {
+                    try {
+                        const snap = await window.VentasOffline.loadCatalog();
+                        if (snap && (snap.productos?.length || snap.cajasAbiertas?.length)) {
+                            this.clientes = snap.clientes || [];
+                            this.productos = (snap.productos || []).filter(p => p.activo !== false);
+                            this.cajasAbiertas = (snap.cajasAbiertas || []).filter(c => c.estado === 'abierta');
+                            if (this.cajasAbiertas.length > 0 && !this.cajaSeleccionada) {
+                                this.cajaSeleccionada = this.cajasAbiertas[0].id;
+                            }
+                            this.error = this.error || 'Modo sin conexión: datos del último acceso en este navegador.';
+                        } else {
+                            this.error = 'Error al cargar datos';
+                        }
+                    } catch (e) {
+                        this.error = 'Error al cargar datos';
+                    }
+                } else {
+                    this.error = 'Error al cargar datos';
+                }
             } finally {
                 this.loadingFormDatos = false;
             }
@@ -1033,7 +1137,12 @@ function ventas() {
             const headers = this.authHeaders();
 
             try {
+                const clientRequestId = (window.VentasOffline && window.VentasOffline.newClientRequestId)
+                    ? window.VentasOffline.newClientRequestId()
+                    : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+
                 const payload = {
+                    client_request_id: clientRequestId,
                     caja_id: this.cajaSeleccionada,
                     cliente_id: this.clienteId || null,
                     tipo_pago: this.tipoPago,
@@ -1047,9 +1156,38 @@ function ventas() {
                     payload.monto_transferencia = parseFloat(this.montoTransferencia) || 0;
                 }
 
-                const response = await axios.post('/api/ventas', payload, {
-                    headers
-                });
+                let response;
+                try {
+                    response = await axios.post('/api/ventas', payload, {
+                        headers
+                    });
+                } catch (error) {
+                    const offlineCapable = window.VentasOffline
+                        && typeof window.VentasOffline.isLikelyNetworkFailure === 'function'
+                        && window.VentasOffline.isLikelyNetworkFailure(error)
+                        && typeof window.VentasOffline.enqueuePending === 'function'
+                        && typeof window.VentasOffline.buildVentaPreviewFromPayload === 'function';
+
+                    if (offlineCapable) {
+                        const preview = window.VentasOffline.buildVentaPreviewFromPayload(payload, this.productos, this.clientes);
+                        await window.VentasOffline.enqueuePending({
+                            clientRequestId: clientRequestId,
+                            payload: JSON.parse(JSON.stringify(payload)),
+                            preview: preview,
+                        });
+                        await this.actualizarColaPendiente();
+                        let msg = 'Venta guardada en cola. Se enviará al recuperar conexión.';
+                        if (this.adjuntos && this.adjuntos.length > 0) {
+                            msg += ' Los adjuntos no se pueden subir sin conexión: volvé a adjuntarlos desde el detalle cuando sincronice.';
+                        }
+                        this.success = msg;
+                        setTimeout(() => { this.success = ''; }, 6000);
+                        return preview;
+                    }
+
+                    this.error = error.response?.data?.message || 'Error al registrar la venta';
+                    return null;
+                }
 
                 if (this.adjuntos && this.adjuntos.length > 0 && response.data?.id) {
                     try {
@@ -1094,10 +1232,12 @@ function ventas() {
             const ventanaImpresion = window.open('', '_blank');
             if (!ventanaImpresion) {
                 this.error = 'La venta ya quedó registrada, pero el navegador bloqueó la ventana para imprimir. Permita ventanas emergentes.';
-                this.success = 'Venta ' + (ventaGuardada.numero_factura || ('#' + ventaGuardada.id)) + ' guardada.';
+                this.success = ventaGuardada.offline_preview
+                    ? 'Venta en cola para sincronizar.'
+                    : ('Venta ' + (ventaGuardada.numero_factura || ('#' + ventaGuardada.id)) + ' guardada.');
                 await this.fetchVentas();
                 this.closeModal();
-                if (ventaGuardada.id) {
+                if (ventaGuardada.id && !ventaGuardada.offline_preview) {
                     setTimeout(() => {
                         window.location.href = '/ventas/' + ventaGuardada.id;
                     }, 400);
@@ -1114,10 +1254,12 @@ function ventas() {
                 } catch (e) {}
             }, 450);
 
-            this.success = 'Venta registrada. Se abrió el ticket para imprimir.';
+            this.success = ventaGuardada.offline_preview
+                ? 'Venta en cola. Ticket local (sin número de factura hasta sincronizar).'
+                : 'Venta registrada. Se abrió el ticket para imprimir.';
             await this.fetchVentas();
             this.closeModal();
-            if (ventaGuardada.id) {
+            if (ventaGuardada.id && !ventaGuardada.offline_preview) {
                 setTimeout(() => {
                     window.location.href = '/ventas/' + ventaGuardada.id;
                 }, 800);
@@ -1142,6 +1284,12 @@ function ventas() {
         destroy() {
             if (this._onShortcutOpenSale) {
                 window.removeEventListener('shortcut-open-sale', this._onShortcutOpenSale);
+            }
+            if (this._onOffline) {
+                window.removeEventListener('offline', this._onOffline);
+            }
+            if (typeof this._unsubOnline === 'function') {
+                this._unsubOnline();
             }
         },
         
@@ -1170,11 +1318,13 @@ function ventas() {
                 return;
             }
 
-            this.success = 'Venta registrada correctamente';
+            this.success = responseData.offline_preview
+                ? 'Venta en cola para sincronizar.'
+                : 'Venta registrada correctamente';
             await this.fetchVentas();
             this.closeModal();
 
-            if (responseData.id) {
+            if (responseData.id && !responseData.offline_preview) {
                 setTimeout(() => {
                     window.location.href = `/ventas/${responseData.id}`;
                 }, 1000);
