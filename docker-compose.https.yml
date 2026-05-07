@@ -1,0 +1,12 @@
+# Uso: docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
+# Requiere certificados en docker/ssl/ (ver docker/ssl/README.md)
+
+services:
+  webserver:
+    ports:
+      - "8000:80"
+      - "8443:443"
+    volumes:
+      - ./public:/var/www/public:ro
+      - ./docker/nginx/default-https.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
