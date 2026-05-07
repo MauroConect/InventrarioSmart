@@ -182,6 +182,16 @@
         @yield('content')
     @endauth
 
+    <script>
+        (function () {
+            if (!('serviceWorker' in navigator)) return;
+            var h = location.hostname || '';
+            if (location.protocol !== 'https:' && h !== 'localhost' && h !== '127.0.0.1') return;
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register(@json(asset('sw.js'))).catch(function () {});
+            });
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
         axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
