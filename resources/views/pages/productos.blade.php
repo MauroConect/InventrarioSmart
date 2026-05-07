@@ -238,6 +238,26 @@
                         </template>
                     </select>
                 </div>
+                <div class="space-y-3 border rounded-md p-3">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-sm font-medium text-gray-700">Fotos del producto</label>
+                        <button type="button" @click="addImageUrlField()" class="text-sm text-blue-600 hover:text-blue-800">+ Agregar URL</button>
+                    </div>
+                    <template x-for="(img, idx) in formData.imagenes_urls" :key="`img-${idx}`">
+                        <div class="flex items-center gap-2">
+                            <input type="url" x-model="formData.imagenes_urls[idx]" class="flex-1 px-3 py-2 border border-gray-300 rounded-md" placeholder="https://.../foto.jpg">
+                            <button type="button" @click="removeImageUrlField(idx)" class="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Quitar</button>
+                        </div>
+                    </template>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Subir archivos (JPG/PNG/WebP)</label>
+                        <input type="file" multiple accept="image/*" @change="onImagesSelected($event)" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white">
+                        <p class="text-xs text-gray-500 mt-1">Las imágenes se agregan al guardar el producto.</p>
+                        <p x-show="pendingFiles.length" x-cloak class="text-xs text-blue-700 mt-1">
+                            Archivos listos para subir: <span x-text="pendingFiles.length"></span>
+                        </p>
+                    </div>
+                </div>
                 <div>
                     <label class="flex items-center">
                         <input type="checkbox" x-model="formData.activo" class="mr-2">
@@ -273,9 +293,10 @@ function productos(canManage) {
         to: 0,
         error: '',
         success: '',
+        pendingFiles: [],
         formData: {
             codigo: '', nombre: '', descripcion: '', precio_compra: 0, precio_venta: 0,
-            stock_minimo: 0, stock_actual: 0, categoria_id: '', proveedor_id: '', activo: true
+            stock_minimo: 0, stock_actual: 0, categoria_id: '', proveedor_id: '', activo: true, imagenes_urls: []
         },
         
         async init() {
@@ -363,8 +384,9 @@ function productos(canManage) {
             this.editing = null;
             this.formData = {
                 codigo: '', nombre: '', descripcion: '', precio_compra: 0, precio_venta: 0,
-                stock_minimo: 0, stock_actual: 0, categoria_id: '', proveedor_id: '', activo: true
+                stock_minimo: 0, stock_actual: 0, categoria_id: '', proveedor_id: '', activo: true, imagenes_urls: []
             };
+            this.pendingFiles = [];
             this.error = '';
             this.success = '';
             this.showModal = true;
@@ -383,8 +405,10 @@ function productos(canManage) {
                 stock_actual: producto.stock_actual || 0,
                 categoria_id: producto.categoria_id || '',
                 proveedor_id: producto.proveedor_id || '',
-                activo: producto.activo !== undefined ? producto.activo : true
+                activo: producto.activo !== undefined ? producto.activo : true,
+                imagenes_urls: (producto.imagenes || []).map((img) => img.ruta)
             };
+            this.pendingFiles = [];
             this.error = '';
             this.success = '';
             this.showModal = true;
@@ -393,7 +417,20 @@ function productos(canManage) {
         closeModal() {
             this.showModal = false;
             this.editing = null;
+            this.pendingFiles = [];
             this.error = '';
+        },
+
+        addImageUrlField() {
+            this.formData.imagenes_urls.push('');
+        },
+
+        removeImageUrlField(index) {
+            this.formData.imagenes_urls.splice(index, 1);
+        },
+
+        onImagesSelected(event) {
+            this.pendingFiles = Array.from(event.target.files || []);
         },
 
         openRemoveModal(producto) {
@@ -449,17 +486,36 @@ function productos(canManage) {
             try {
                 this.error = '';
                 this.success = '';
+                const payload = {
+                    ...this.formData,
+                    imagenes_urls: (this.formData.imagenes_urls || []).map((url) => (url || '').trim()).filter(Boolean),
+                };
+                let productoId = this.editing;
+
                 if (this.editing) {
-                    await axios.put(`/api/productos/${this.editing}`, this.formData, {
+                    const response = await axios.put(`/api/productos/${this.editing}`, payload, {
                         withCredentials: true
                     });
+                    productoId = response.data?.id || this.editing;
                     this.success = 'Producto actualizado correctamente';
                 } else {
-                    await axios.post('/api/productos', this.formData, {
+                    const response = await axios.post('/api/productos', payload, {
                         withCredentials: true
                     });
+                    productoId = response.data?.id;
                     this.success = 'Producto creado correctamente';
                 }
+
+                if (productoId && this.pendingFiles.length > 0) {
+                    const formData = new FormData();
+                    this.pendingFiles.forEach((file) => formData.append('fotos[]', file));
+                    await axios.post(`/api/productos/${productoId}/imagenes`, formData, {
+                        withCredentials: true,
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                    });
+                    this.success += ' e imágenes cargadas.';
+                }
+
                 await this.fetch();
                 setTimeout(() => {
                     this.closeModal();

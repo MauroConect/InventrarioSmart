@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\DashboardController;
+use App\Http\Controllers\MenuQrController;
 
 // Misma mecánica que GET /cajas y /clientes (closure): evita depender de otra clase y usa el prefijo /cajas/* que ya te funciona.
 $puntoCajaView = static function () {
@@ -17,25 +18,26 @@ Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Menú público para acceso por QR (sin autenticación)
+Route::get('/menu', [MenuQrController::class, 'index'])->name('menu.qr');
+Route::get('/menu/imagenes/{filename}', [MenuQrController::class, 'imagenProducto'])
+    ->where('filename', '.*')
+    ->name('menu.qr.imagen');
+Route::any('/cajas/{any?}', fn () => abort(404))->where('any', '.*');
+Route::any('/ventas/{any?}', fn () => abort(404))->where('any', '.*');
+Route::any('/facturacion/{any?}', fn () => abort(404))->where('any', '.*');
+
 // Rutas protegidas
 Route::middleware('auth')->group(function () use ($puntoCajaView) {
     Route::get('/', function () {
         $user = request()->user();
 
-        if ($user && $user->hasPermission('dashboard.view')) {
-            return redirect()->route('dashboard');
+        if ($user && $user->hasPermission('categorias.view')) {
+            return redirect()->route('categorias.index');
         }
 
-        if ($user && $user->isVendedor()) {
-            return redirect('/cajas/punto');
-        }
-
-        if ($user && $user->hasPermission('ventas.view')) {
-            return redirect()->route('ventas.index');
-        }
-
-        if ($user && $user->hasPermission('cajas.view')) {
-            return redirect()->route('cajas.index');
+        if ($user && $user->hasPermission('productos.view')) {
+            return redirect()->route('productos.index');
         }
 
         abort(403, 'No tienes permisos para acceder al sistema.');
@@ -78,4 +80,5 @@ Route::middleware('auth')->group(function () use ($puntoCajaView) {
     Route::get('/auditoria', function () { return view('pages.auditoria'); })->middleware('permission:admin')->name('auditoria.index');
     Route::get('/ranking-ventas', function () { return view('pages.ranking-ventas'); })->middleware('permission:admin')->name('ranking-ventas.index');
     Route::get('/facturacion', function() { return view('pages.facturacion'); })->middleware('permission:ventas.facturar')->name('facturacion.index');
+    Route::get('/configuracion-negocio', function() { return view('pages.configuracion-negocio'); })->middleware('permission:admin')->name('configuracion-negocio.index');
 });

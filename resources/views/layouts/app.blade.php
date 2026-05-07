@@ -67,11 +67,6 @@
                             <span class="mr-3">👥</span> Clientes
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('cajas.view'))
-                        <a href="{{ route('cajas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cajas.index') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">💰</span> Cajas
-                        </a>
-                    @endif
                     @if(Auth::user()->hasPermission('cuentas_corrientes.view'))
                         <a href="{{ route('cuentas-corrientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cuentas-corrientes.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">💳</span> Cuentas Corrientes
@@ -87,33 +82,15 @@
                             <span class="mr-3">📦</span> Stock
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('ventas.view'))
-                        <a href="{{ route('ventas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('ventas.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">🛒</span> Ventas
-                        </a>
-                    @endif
-                    @if(Auth::user()->hasPermission('ventas.facturar'))
-                        <a href="{{ route('facturacion.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('facturacion.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">🧾</span> Facturacion
-                        </a>
-                    @endif
-                    @if(Auth::user()->hasPermission('cheques.view'))
-                        <a href="{{ route('cheques.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cheques.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">💵</span> Cheques
-                        </a>
-                    @endif
                     @if(Auth::user()->hasPermission('admin'))
-                        <a href="{{ route('ranking-ventas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('ranking-ventas.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">🏆</span> Ranking de ventas
+                        <a href="{{ route('configuracion-negocio.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('configuracion-negocio.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">⚙️</span> Configuracion del negocio
                         </a>
                         <a href="{{ route('auditoria.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('auditoria.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📜</span> Auditoría
                         </a>
                         <a href="{{ route('usuarios.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('usuarios.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">👤</span> Usuarios
-                        </a>
-                        <a href="{{ route('configuracion-fiscal.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('configuracion-fiscal.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">🧾</span> Configuracion Fiscal
                         </a>
                     @endif
                 </nav>

@@ -5,12 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Producto;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProductoController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Producto::with(['categoria', 'proveedor']);
+        $query = Producto::with(['categoria', 'proveedor', 'imagenes']);
 
         if ($request->has('search')) {
             $search = $request->search;
@@ -49,15 +50,22 @@ class ProductoController extends Controller
             'categoria_id' => 'required|exists:categorias,id',
             'proveedor_id' => 'nullable|exists:proveedores,id',
             'activo' => 'boolean',
+            'imagenes_urls' => 'nullable|array',
+            'imagenes_urls.*' => 'required|url|max:500',
         ], $this->productoValidationMessages());
 
+        $imagenesUrls = $validated['imagenes_urls'] ?? [];
+        unset($validated['imagenes_urls']);
+
         $producto = Producto::create($validated);
-        return response()->json($producto->load(['categoria', 'proveedor']), 201);
+        $this->syncImagenes($producto, $imagenesUrls);
+
+        return response()->json($producto->fresh()->load(['categoria', 'proveedor', 'imagenes']), 201);
     }
 
     public function show($id)
     {
-        $producto = Producto::with(['categoria', 'proveedor'])->findOrFail($id);
+        $producto = Producto::with(['categoria', 'proveedor', 'imagenes'])->findOrFail($id);
         return response()->json($producto);
     }
 
@@ -78,10 +86,17 @@ class ProductoController extends Controller
             'categoria_id' => 'required|exists:categorias,id',
             'proveedor_id' => 'nullable|exists:proveedores,id',
             'activo' => 'boolean',
+            'imagenes_urls' => 'nullable|array',
+            'imagenes_urls.*' => 'required|url|max:500',
         ], $this->productoValidationMessages());
 
+        $imagenesUrls = $validated['imagenes_urls'] ?? [];
+        unset($validated['imagenes_urls']);
+
         $producto->update($validated);
-        return response()->json($producto->load(['categoria', 'proveedor']));
+        $this->syncImagenes($producto, $imagenesUrls);
+
+        return response()->json($producto->fresh()->load(['categoria', 'proveedor', 'imagenes']));
     }
 
     public function updateActivo(Request $request, Producto $producto)
@@ -92,7 +107,35 @@ class ProductoController extends Controller
         $producto->activo = $validated['activo'];
         $producto->save();
 
-        return response()->json($producto->load(['categoria', 'proveedor']));
+        return response()->json($producto->load(['categoria', 'proveedor', 'imagenes']));
+    }
+
+    public function uploadImagenes(Request $request, Producto $producto)
+    {
+        $validated = $request->validate([
+            'fotos' => 'required|array|min:1|max:10',
+            'fotos.*' => 'required|image|max:4096',
+        ]);
+
+        $maxOrden = (int) $producto->imagenes()->max('orden');
+        $nuevas = [];
+
+        foreach ($validated['fotos'] as $index => $foto) {
+            $path = $foto->store('productos', 'public');
+            $url = '/storage/' . ltrim($path, '/');
+            $nuevas[] = $url;
+
+            $producto->imagenes()->create([
+                'ruta' => $url,
+                'orden' => $maxOrden + $index + 1,
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Imagenes cargadas correctamente.',
+            'urls' => $nuevas,
+            'producto' => $producto->fresh()->load(['imagenes']),
+        ], 201);
     }
 
     public function destroy($id)
@@ -248,5 +291,22 @@ class ProductoController extends Controller
         }
 
         $request->merge($data);
+    }
+
+    /**
+     * @param array<int, string> $urls
+     */
+    private function syncImagenes(Producto $producto, array $urls): void
+    {
+        $urlsLimpias = array_values(array_unique(array_filter(array_map('trim', $urls))));
+
+        $producto->imagenes()->delete();
+
+        foreach ($urlsLimpias as $orden => $url) {
+            $producto->imagenes()->create([
+                'ruta' => $url,
+                'orden' => $orden,
+            ]);
+        }
     }
 }

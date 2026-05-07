@@ -46,4 +46,9 @@ class Producto extends Model
     {
         return $this->hasMany(MovimientoStock::class);
     }
+
+    public function imagenes()
+    {
+        return $this->hasMany(ProductoImagen::class)->orderBy('orden');
+    }
 }

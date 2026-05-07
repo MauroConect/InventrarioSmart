@@ -16,10 +16,17 @@ use App\Http\Controllers\VentaController;
 use App\Http\Controllers\ChequeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ConfiguracionFiscalController;
+use App\Http\Controllers\ConfiguracionNegocioController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AuditoriaController;
+use App\Http\Controllers\MenuQrController;
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/menu/catalogo', [MenuQrController::class, 'catalogoPublico'])->name('api.menu.catalogo');
+Route::any('/cajas/{any?}', fn () => abort(404))->where('any', '.*');
+Route::any('/ventas/{any?}', fn () => abort(404))->where('any', '.*');
+Route::any('/ventas-pendientes-facturacion/{any?}', fn () => abort(404))->where('any', '.*');
+Route::any('/ventas-facturar-lote/{any?}', fn () => abort(404))->where('any', '.*');
 
 // Sanctum: sesión + Bearer. prefer.web.user: Blade manda sobre token en localStorage.
 Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
@@ -95,6 +102,7 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
 
     Route::middleware('permission:productos.manage')->group(function () {
         Route::post('productos', [ProductoController::class, 'store']);
+        Route::post('productos/{producto}/imagenes', [ProductoController::class, 'uploadImagenes']);
         Route::patch('productos/{producto}/activo', [ProductoController::class, 'updateActivo']);
         Route::put('productos/{producto}', [ProductoController::class, 'update']);
         Route::patch('productos/{producto}', [ProductoController::class, 'update']);
@@ -111,6 +119,8 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
 
         Route::get('configuracion-fiscal', [ConfiguracionFiscalController::class, 'show']);
         Route::post('configuracion-fiscal', [ConfiguracionFiscalController::class, 'update']);
+        Route::get('configuracion-negocio', [ConfiguracionNegocioController::class, 'show']);
+        Route::post('configuracion-negocio', [ConfiguracionNegocioController::class, 'update']);
 
         Route::apiResource('proveedores', ProveedorController::class)->names('api.proveedores');
 
