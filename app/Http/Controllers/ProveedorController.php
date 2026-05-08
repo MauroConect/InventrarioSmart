@@ -11,16 +11,22 @@ class ProveedorController extends Controller
     {
         $query = Proveedor::query();
 
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('nombre', 'like', "%{$search}%")
-                  ->orWhere('razon_social', 'like', "%{$search}%")
-                  ->orWhere('cuit', 'like', "%{$search}%");
+                    ->orWhere('razon_social', 'like', "%{$search}%")
+                    ->orWhere('cuit', 'like', "%{$search}%")
+                    ->orWhere('telefono', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
-        return response()->json($query->paginate(15));
+        if ($request->boolean('all')) {
+            return response()->json($query->orderBy('nombre')->get());
+        }
+
+        return response()->json($query->orderByDesc('id')->paginate(15));
     }
 
     public function store(Request $request)

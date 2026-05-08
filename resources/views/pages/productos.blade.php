@@ -416,7 +416,8 @@ function productos(canManage) {
         async fetchProveedores() {
             try {
                 const response = await axios.get('/api/proveedores', {
-                    withCredentials: true
+                    withCredentials: true,
+                    params: { all: 1 },
                 });
                 this.proveedores = response.data?.data || response.data || [];
             } catch (error) {

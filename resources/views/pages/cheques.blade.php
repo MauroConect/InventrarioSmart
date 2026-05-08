@@ -219,7 +219,7 @@ function cheques() {
                 const token = localStorage.getItem('token');
                 const [clientesRes, proveedoresRes, cajasRes] = await Promise.all([
                     axios.get('/api/clientes', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    axios.get('/api/proveedores', { headers: { 'Authorization': `Bearer ${token}` } }),
+                    axios.get('/api/proveedores', { headers: { 'Authorization': `Bearer ${token}` }, params: { all: 1 } }),
                     axios.get(@json(rtrim(url('/api/cajas'), '/')), { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
                 this.clientes = (clientesRes.data?.data || clientesRes.data || []).filter(c => c.activo !== false);

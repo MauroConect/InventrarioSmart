@@ -134,7 +134,8 @@ function aumentoMasivo() {
             try {
                 const token = localStorage.getItem('token');
                 const response = await axios.get('/api/proveedores', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    params: { all: 1 },
                 });
                 this.proveedores = (response.data?.data || response.data || []).filter(p => p.activo !== false);
             } catch (error) {
