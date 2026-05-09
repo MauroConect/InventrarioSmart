@@ -272,14 +272,13 @@
                 </div>
                 <div class="p-6 text-center">
                     <h4 class="text-xl font-bold text-gray-800 mb-1" x-text="barcodeProducto.nombre"></h4>
-                    <p class="text-sm text-gray-500 mb-4">Código: <span x-text="barcodeProducto.codigo"></span></p>
+                    <p class="text-sm text-gray-500 mb-4">Cod. interno: <span class="font-mono font-semibold text-gray-800" x-text="barcodeProducto.codigo"></span></p>
                     <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg overflow-x-auto max-w-full">
                         <svg x-ref="barcodeSvg" class="block mx-auto min-h-[80px]"></svg>
                     </div>
                     <div class="mt-4 space-y-1">
                         <p class="text-2xl font-bold text-gray-900">
-                            <span x-text="'$' + parseFloat(barcodeProducto.precio_venta || 0).toFixed(2)"></span>
-                            <span x-show="barcodeProducto.tipo_venta === 'peso'" class="text-base text-orange-600" x-text="'/' + (barcodeProducto.unidad_medida || 'kg')"></span>
+                            <span x-text="formatoPrecioAr(barcodeProducto.precio_venta || 0) + (barcodeProducto.tipo_venta === 'peso' ? ('/' + (barcodeProducto.unidad_medida || 'kg')) : '')"></span>
                         </p>
                         <p x-show="barcodeProducto.tipo_venta === 'peso'" class="text-sm text-orange-600 font-medium">Producto por peso</p>
                         <p x-show="barcodeProducto.categoria && barcodeProducto.categoria.nombre" class="text-sm text-gray-500" x-text="'Categoría: ' + (barcodeProducto.categoria ? barcodeProducto.categoria.nombre : '')"></p>
@@ -478,6 +477,32 @@ function productos(canManage) {
             return 'ID' + String(producto?.id ?? '');
         },
 
+        /** EAN / CODE128 según el código (misma lógica que impresión). */
+        barcodeSpec(codigoRaw) {
+            const c = String(codigoRaw ?? '').replace(/\s/g, '');
+            if (/^\d{13}$/.test(c)) return { format: 'EAN13', value: c };
+            if (/^\d{12}$/.test(c)) return { format: 'EAN13', value: c };
+            if (/^\d{8}$/.test(c)) return { format: 'EAN8', value: c };
+            if (/^\d{7}$/.test(c)) return { format: 'EAN8', value: c };
+            const v = c.length ? c : '0';
+            return { format: 'CODE128', value: v };
+        },
+
+        formatoPrecioAr(n) {
+            const num = Number(n);
+            if (Number.isNaN(num)) return '$0,0';
+            const rounded = Math.round(num * 10) / 10;
+            return '$' + rounded.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        },
+
+        fechaEtiquetaAr() {
+            const d = new Date();
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return dd + '/' + mm + '/' + yyyy;
+        },
+
         closeBarcodeModal() {
             this.showBarcodeModal = false;
             this.barcodeProducto = null;
@@ -491,16 +516,18 @@ function productos(canManage) {
                 if (!svg || typeof JsBarcode !== 'function') return;
                 while (svg.firstChild) svg.removeChild(svg.firstChild);
                 const value = this.barcodeValue(producto);
+                const spec = this.barcodeSpec(value);
+                const opts = {
+                    format: spec.format,
+                    width: spec.format === 'CODE128' ? 2 : 1.6,
+                    height: spec.format === 'CODE128' ? 72 : 56,
+                    displayValue: true,
+                    fontSize: spec.format === 'CODE128' ? 13 : 11,
+                    margin: 6,
+                    background: '#ffffff',
+                };
                 try {
-                    JsBarcode(svg, value, {
-                        format: 'CODE128',
-                        width: 2,
-                        height: 72,
-                        displayValue: true,
-                        fontSize: 14,
-                        margin: 8,
-                        background: '#ffffff',
-                    });
+                    JsBarcode(svg, spec.value, opts);
                 } catch (e) {
                     console.error(e);
                     alert('No se pudo generar el código de barras. Revisá que el código del producto sea válido.');
@@ -518,34 +545,81 @@ function productos(canManage) {
                 .replace(/"/g, '&quot;');
             const esPeso = p.tipo_venta === 'peso';
             const unidad = p.unidad_medida || (esPeso ? 'kg' : 'u');
-            const precioLabel = esPeso
-                ? '$' + parseFloat(p.precio_venta || 0).toFixed(2) + '/' + unidad
-                : '$' + parseFloat(p.precio_venta || 0).toFixed(2);
-            const svg = this.$refs.barcodeSvg;
-            const svgHtml = svg ? svg.outerHTML : '';
+            const precioBase = this.formatoPrecioAr(p.precio_venta || 0);
+            const precioLabel = esPeso ? (precioBase + '/' + unidad) : precioBase;
+            const codigoInterno = String(p.codigo ?? '').trim() || ('ID' + String(p.id ?? ''));
+            const spec = this.barcodeSpec(this.barcodeValue(p));
+            const fecha = this.fechaEtiquetaAr();
+            const payload = {
+                nombre: String(p.nombre || ''),
+                codigoInterno,
+                precioLabel,
+                esPeso,
+                unidad,
+                fecha,
+                barcodeFormat: spec.format,
+                barcodeValue: spec.value,
+            };
+            const payloadJson = JSON.stringify(payload).replace(/</g, '\\u003c');
 
-            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiqueta - ' + esc(p.nombre) + '</title>' +
-                '<style>body{font-family:Arial,sans-serif;text-align:center;padding:10mm;margin:0}' +
-                '.barcode-label{display:inline-block;border:1px solid #ccc;padding:5mm;border-radius:3mm;max-width:90mm}' +
-                '.barcode-label h3{margin:0 0 2mm;font-size:14px}.barcode-label p{margin:1mm 0;font-size:11px;color:#333}' +
-                '.barcode-label .precio{font-size:16px;font-weight:bold;color:#000;margin-top:2mm}' +
-                '.barcode-label .codigo{font-size:9px;color:#666}.barcode-label svg{max-width:100%;height:auto}' +
-                '@media print{body{padding:2mm}button{display:none!important}}</style></head><body>' +
-                '<div class="barcode-label"><h3>' + esc(p.nombre) + '</h3>' +
-                svgHtml +
+            const html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Etiqueta</title>' +
+                '<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>' +
+                '<style>' +
+                '@@page{margin:4mm;size:auto}' +
+                'body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:2mm;background:#fff;color:#000}' +
+                '.etiqueta{width:52mm;max-width:100%;margin:0 auto 4mm;padding:2.5mm 2mm 2mm;box-sizing:border-box;' +
+                'border:0.35mm solid #bbb;text-align:center;page-break-inside:avoid;page-break-after:auto}' +
+                '.lbl{font-size:6.5pt;font-weight:700;margin:0 0 0.8mm;letter-spacing:0.02em;text-transform:uppercase}' +
+                '.cod-interno{font-size:13pt;font-weight:800;margin:0 0 2mm;line-height:1}' +
+                '.nombre{font-size:8.2pt;line-height:1.12;margin:0 0 1.5mm;font-weight:700;text-transform:uppercase;' +
+                'word-wrap:break-word;overflow-wrap:anywhere}' +
+                '.precio{font-size:11.5pt;font-weight:800;margin:0.5mm 0 1mm}' +
+                '.fecha{font-size:7.5pt;margin:0 0 1.5mm}' +
+                '.svg-wrap{margin:0 auto;max-width:100%;overflow:hidden}' +
+                '.svg-wrap svg{display:block;margin:0 auto;max-width:100%;height:auto}' +
+                '.ean-num{font-size:6.5pt;margin:0.8mm 0 0;letter-spacing:0.04em;font-variant-numeric:tabular-nums}' +
+                '.peso-hint{font-size:6.5pt;color:#b45309;margin:0 0 1mm;font-weight:600}' +
+                '@@media print{body{padding:0}.no-print{display:none!important}.etiqueta{border:0.2mm solid #ccc}}' +
+                '</style></head><body>' +
+                '<div class="etiqueta">' +
+                '<p class="lbl">Cod. interno</p>' +
+                '<p class="cod-interno">' + esc(codigoInterno) + '</p>' +
+                '<p class="nombre">' + esc(String(p.nombre || '').toUpperCase()) + '</p>' +
+                (esPeso ? '<p class="peso-hint">Por ' + esc(unidad) + '</p>' : '') +
                 '<p class="precio">' + esc(precioLabel) + '</p>' +
-                (esPeso ? '<p style="font-size:10px;color:#e65100">Producto por peso (' + esc(unidad) + ')</p>' : '') +
-                '<p class="codigo">Cód: ' + esc(p.codigo) + '</p>' +
-                (p.categoria?.nombre ? '<p class="codigo">Cat: ' + esc(p.categoria.nombre) + '</p>' : '') +
-                '</div><br/><button onclick="window.print()" style="margin-top:5mm;padding:5px 15px;cursor:pointer">Imprimir</button>' +
-                '<button onclick="window.close()" style="margin-top:5mm;padding:5px 15px;cursor:pointer;margin-left:5px">Cerrar</button></body></html>';
+                '<p class="fecha">' + esc(fecha) + '</p>' +
+                '<p class="lbl" style="margin-top:1mm">Cod. Barras</p>' +
+                '<div class="svg-wrap" id="bc-target"></div>' +
+                '<p class="ean-num" id="bc-text"></p>' +
+                '</div>' +
+                '<p class="no-print" style="text-align:center;margin-top:4mm">' +
+                '<button type="button" onclick="window.print()" style="padding:8px 16px;cursor:pointer;font-size:14px">Imprimir</button> ' +
+                '<button type="button" onclick="window.close()" style="padding:8px 16px;cursor:pointer;font-size:14px">Cerrar</button></p>' +
+                '<script type="application/json" id="etq-payload">' + payloadJson + '<\/script>' +
+                '<script>' +
+                '(function(){' +
+                'function run(){' +
+                'if(typeof JsBarcode!==\'function\'){document.getElementById(\'bc-text\').textContent=\'No se cargó JsBarcode. Reintentá imprimir.\';return;}' +
+                'var el=document.getElementById(\'etq-payload\');' +
+                'var data=JSON.parse(el.textContent);' +
+                'var svg=document.createElementNS(\'http://www.w3.org/2000/svg\',\'svg\');' +
+                'document.getElementById(\'bc-target\').appendChild(svg);' +
+                'var w=data.barcodeFormat===\'CODE128\'?1.35:1.45;var h=data.barcodeFormat===\'CODE128\'?42:36;' +
+                'JsBarcode(svg,data.barcodeValue,{format:data.barcodeFormat,width:w,height:h,displayValue:true,fontSize:data.barcodeFormat===\'CODE128\'?9:8,margin:2,textMargin:1,background:\'#fff\'});' +
+                'document.getElementById(\'bc-text\').textContent=String(data.barcodeValue);' +
+                '}' +
+                'window.addEventListener(\'load\',function(){' +
+                'run();' +
+                'setTimeout(function(){try{window.focus();window.print();}catch(e){}},280);' +
+                '});' +
+                '})();' +
+                '<\/script></body></html>';
 
             const w = window.open('', '_blank');
             if (w) {
                 w.document.open();
                 w.document.write(html);
                 w.document.close();
-                setTimeout(() => { try { w.focus(); w.print(); } catch(e) {} }, 400);
             }
         },
         
