@@ -298,17 +298,11 @@
                 });
             });
 
-            if (tip && insecureHttp()) {
-                tip.classList.remove('hidden');
-                tip.innerHTML =
-                    '<strong>Misma PC que el servidor:</strong> usá <code class="bg-gray-100 px-1 rounded">http://127.0.0.1:8000</code> (no la IP 192.168… en esta máquina). ' +
-                    '<strong>Otro equipo o querés HTTPS:</strong> generá certificados en <code class="bg-gray-100 px-1 rounded">docker/ssl/</code> y levantá con ' +
-                    '<code class="bg-gray-100 px-1 rounded">docker compose -f docker-compose.yml -f docker-compose.https.yml up -d</code> → ' +
-                    '<code class="bg-gray-100 px-1 rounded">https://127.0.0.1:8443</code>. Detalle en <code class="bg-gray-100 px-1 rounded">docker/ssl/README.md</code>.';
-            } else if (tip && 'serviceWorker' in navigator) {
+            if (tip && 'serviceWorker' in navigator) {
                 window.setTimeout(function () {
                     if (isStandalone() || deferred) return;
                     if (btn && !btn.classList.contains('hidden')) return;
+                    if (insecureHttp()) return;
                     tip.classList.remove('hidden');
                     tip.textContent =
                         'Sin botón de instalar: en Chrome usá el menú ⋮ → «Instalar…» / «Crear acceso directo». Con Internet, entrá a Productos, Ventas y Stock una vez para que queden guardados en este equipo.';
