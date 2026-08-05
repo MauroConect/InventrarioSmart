@@ -7,6 +7,7 @@ use App\Models\ItemVenta;
 use App\Models\Producto;
 use App\Models\Caja;
 use App\Models\VentaAdjunto;
+use App\Models\MovimientoStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -142,6 +143,22 @@ class VentaController extends Controller
                     'cantidad' => $item['cantidad'],
                     'precio_unitario' => $item['precio_unitario'],
                     'subtotal' => $item['subtotal'],
+                ]);
+
+                $producto = $item['producto'];
+                $cantidad = (int) $item['cantidad'];
+                $cantidadActual = (int) $producto->stock_actual;
+                $cantidadAnterior = $cantidadActual + $cantidad;
+
+                MovimientoStock::create([
+                    'producto_id' => $producto->id,
+                    'tipo' => 'salida',
+                    'cantidad' => $cantidad,
+                    'cantidad_anterior' => $cantidadAnterior,
+                    'cantidad_actual' => $cantidadActual,
+                    'motivo' => 'Venta '.$venta->numero_factura,
+                    'usuario_id' => $request->user()->id,
+                    'observaciones' => 'Salida por venta',
                 ]);
             }
 
