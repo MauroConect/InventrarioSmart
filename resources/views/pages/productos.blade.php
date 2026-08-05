@@ -47,82 +47,83 @@
         </template>
         
         <template x-if="!loading && productos.length > 0">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Precio Compra</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Precio Venta</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Categoría</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Estado</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        <template x-for="producto in productos" :key="producto.id">
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="producto.codigo"></td>
-                                <td class="px-6 py-4 text-sm text-gray-900">
-                                    <div class="font-medium" x-text="producto.nombre"></div>
-                                    <div x-show="producto.descripcion" class="text-xs text-gray-500 mt-1" x-text="producto.descripcion"></div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell" 
-                                    x-text="'$' + parseFloat(producto.precio_compra || 0).toFixed(2)"></td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" 
-                                    x-text="'$' + parseFloat(producto.precio_venta || 0).toFixed(2)"></td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <span :class="parseInt(producto.stock_actual || 0) < parseInt(producto.stock_minimo || 0) ? 'text-red-600 font-bold' : 'text-gray-900'"
-                                          x-text="producto.stock_actual || 0"></span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden lg:table-cell" 
-                                    x-text="producto.categoria?.nombre || '-'"></td>
-                                <td class="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-                                    <span class="px-2 py-1 text-xs rounded-full" 
-                                          :class="producto.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                                          x-text="producto.activo ? 'Activo' : 'Inactivo'"></span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button @click="edit(producto)" class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
-                                    <button @click="remove(producto.id)" class="text-red-600 hover:text-red-900">Eliminar</button>
-                                </td>
+            <div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Precio Compra</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Precio Venta</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Categoría</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Estado</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
                             </tr>
-                        </template>
-                    </tbody>
-                </table>
-            </div>
-            <div
-                x-show="lastPage > 1"
-                x-cloak
-                class="flex flex-col sm:flex-row justify-between items-center gap-3 px-4 py-3 bg-gray-50 border-t border-gray-200"
-            >
-                <p class="text-sm text-gray-600">
-                    <span x-text="total ? ('Mostrando ' + (from || 0) + '–' + (to || 0) + ' de ' + total) : ''"></span>
-                </p>
-                <div class="flex items-center gap-2">
-                    <button
-                        type="button"
-                        @click="goToPage(currentPage - 1)"
-                        :disabled="currentPage <= 1"
-                        :class="currentPage <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'"
-                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white"
-                    >
-                        Anterior
-                    </button>
-                    <span class="text-sm text-gray-700 tabular-nums">
-                        Página <span x-text="currentPage"></span> de <span x-text="lastPage"></span>
-                    </span>
-                    <button
-                        type="button"
-                        @click="goToPage(currentPage + 1)"
-                        :disabled="currentPage >= lastPage"
-                        :class="currentPage >= lastPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'"
-                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white"
-                    >
-                        Siguiente
-                    </button>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <template x-for="producto in productos" :key="producto.id">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="producto.codigo"></td>
+                                    <td class="px-6 py-4 text-sm text-gray-900">
+                                        <div class="font-medium" x-text="producto.nombre"></div>
+                                        <div x-show="producto.descripcion" class="text-xs text-gray-500 mt-1" x-text="producto.descripcion"></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell"
+                                        x-text="'$' + parseFloat(producto.precio_compra || 0).toFixed(2)"></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
+                                        x-text="'$' + parseFloat(producto.precio_venta || 0).toFixed(2)"></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span :class="parseInt(producto.stock_actual || 0) < parseInt(producto.stock_minimo || 0) ? 'text-red-600 font-bold' : 'text-gray-900'"
+                                              x-text="producto.stock_actual || 0"></span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden lg:table-cell"
+                                        x-text="producto.categoria?.nombre || '-'"></td>
+                                    <td class="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                                        <span class="px-2 py-1 text-xs rounded-full"
+                                              :class="producto.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                              x-text="producto.activo ? 'Activo' : 'Inactivo'"></span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <button @click="edit(producto)" class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
+                                        <button @click="remove(producto.id)" class="text-red-600 hover:text-red-900">Eliminar</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <div
+                    x-show="lastPage > 1"
+                    class="flex flex-col sm:flex-row justify-between items-center gap-3 px-4 py-3 bg-gray-50 border-t border-gray-200"
+                >
+                    <p class="text-sm text-gray-600">
+                        <span x-text="total ? ('Mostrando ' + (from || 0) + '–' + (to || 0) + ' de ' + total) : ''"></span>
+                    </p>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            @click="goToPage(currentPage - 1)"
+                            :disabled="currentPage <= 1"
+                            :class="currentPage <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'"
+                            class="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white"
+                        >
+                            Anterior
+                        </button>
+                        <span class="text-sm text-gray-700 tabular-nums">
+                            Página <span x-text="currentPage"></span> de <span x-text="lastPage"></span>
+                        </span>
+                        <button
+                            type="button"
+                            @click="goToPage(currentPage + 1)"
+                            :disabled="currentPage >= lastPage"
+                            :class="currentPage >= lastPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'"
+                            class="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white"
+                        >
+                            Siguiente
+                        </button>
+                    </div>
                 </div>
             </div>
         </template>
