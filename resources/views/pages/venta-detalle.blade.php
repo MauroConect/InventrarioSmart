@@ -91,7 +91,60 @@
                     </div>
                     <div>
                         <p class="text-sm text-gray-600">Tipo de Pago</p>
-                        <p class="font-medium" x-text="etiquetaTipoPago(venta.tipo_pago)"></p>
+                        <template x-if="puedeAgregarItems && puedeAgregarLineas()">
+                            <div class="mt-1 space-y-2">
+                                <div class="flex flex-wrap gap-2 items-center">
+                                    <select
+                                        x-model="editPago.tipo_pago"
+                                        @change="onCambioTipoPagoSelect()"
+                                        :disabled="guardandoTipoPago"
+                                        class="px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-100"
+                                    >
+                                        <option value="efectivo">Efectivo</option>
+                                        <option value="tarjeta">Tarjeta</option>
+                                        <option value="transferencia">Transferencia</option>
+                                        <option value="cuenta_corriente">Cuenta Corriente</option>
+                                        <option value="mixto">Mixto</option>
+                                    </select>
+                                    <button
+                                        type="button"
+                                        x-show="editPago.tipo_pago === 'mixto' || editPago.tipo_pago === 'tarjeta'"
+                                        x-cloak
+                                        @click="guardarTipoPago()"
+                                        :disabled="guardandoTipoPago"
+                                        class="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                        <span x-show="!guardandoTipoPago">Guardar pago</span>
+                                        <span x-show="guardandoTipoPago" x-cloak>Guardando…</span>
+                                    </button>
+                                    <span x-show="guardandoTipoPago && editPago.tipo_pago !== 'mixto' && editPago.tipo_pago !== 'tarjeta'" x-cloak class="text-xs text-gray-500">Guardando…</span>
+                                </div>
+                                <div x-show="editPago.tipo_pago === 'mixto'" x-cloak class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    <div>
+                                        <label class="block text-xs text-gray-600 mb-1">Monto efectivo</label>
+                                        <input type="number" step="0.01" min="0" x-model.number="editPago.monto_efectivo" class="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-600 mb-1">Monto tarjeta</label>
+                                        <input type="number" step="0.01" min="0" x-model.number="editPago.monto_tarjeta" class="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-600 mb-1">Monto transferencia</label>
+                                        <input type="number" step="0.01" min="0" x-model.number="editPago.monto_transferencia" class="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm">
+                                    </div>
+                                </div>
+                                <div x-show="editPago.tipo_pago === 'tarjeta'" x-cloak class="w-32">
+                                    <label class="block text-xs text-gray-600 mb-1">Cuotas</label>
+                                    <input type="number" min="1" max="24" x-model.number="editPago.cuotas" class="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm">
+                                </div>
+                                <p x-show="editPago.tipo_pago === 'cuenta_corriente' && !venta.cliente_id" x-cloak class="text-xs text-amber-800">
+                                    Para cuenta corriente la venta debe tener un cliente asignado.
+                                </p>
+                            </div>
+                        </template>
+                        <template x-if="!(puedeAgregarItems && puedeAgregarLineas())">
+                            <p class="font-medium" x-text="etiquetaTipoPago(venta.tipo_pago)"></p>
+                        </template>
                     </div>
                     <div>
                         <p class="text-sm text-gray-600">Subtotal ítems</p>
@@ -329,6 +382,14 @@ function ventaDetalle(puedeAgregarItems, puedeEliminarVenta) {
         productos: [],
         nuevoItem: { producto_id: '', cantidad: 1 },
         pagoCon: '',
+        guardandoTipoPago: false,
+        editPago: {
+            tipo_pago: 'efectivo',
+            monto_efectivo: 0,
+            monto_tarjeta: 0,
+            monto_transferencia: 0,
+            cuotas: null,
+        },
         ventasIndexUrl: @json(url('/ventas')),
         
         etiquetaTipoPago(tipo) {
@@ -351,6 +412,59 @@ function ventaDetalle(puedeAgregarItems, puedeEliminarVenta) {
         },
         puedeAgregarLineas() {
             return this.motivoBloqueoAgregarItems() === null;
+        },
+
+        syncEditPagoFromVenta() {
+            if (!this.venta) return;
+            this.editPago = {
+                tipo_pago: this.venta.tipo_pago || 'efectivo',
+                monto_efectivo: parseFloat(this.venta.monto_efectivo || 0) || 0,
+                monto_tarjeta: parseFloat(this.venta.monto_tarjeta || 0) || 0,
+                monto_transferencia: parseFloat(this.venta.monto_transferencia || 0) || 0,
+                cuotas: this.venta.cuotas ? parseInt(this.venta.cuotas, 10) : null,
+            };
+        },
+
+        onCambioTipoPagoSelect() {
+            this.pagoCon = '';
+            // Mixto requiere montos: el usuario completa y pulsa Guardar.
+            if (this.editPago.tipo_pago === 'mixto') {
+                return;
+            }
+            this.guardarTipoPago();
+        },
+
+        async guardarTipoPago() {
+            if (!this.puedeAgregarLineas() || !this.editPago.tipo_pago) return;
+            try {
+                this.guardandoTipoPago = true;
+                this.error = '';
+                this.success = '';
+                const token = localStorage.getItem('token');
+                const payload = { tipo_pago: this.editPago.tipo_pago };
+                if (this.editPago.tipo_pago === 'mixto') {
+                    payload.monto_efectivo = parseFloat(this.editPago.monto_efectivo) || 0;
+                    payload.monto_tarjeta = parseFloat(this.editPago.monto_tarjeta) || 0;
+                    payload.monto_transferencia = parseFloat(this.editPago.monto_transferencia) || 0;
+                }
+                if (this.editPago.tipo_pago === 'tarjeta' && this.editPago.cuotas) {
+                    payload.cuotas = parseInt(this.editPago.cuotas, 10);
+                }
+                const response = await axios.patch(
+                    `/api/ventas/${this.ventaId}/tipo-pago`,
+                    payload,
+                    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                );
+                this.venta = response.data;
+                this.syncEditPagoFromVenta();
+                this.success = 'Tipo de pago actualizado.';
+                setTimeout(() => { this.success = ''; }, 3500);
+            } catch (error) {
+                this.error = error.response?.data?.message || 'No se pudo cambiar el tipo de pago.';
+                this.syncEditPagoFromVenta();
+            } finally {
+                this.guardandoTipoPago = false;
+            }
         },
 
         async cerrarVenta({ silencioso = false } = {}) {
@@ -462,6 +576,7 @@ function ventaDetalle(puedeAgregarItems, puedeEliminarVenta) {
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 this.venta = response.data;
+                this.syncEditPagoFromVenta();
                 this.success = 'Productos agregados correctamente.';
                 this.nuevoItem = { producto_id: '', cantidad: 1 };
                 setTimeout(() => { this.success = ''; }, 3500);
@@ -488,6 +603,7 @@ function ventaDetalle(puedeAgregarItems, puedeEliminarVenta) {
                     { headers: token ? { Authorization: `Bearer ${token}` } : {} }
                 );
                 this.venta = response.data;
+                this.syncEditPagoFromVenta();
                 this.success = 'Producto eliminado de la venta.';
                 setTimeout(() => { this.success = ''; }, 3500);
             } catch (error) {
@@ -518,6 +634,7 @@ function ventaDetalle(puedeAgregarItems, puedeEliminarVenta) {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 this.venta = response.data;
+                this.syncEditPagoFromVenta();
             } catch (error) {
                 this.error = error.response?.data?.message || 'Error al cargar la venta.';
             } finally {

@@ -342,6 +342,155 @@ class VentaController extends Controller
         }
     }
 
+    /**
+     * Cambia el tipo de pago de una venta abierta (no facturada ni cancelada).
+     */
+    public function actualizarTipoPago(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'tipo_pago' => 'required|in:efectivo,tarjeta,transferencia,cuenta_corriente,mixto',
+            'monto_tarjeta' => 'nullable|numeric|min:0',
+            'monto_efectivo' => 'nullable|numeric|min:0',
+            'monto_transferencia' => 'nullable|numeric|min:0',
+            'cuotas' => 'nullable|integer|min:1|max:24',
+        ]);
+
+        $venta = Venta::with(['movimientosCuentaCorriente.cuentaCorriente', 'cliente'])->findOrFail($id);
+
+        if ($venta->estado === 'cancelada') {
+            return response()->json(['message' => 'No se puede cambiar el tipo de pago de una venta cancelada.'], 400);
+        }
+
+        if ($venta->estado === 'cerrada') {
+            return response()->json(['message' => 'No se puede cambiar el tipo de pago de una venta cerrada.'], 400);
+        }
+
+        if (($venta->estado_facturacion ?? 'pendiente') === 'facturada') {
+            return response()->json(['message' => 'No se puede cambiar el tipo de pago de una venta ya facturada.'], 400);
+        }
+
+        $tipoAnterior = $venta->tipo_pago;
+        $tipoNuevo = $validated['tipo_pago'];
+        $totalFinal = (float) ($venta->total_final ?? $venta->total ?? 0);
+
+        DB::beginTransaction();
+        try {
+            if ($tipoAnterior === 'cuenta_corriente') {
+                $this->revertirMovimientosCuentaCorriente($venta);
+            }
+
+            $montoTarjeta = null;
+            $montoEfectivo = null;
+            $montoTransferencia = null;
+            $cuotas = null;
+            $montoCuota = null;
+
+            if ($tipoNuevo === 'mixto') {
+                $montoTarjeta = (float) ($validated['monto_tarjeta'] ?? 0);
+                $montoEfectivo = (float) ($validated['monto_efectivo'] ?? 0);
+                $montoTransferencia = (float) ($validated['monto_transferencia'] ?? 0);
+                $sumaMontos = $montoTarjeta + $montoEfectivo + $montoTransferencia;
+
+                if (abs($sumaMontos - $totalFinal) > 0.01) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'message' => 'La suma de efectivo, tarjeta y transferencia debe ser igual al total final de la venta.',
+                    ], 400);
+                }
+
+                if (! empty($validated['cuotas'])) {
+                    $cuotas = (int) $validated['cuotas'];
+                    $montoCuota = $montoTarjeta > 0 ? $montoTarjeta / $cuotas : null;
+                }
+            } elseif ($tipoNuevo === 'tarjeta') {
+                $montoTarjeta = $totalFinal;
+                if (! empty($validated['cuotas'])) {
+                    $cuotas = (int) $validated['cuotas'];
+                    $montoCuota = $totalFinal / $cuotas;
+                }
+            } elseif ($tipoNuevo === 'transferencia') {
+                $montoTransferencia = $totalFinal;
+            } elseif ($tipoNuevo === 'cuenta_corriente') {
+                if (! $venta->cliente_id) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'message' => 'La venta no tiene cliente. No se puede pasar a cuenta corriente.',
+                    ], 422);
+                }
+
+                $cuenta = CuentaCorriente::where('cliente_id', $venta->cliente_id)
+                    ->where('activa', true)
+                    ->first();
+
+                if (! $cuenta) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'message' => 'El cliente no tiene una cuenta corriente activa.',
+                    ], 422);
+                }
+
+                $saldoActual = (float) $cuenta->saldo;
+                $limite = (float) $cuenta->limite_credito;
+                if ($limite > 0 && ($saldoActual + $totalFinal) > $limite + 0.009) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'message' => 'La venta supera el límite de crédito de la cuenta corriente del cliente.',
+                    ], 422);
+                }
+
+                MovimientoCuentaCorriente::create([
+                    'cuenta_corriente_id' => $cuenta->id,
+                    'tipo' => 'debe',
+                    'monto' => $totalFinal,
+                    'concepto' => 'Venta '.($venta->numero_factura ?: '#'.$venta->id),
+                    'venta_id' => $venta->id,
+                ]);
+                $cuenta->saldo = $saldoActual + $totalFinal;
+                $cuenta->save();
+            }
+
+            $venta->tipo_pago = $tipoNuevo;
+            $venta->monto_tarjeta = $montoTarjeta;
+            $venta->monto_efectivo = $montoEfectivo;
+            $venta->monto_transferencia = $montoTransferencia;
+            $venta->cuotas = $cuotas;
+            $venta->monto_cuota = $montoCuota;
+            $venta->save();
+
+            DB::commit();
+
+            return response()->json(
+                $venta->fresh()->load(['caja', 'cliente', 'usuario', 'items.producto', 'adjuntos'])
+            );
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
+    }
+
+    private function revertirMovimientosCuentaCorriente(Venta $venta): void
+    {
+        $venta->loadMissing('movimientosCuentaCorriente.cuentaCorriente');
+
+        foreach ($venta->movimientosCuentaCorriente as $mov) {
+            $cuenta = $mov->cuentaCorriente;
+            if ($cuenta) {
+                if ($mov->tipo === 'debe') {
+                    $cuenta->saldo = (float) $cuenta->saldo - (float) $mov->monto;
+                } else {
+                    $cuenta->saldo = (float) $cuenta->saldo + (float) $mov->monto;
+                }
+                $cuenta->save();
+            }
+            $mov->delete();
+        }
+    }
+
     private function recalcularTotalesVenta(Venta $venta): void
     {
         $venta->load('items');
