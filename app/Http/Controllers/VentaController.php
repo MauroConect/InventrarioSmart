@@ -293,6 +293,55 @@ class VentaController extends Controller
         }
     }
 
+    /**
+     * Quita una línea de una venta existente y restaura el stock.
+     * No aplica a ventas canceladas ni facturadas en AFIP/ARCA.
+     */
+    public function eliminarItem($id, $itemId)
+    {
+        $venta = Venta::with(['caja', 'items'])->findOrFail($id);
+
+        if ($venta->estado === 'cancelada') {
+            return response()->json(['message' => 'No se pueden eliminar productos de una venta cancelada.'], 400);
+        }
+
+        if ($venta->estado === 'cerrada') {
+            return response()->json(['message' => 'No se pueden eliminar productos de una venta cerrada.'], 400);
+        }
+
+        if (($venta->estado_facturacion ?? 'pendiente') === 'facturada') {
+            return response()->json(['message' => 'No se pueden eliminar productos de una venta ya facturada.'], 400);
+        }
+
+        $item = ItemVenta::with('producto')
+            ->where('venta_id', $venta->id)
+            ->findOrFail($itemId);
+
+        DB::beginTransaction();
+        try {
+            $producto = $item->producto;
+            if ($producto) {
+                $producto->stock_actual += (int) $item->cantidad;
+                $producto->save();
+            }
+
+            $item->delete();
+
+            $this->recalcularTotalesVenta($venta->fresh(['items']));
+
+            DB::commit();
+
+            return response()->json(
+                $venta->fresh()->load(['caja', 'cliente', 'usuario', 'items.producto', 'adjuntos']),
+                200
+            );
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
+    }
+
     private function recalcularTotalesVenta(Venta $venta): void
     {
         $venta->load('items');

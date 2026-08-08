@@ -59,7 +59,7 @@
     >
         <button
             type="button"
-            @click="cerrarVenta()"
+            @click="imprimirComprobante()"
             class="px-6 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 shadow"
         >
             Cerrar venta
@@ -271,6 +271,11 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cantidad</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Precio Unitario</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subtotal</th>
+                                <th
+                                    x-show="puedeAgregarItems && puedeAgregarLineas()"
+                                    x-cloak
+                                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase"
+                                >Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -280,6 +285,21 @@
                                     <td class="px-6 py-4 text-sm" x-text="item.cantidad"></td>
                                     <td class="px-6 py-4 text-sm" x-text="'$' + parseFloat(item.precio_unitario || 0).toFixed(2)"></td>
                                     <td class="px-6 py-4 text-sm font-medium" x-text="'$' + parseFloat(item.subtotal || 0).toFixed(2)"></td>
+                                    <td
+                                        x-show="puedeAgregarItems && puedeAgregarLineas()"
+                                        x-cloak
+                                        class="px-6 py-4 text-sm text-right"
+                                    >
+                                        <button
+                                            type="button"
+                                            @click="eliminarItemVenta(item)"
+                                            :disabled="eliminandoItemId === item.id"
+                                            class="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 disabled:opacity-50"
+                                        >
+                                            <span x-show="eliminandoItemId !== item.id">Eliminar</span>
+                                            <span x-show="eliminandoItemId === item.id" x-cloak>…</span>
+                                        </button>
+                                    </td>
                                 </tr>
                             </template>
                         </tbody>
@@ -301,6 +321,7 @@ function ventaDetalle(puedeAgregarItems, puedeEliminarVenta) {
         facturando: false,
         agregandoItems: false,
         eliminando: false,
+        eliminandoItemId: null,
         error: '',
         success: '',
         puedeAgregarItems: puedeAgregarItems === true,
@@ -448,6 +469,31 @@ function ventaDetalle(puedeAgregarItems, puedeEliminarVenta) {
                 this.error = error.response?.data?.message || 'No se pudieron agregar los productos.';
             } finally {
                 this.agregandoItems = false;
+            }
+        },
+
+        async eliminarItemVenta(item) {
+            if (!item?.id || !this.puedeAgregarLineas()) return;
+            const nombre = item.producto?.nombre || ('ítem #' + item.id);
+            if (!confirm('¿Eliminar "' + nombre + '" de esta venta? Se devolverá el stock.')) {
+                return;
+            }
+            try {
+                this.eliminandoItemId = item.id;
+                this.error = '';
+                this.success = '';
+                const token = localStorage.getItem('token');
+                const response = await axios.delete(
+                    `/api/ventas/${this.ventaId}/items/${item.id}`,
+                    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                );
+                this.venta = response.data;
+                this.success = 'Producto eliminado de la venta.';
+                setTimeout(() => { this.success = ''; }, 3500);
+            } catch (error) {
+                this.error = error.response?.data?.message || 'No se pudo eliminar el producto.';
+            } finally {
+                this.eliminandoItemId = null;
             }
         },
 
