@@ -224,13 +224,15 @@ export default function Usuarios() {
                                                 >
                                                     Editar
                                                 </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDelete(u.id)}
-                                                    className="text-red-600 hover:text-red-800"
-                                                >
-                                                    Eliminar
-                                                </button>
+                                                {user?.id !== u.id && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDelete(u.id)}
+                                                        className="text-red-600 hover:text-red-800"
+                                                    >
+                                                        Eliminar
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

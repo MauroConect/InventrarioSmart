@@ -120,6 +120,30 @@ export default function CuentasCorrientes() {
         setModalMov(true);
     };
 
+    const eliminarCuenta = async (cuenta) => {
+        const nombre = cuenta.cliente
+            ? `${cuenta.cliente.nombre || ''} ${cuenta.cliente.apellido || ''}`.trim()
+            : `cuenta #${cuenta.id}`;
+        const sal = parseNum(cuenta.saldo);
+        const avisoSaldo =
+            sal !== 0
+                ? `\n\nAtención: la cuenta tiene saldo $${sal.toFixed(2)}. Se eliminará igual, junto con todos sus movimientos.`
+                : '\n\nSe eliminarán también todos sus movimientos.';
+        if (!window.confirm(`¿Eliminar la cuenta corriente de ${nombre}?${avisoSaldo}`)) {
+            return;
+        }
+        setError('');
+        setSuccess('');
+        try {
+            await axios.delete(`cuentas-corrientes/${cuenta.id}`);
+            setSuccess('Cuenta corriente eliminada.');
+            fetchCuentas();
+            setTimeout(() => setSuccess(''), 4000);
+        } catch (e) {
+            setError(e.response?.data?.message || 'No se pudo eliminar la cuenta corriente.');
+        }
+    };
+
     if (loading && cuentas.length === 0) {
         return (
             <div className="p-6">
@@ -223,6 +247,15 @@ export default function CuentasCorrientes() {
                                                                 Cargo
                                                             </button>
                                                         </>
+                                                    )}
+                                                    {esAdmin && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => eliminarCuenta(cuenta)}
+                                                            className="text-red-600 hover:text-red-800 whitespace-nowrap text-left"
+                                                        >
+                                                            Eliminar
+                                                        </button>
                                                     )}
                                                 </div>
                                             </td>

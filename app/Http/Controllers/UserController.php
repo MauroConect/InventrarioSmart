@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -94,7 +95,16 @@ class UserController extends Controller
             ], 400);
         }
 
-        $usuario->delete();
+        try {
+            $usuario->delete();
+        } catch (QueryException $e) {
+            if (($e->errorInfo[0] ?? '') === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar: el usuario tiene cajas, movimientos u otros registros vinculados.',
+                ], 422);
+            }
+            throw $e;
+        }
 
         return response()->json(['message' => 'Usuario eliminado correctamente.']);
     }

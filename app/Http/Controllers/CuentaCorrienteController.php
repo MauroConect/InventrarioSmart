@@ -89,4 +89,18 @@ class CuentaCorrienteController extends Controller
             ])
         );
     }
+
+    public function destroy($id)
+    {
+        $cuenta = CuentaCorriente::findOrFail($id);
+
+        DB::transaction(function () use ($cuenta) {
+            $cuenta->movimientos()->delete();
+            $cuenta->delete();
+        });
+
+        return response()->json([
+            'message' => 'Cuenta corriente eliminada correctamente.',
+        ]);
+    }
 }

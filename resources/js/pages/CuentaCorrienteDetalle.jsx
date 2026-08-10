@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { canAccess } from '../utils/permissions';
 import MovimientoCuentaCorrienteModal from '../components/MovimientoCuentaCorrienteModal';
 
 function parseNum(v) {
@@ -30,11 +32,36 @@ function etiquetaSaldo(saldo) {
 
 export default function CuentaCorrienteDetalle() {
     const { id } = useParams();
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const esAdmin = canAccess(user, 'admin');
     const [cuenta, setCuenta] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [modalMov, setModalMov] = useState(false);
     const [tipoModal, setTipoModal] = useState('haber');
+    const [eliminando, setEliminando] = useState(false);
+
+    const eliminarCuenta = async () => {
+        if (!cuenta) return;
+        const sal = parseNum(cuenta.saldo);
+        const avisoSaldo =
+            sal !== 0
+                ? `\n\nAtención: la cuenta tiene saldo $${sal.toFixed(2)}. Se eliminará igual, junto con todos sus movimientos.`
+                : '\n\nSe eliminarán también todos sus movimientos.';
+        if (!window.confirm(`¿Eliminar esta cuenta corriente?${avisoSaldo}`)) {
+            return;
+        }
+        setEliminando(true);
+        setError('');
+        try {
+            await axios.delete(`cuentas-corrientes/${cuenta.id}`);
+            navigate('/cuentas-corrientes');
+        } catch (e) {
+            setError(e.response?.data?.message || 'No se pudo eliminar la cuenta corriente.');
+            setEliminando(false);
+        }
+    };
 
     const cargar = useCallback(async () => {
         if (!id) return;
@@ -90,6 +117,10 @@ export default function CuentaCorrienteDetalle() {
                 </Link>
             </div>
 
+            {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded-md text-sm">{error}</div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Cuenta corriente</h1>
@@ -124,6 +155,16 @@ export default function CuentaCorrienteDetalle() {
                     >
                         Cargo / ajuste debe
                     </button>
+                    {esAdmin && (
+                        <button
+                            type="button"
+                            onClick={eliminarCuenta}
+                            disabled={eliminando}
+                            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 text-sm"
+                        >
+                            {eliminando ? 'Eliminando…' : 'Eliminar cuenta'}
+                        </button>
+                    )}
                 </div>
             </div>
 

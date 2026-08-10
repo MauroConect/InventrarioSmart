@@ -124,6 +124,7 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
         Route::post('cuentas-corrientes', [CuentaCorrienteController::class, 'store']);
         Route::get('cuentas-corrientes/{id}', [CuentaCorrienteController::class, 'show']);
         Route::post('cuentas-corrientes/{id}/movimiento', [CuentaCorrienteController::class, 'agregarMovimiento']);
+        Route::delete('cuentas-corrientes/{id}', [CuentaCorrienteController::class, 'destroy']);
 
         Route::get('deudas-clientes', [DeudaClienteController::class, 'index']);
         Route::post('deudas-clientes', [DeudaClienteController::class, 'store']);
