@@ -26,6 +26,8 @@
 
     <template x-if="cuenta">
         <div class="space-y-6">
+            <div x-show="error" x-cloak class="p-3 bg-red-50 border border-red-200 text-red-800 rounded-md text-sm" x-text="error"></div>
+
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Cuenta corriente</h1>
@@ -35,9 +37,14 @@
                         <span :class="cuenta.activa ? 'text-green-700 font-medium' : 'text-red-600 font-medium'" x-text="cuenta.activa ? 'Activa' : 'Inactiva'"></span>
                     </p>
                 </div>
-                <div class="flex flex-wrap gap-2" x-show="esAdmin && cuenta.activa" x-cloak>
-                    <button type="button" @click="abrirModalMov('haber')" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">Registrar pago</button>
-                    <button type="button" @click="abrirModalMov('debe')" class="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 text-sm">Cargo / ajuste</button>
+                <div class="flex flex-wrap gap-2" x-show="esAdmin" x-cloak>
+                    <template x-if="cuenta.activa">
+                        <button type="button" @click="abrirModalMov('haber')" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">Registrar pago</button>
+                    </template>
+                    <template x-if="cuenta.activa">
+                        <button type="button" @click="abrirModalMov('debe')" class="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 text-sm">Cargo / ajuste</button>
+                    </template>
+                    <button type="button" @click="eliminarCuenta()" :disabled="eliminando" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 text-sm" x-text="eliminando ? 'Eliminando…' : 'Eliminar cuenta'"></button>
                 </div>
             </div>
 
@@ -145,6 +152,7 @@ function cuentaCorrienteDetalle(opts) {
         cuenta: null,
         loading: true,
         error: '',
+        eliminando: false,
         showModalMov: false,
         modalSaving: false,
         modalError: '',
@@ -152,6 +160,26 @@ function cuentaCorrienteDetalle(opts) {
 
         async init() {
             await this.fetchCuenta();
+        },
+
+        async eliminarCuenta() {
+            if (!this.cuenta) return;
+            const sal = parseFloat(this.cuenta.saldo) || 0;
+            const avisoSaldo = sal !== 0
+                ? '\n\nAtención: la cuenta tiene saldo $' + sal.toFixed(2) + '. Se eliminará igual, junto con todos sus movimientos.'
+                : '\n\nSe eliminarán también todos sus movimientos.';
+            if (!confirm('¿Eliminar esta cuenta corriente?' + avisoSaldo)) {
+                return;
+            }
+            this.eliminando = true;
+            this.error = '';
+            try {
+                await axios.delete(API + '/' + this.cuenta.id, { headers: this.headers() });
+                window.location.href = @json(route('cuentas-corrientes.index'));
+            } catch (e) {
+                this.error = e.response?.data?.message || 'No se pudo eliminar la cuenta corriente.';
+                this.eliminando = false;
+            }
         },
 
         headers() {

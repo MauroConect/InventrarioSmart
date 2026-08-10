@@ -70,6 +70,9 @@
                                         <template x-if="esAdmin && cuenta.activa">
                                             <button type="button" @click="abrirModalMov(cuenta, 'debe')" class="text-amber-700 hover:text-amber-900 whitespace-nowrap text-left">Cargo</button>
                                         </template>
+                                        <template x-if="esAdmin">
+                                            <button type="button" @click="eliminarCuenta(cuenta)" class="text-red-600 hover:text-red-800 whitespace-nowrap text-left">Eliminar</button>
+                                        </template>
                                     </div>
                                 </td>
                             </tr>
@@ -232,6 +235,27 @@ function cuentasCorrientesPage(opts) {
                 observaciones: ''
             };
             this.showModalMov = true;
+        },
+
+        async eliminarCuenta(cuenta) {
+            const nombre = this.nombreCliente(cuenta);
+            const sal = parseFloat(cuenta.saldo) || 0;
+            const avisoSaldo = sal !== 0
+                ? '\n\nAtención: la cuenta tiene saldo $' + sal.toFixed(2) + '. Se eliminará igual, junto con todos sus movimientos.'
+                : '\n\nSe eliminarán también todos sus movimientos.';
+            if (!confirm('¿Eliminar la cuenta corriente de ' + nombre + '?' + avisoSaldo)) {
+                return;
+            }
+            this.pageError = '';
+            this.pageSuccess = '';
+            try {
+                await axios.delete(CC_API + '/' + cuenta.id, { headers: this.headers() });
+                this.pageSuccess = 'Cuenta corriente eliminada.';
+                setTimeout(() => { this.pageSuccess = ''; }, 4000);
+                await this.fetch();
+            } catch (e) {
+                this.pageError = e.response?.data?.message || 'No se pudo eliminar la cuenta corriente.';
+            }
         },
 
         async guardarMovimiento() {

@@ -4,7 +4,7 @@
 @section('page-title', 'Usuarios')
 
 @section('content')
-<div x-data="usuariosAdmin()" x-init="init()" class="space-y-6">
+<div x-data="usuariosAdmin({ currentUserId: {{ (int) auth()->id() }} })" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 class="text-2xl sm:text-3xl font-bold">Usuarios del sistema</h1>
         <button
@@ -53,7 +53,7 @@
                                 <td class="px-6 py-4 text-sm">
                                     <div class="flex flex-col sm:flex-row gap-2">
                                         <button type="button" @click="edit(u)" class="text-blue-600 hover:text-blue-800 text-left">Editar</button>
-                                        <button type="button" @click="remove(u)" class="text-red-600 hover:text-red-800 text-left">Eliminar</button>
+                                        <button type="button" x-show="u.id !== currentUserId" @click="remove(u)" class="text-red-600 hover:text-red-800 text-left">Eliminar</button>
                                     </div>
                                 </td>
                             </tr>
@@ -140,8 +140,9 @@
 
 @push('scripts')
 <script>
-function usuariosAdmin() {
+function usuariosAdmin(opts) {
     return {
+        currentUserId: opts?.currentUserId || null,
         usuarios: [],
         loading: true,
         saving: false,
