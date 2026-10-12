@@ -4,6 +4,7 @@
 @section('page-title', 'Ventas')
 
 @section('content')
+@php($openOrdersEnabled = app(\App\Services\Modules\TenantFeatureService::class)->enabled('sales.open_orders'))
 <div x-data="ventas()" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 class="text-2xl sm:text-3xl font-bold">Ventas</h1>
@@ -112,7 +113,7 @@
                             <option value="efectivo">Efectivo</option>
                             <option value="tarjeta">Tarjeta</option>
                             <option value="transferencia">Transferencia</option>
-                            <option value="cuenta_corriente">Cuenta Corriente</option>
+                            <option value="cuenta_corriente" x-show="creditEnabled">Cuenta Corriente</option>
                             <option value="mixto">Mixto</option>
                         </select>
                     </div>
@@ -142,7 +143,7 @@
                     <input type="number" step="0.01" x-model.number="descuento" class="w-full px-3 py-2 border border-gray-300 rounded-md" value="0">
                 </div>
 
-                <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                <div x-show="scannerEnabled" class="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
                     <label class="block text-sm font-medium text-gray-800">Código de barras</label>
                     <p class="text-xs text-gray-600">Enfocá este campo y escaneá con la pistola o el celular; o usá la cámara del teléfono.</p>
                     <div class="flex flex-col sm:flex-row gap-2">
@@ -219,7 +220,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-600 mb-1">Cantidad</label>
-                                    <input type="number" x-model.number="item.cantidad" class="w-full px-2 py-1 border border-gray-300 rounded-md text-sm" required min="1">
+                                    <input type="number" x-model.number="item.cantidad" class="w-full px-2 py-1 border border-gray-300 rounded-md text-sm" required :min="qtyMin(item)" :step="qtyStep(item)">
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-600 mb-1">Subtotal</label>
@@ -313,6 +314,19 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div x-show="pesoPrompt" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" @click.self="pesoPrompt = null">
+        <div class="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
+            <h3 class="text-lg font-bold">Peso</h3>
+            <p class="mt-1 text-sm text-gray-600">¿Cuánto pesa <span class="font-semibold" x-text="pesoPrompt?.nombre"></span>?</p>
+            <label class="mt-3 block text-xs text-gray-500">Cantidad (<span x-text="pesoPrompt?.unidad_medida || 'kg'"></span>)</label>
+            <input type="number" min="0.001" step="0.001" x-model.number="pesoPromptCantidad" class="mt-1 w-full rounded-md border px-3 py-2" @keydown.enter.prevent="confirmarPeso()">
+            <div class="mt-4 flex justify-end gap-2">
+                <button type="button" @click="pesoPrompt = null" class="rounded-md border px-4 py-2 text-sm">Cancelar</button>
+                <button type="button" @click="confirmarPeso()" class="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Agregar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -689,11 +703,17 @@ function ventas() {
         montoTransferencia: '',
         pagoCon: '',
         descuento: 0,
+        scannerEnabled: !!(window.tenantModules && window.tenantModules.scanner),
+        weightedEnabled: !!(window.tenantModules && window.tenantModules.weighted),
+        creditEnabled: !!(window.tenantModules && window.tenantModules.credit),
+        pesoPrompt: null,
+        pesoPromptCantidad: 0.25,
         items: [{ producto_id: '', cantidad: 1 }],
         busquedaProducto: {},
         adjuntos: [],
         codigoScanBuffer: '',
         scannerCameraAbierto: false,
+        openOrdersEnabled: @json($openOrdersEnabled),
         _html5QrVentas: null,
         _html5QrVentasLock: false,
         _onShortcutOpenSale: null,
@@ -794,12 +814,21 @@ function ventas() {
             return p || null;
         },
 
-        asignarProductoEscaneado(prod) {
+        asignarProductoEscaneado(prod, cantidadForzada) {
             const prodIdStr = String(prod.id);
             const itemsCopia = this.items.map((it) => ({ ...it }));
+            const esPesable = this.esPesable(prod);
+
+            if (esPesable && (cantidadForzada == null)) {
+                this.pesoPrompt = prod;
+                this.pesoPromptCantidad = 0.25;
+                return { sumado: false, cantidad: 0, pendientePeso: true };
+            }
+
+            const qty = esPesable ? (parseFloat(cantidadForzada) || 0.001) : 1;
 
             let idx = itemsCopia.findIndex((it) => String(it.producto_id) === prodIdStr);
-            if (idx !== -1) {
+            if (idx !== -1 && !esPesable) {
                 const nuevaCant = (parseInt(itemsCopia[idx].cantidad) || 0) + 1;
                 itemsCopia[idx] = { ...itemsCopia[idx], cantidad: nuevaCant };
                 this.items = itemsCopia;
@@ -811,10 +840,10 @@ function ventas() {
             idx = itemsCopia.findIndex((it) => !it.producto_id);
             const esNuevoItem = idx === -1;
             if (esNuevoItem) {
-                itemsCopia.push({ producto_id: '', cantidad: 1 });
+                itemsCopia.push({ producto_id: '', cantidad: qty });
                 idx = itemsCopia.length - 1;
             } else {
-                itemsCopia[idx] = { producto_id: '', cantidad: 1 };
+                itemsCopia[idx] = { producto_id: '', cantidad: qty };
             }
             this.items = itemsCopia;
             this.busquedaProducto = { ...this.busquedaProducto, [idx]: '' };
@@ -823,12 +852,43 @@ function ventas() {
             const idxFinal = idx;
             this.$nextTick(() => {
                 const itemsActualizados = this.items.map((it, i) =>
-                    i === idxFinal ? { ...it, producto_id: prodIdStr } : it
+                    i === idxFinal ? { ...it, producto_id: prodIdStr, cantidad: qty } : it
                 );
                 this.items = itemsActualizados;
             });
 
-            return { sumado: false, cantidad: 1 };
+            return { sumado: false, cantidad: qty };
+        },
+
+        confirmarPeso() {
+            const prod = this.pesoPrompt;
+            const qty = parseFloat(this.pesoPromptCantidad);
+            if (!prod || !qty || qty <= 0) {
+                this.error = 'Ingresá un peso válido.';
+                return;
+            }
+            this.pesoPrompt = null;
+            const resultado = this.asignarProductoEscaneado(prod, qty);
+            const nombreProd = prod.nombre || prod.codigo;
+            this.success = 'Agregado: ' + nombreProd + ' x' + qty;
+            setTimeout(() => { this.success = ''; }, 1500);
+            return resultado;
+        },
+
+        esPesable(prodOrItem) {
+            if (!this.weightedEnabled) return false;
+            const prod = prodOrItem && prodOrItem.tipo_venta
+                ? prodOrItem
+                : this.obtenerProducto(prodOrItem?.producto_id || prodOrItem);
+            return !!(prod && prod.tipo_venta === 'peso');
+        },
+
+        qtyStep(item) {
+            return this.esPesable(item) ? 0.001 : 1;
+        },
+
+        qtyMin(item) {
+            return this.esPesable(item) ? 0.001 : 1;
         },
 
         aplicarCodigoEscaneado(codigoOpcional) {
@@ -845,6 +905,9 @@ function ventas() {
             }
             const resultado = this.asignarProductoEscaneado(prod);
             this.codigoScanBuffer = '';
+            if (resultado && resultado.pendientePeso) {
+                return;
+            }
             const nombreProd = prod.nombre || prod.codigo;
             if (resultado && resultado.sumado) {
                 this.success = nombreProd + ' x' + resultado.cantidad;
@@ -969,7 +1032,7 @@ function ventas() {
         calcularSubtotal(item) {
             const prod = this.obtenerProducto(item.producto_id);
             if (!prod) return 0;
-            return (parseFloat(prod.precio_venta || 0) * (parseInt(item.cantidad) || 0)) || 0;
+            return (parseFloat(prod.precio_venta || 0) * (parseFloat(item.cantidad) || 0)) || 0;
         },
         
         calcularTotal() {
@@ -984,10 +1047,10 @@ function ventas() {
             }
 
             const itemsValidos = this.items
-                .filter(item => item.producto_id && (parseInt(item.cantidad) || 0) > 0)
+                .filter(item => item.producto_id && (parseFloat(item.cantidad) || 0) > 0)
                 .map(item => ({
                     producto_id: item.producto_id,
-                    cantidad: parseInt(item.cantidad) || 0,
+                    cantidad: parseFloat(item.cantidad) || 0,
                 }));
 
             if (itemsValidos.length === 0) {

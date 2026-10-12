@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Venta extends Model
 {
-    use HasFactory;
+    use BelongsToTenant, HasFactory;
 
     protected $table = 'ventas';
 
@@ -27,6 +28,7 @@ class Venta extends Model
         'cuotas',
         'monto_cuota',
         'recargo_cuotas',
+        'etiqueta',
         'estado',
         'estado_facturacion',
         'comprobante_tipo',
@@ -42,9 +44,9 @@ class Venta extends Model
         'total' => 'decimal:2',
         'descuento' => 'decimal:2',
         'total_final' => 'decimal:2',
-            'monto_tarjeta' => 'decimal:2',
-            'monto_efectivo' => 'decimal:2',
-            'monto_transferencia' => 'decimal:2',
+        'monto_tarjeta' => 'decimal:2',
+        'monto_efectivo' => 'decimal:2',
+        'monto_transferencia' => 'decimal:2',
         'monto_cuota' => 'decimal:2',
         'recargo_cuotas' => 'decimal:2',
         'cae_vencimiento' => 'date',
@@ -76,4 +78,3 @@ class Venta extends Model
         return $this->hasMany(VentaAdjunto::class);
     }
 }
-

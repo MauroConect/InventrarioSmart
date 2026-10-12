@@ -3,14 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    public function __construct(private readonly TenantContext $context)
+    {
+    }
+
     public function index(Request $request)
     {
-        $query = User::query()->orderBy('name');
+        $tenantId = $this->context->id();
+        $query = User::query()
+            ->whereHas('memberships', fn ($query) => $query->where('tenant_id', $tenantId)->where('status', 'active'))
+            ->with(['memberships' => fn ($query) => $query->where('tenant_id', $tenantId)])
+            ->orderBy('name');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -38,12 +47,18 @@ class UserController extends Controller
             'password' => $validated['password'],
             'role' => strtolower(trim($validated['role'])),
         ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
+        $user->tenants()->attach($this->context->id(), [
+            'role' => strtolower(trim($validated['role'])),
+            'status' => 'active',
+        ]);
 
-        return response()->json($user, 201);
+        return response()->json($user->load('memberships'), 201);
     }
 
     public function update(Request $request, User $usuario)
     {
+        $membership = $this->membershipOrFail($usuario);
         $input = $request->all();
         if (array_key_exists('password', $input) && $input['password'] === '') {
             unset($input['password']);
@@ -67,12 +82,14 @@ class UserController extends Controller
         }
         if (isset($validated['role'])) {
             $newRole = strtolower(trim($validated['role']));
+            abort_if($membership->role === User::ROLE_OWNER, 403, 'El propietario no puede cambiarse desde esta pantalla.');
             if (! $this->canDemoteAdmin($usuario, $newRole)) {
                 return response()->json([
                     'message' => 'Debe existir al menos otro usuario administrador antes de cambiar este rol.',
                 ], 400);
             }
-            $usuario->role = $newRole;
+            $membership->role = $newRole;
+            $membership->save();
         }
 
         $usuario->save();
@@ -82,6 +99,8 @@ class UserController extends Controller
 
     public function destroy(Request $request, User $usuario)
     {
+        $membership = $this->membershipOrFail($usuario);
+        abort_if($membership->role === User::ROLE_OWNER, 403, 'El propietario no puede eliminarse del comercio.');
         if ($usuario->id === $request->user()->id) {
             return response()->json([
                 'message' => 'No puede eliminar su propio usuario.',
@@ -94,7 +113,7 @@ class UserController extends Controller
             ], 400);
         }
 
-        $usuario->delete();
+        $membership->delete();
 
         return response()->json(['message' => 'Usuario eliminado correctamente.']);
     }
@@ -117,7 +136,11 @@ class UserController extends Controller
 
     private function adminUsersCount(): int
     {
-        return User::whereRaw('LOWER(TRIM(role)) = ?', [User::ROLE_ADMIN])->count();
+        return \App\Models\TenantUser::query()
+            ->where('tenant_id', $this->context->id())
+            ->where('status', 'active')
+            ->whereIn('role', [User::ROLE_OWNER, User::ROLE_ADMIN])
+            ->count();
     }
 
     private function canDemoteAdmin(User $target, string $newRole): bool
@@ -130,5 +153,17 @@ class UserController extends Controller
         }
 
         return $this->adminUsersCount() > 1;
+    }
+
+    private function membershipOrFail(User $user): \App\Models\TenantUser
+    {
+        $membership = $user->memberships()
+            ->where('tenant_id', $this->context->id())
+            ->where('status', 'active')
+            ->first();
+
+        abort_unless($membership, 404);
+
+        return $membership;
     }
 }

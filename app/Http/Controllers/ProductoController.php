@@ -4,10 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\ItemVenta;
 use App\Models\Producto;
+use App\Services\CustomForms\CustomFormService;
+use App\Services\Modules\TenantFeatureService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ProductoController extends Controller
 {
+    public function __construct(
+        private readonly TenantFeatureService $features,
+        private readonly CustomFormService $customForms,
+    ) {
+    }
+
     /**
      * Siguiente código interno incremental (prefijo INT + dígitos) para productos sin código de fábrica.
      */
@@ -46,13 +55,19 @@ class ProductoController extends Controller
             $query->where('categoria_id', $request->categoria_id);
         }
 
-        // Si se solicita obtener todos los productos (para aumento masivo)
-        if ($request->has('all') && $request->all === 'true') {
+        // Si se solicita obtener todos los productos (para POS, comandas y aumento masivo)
+        if ($request->boolean('all')) {
             $query->where('activo', true);
-            return response()->json($query->get());
+            $productos = $query->get();
+            $this->customForms->attachToMany($productos, 'productos');
+
+            return response()->json($productos);
         }
 
-        return response()->json($query->paginate(15));
+        $page = $query->paginate(15);
+        $this->customForms->attachToMany($page->getCollection(), 'productos');
+
+        return response()->json($page);
     }
 
     public function buscarPorCodigo(Request $request)
@@ -79,8 +94,8 @@ class ProductoController extends Controller
             'descripcion' => 'nullable|string',
             'precio_compra' => 'required|numeric|min:0',
             'precio_venta' => 'required|numeric|min:0',
-            'stock_minimo' => 'required|integer|min:0',
-            'stock_actual' => 'required|integer|min:0',
+            'stock_minimo' => 'required|numeric|min:0',
+            'stock_actual' => 'required|numeric|min:0',
             'categoria_id' => 'required|exists:categorias,id',
             'proveedor_id' => 'nullable|exists:proveedores,id',
             'activo' => 'boolean',
@@ -88,13 +103,20 @@ class ProductoController extends Controller
             'unidad_medida' => 'nullable|in:u,kg,g,lt,ml',
         ]);
 
+        $this->assertWeightedAllowed($validated);
+
         $producto = Producto::create($validated);
+        $this->customForms->syncValues($producto, 'productos', $request->input('custom_fields', []));
+        $this->customForms->attachTo($producto, 'productos');
+
         return response()->json($producto->load(['categoria', 'proveedor']), 201);
     }
 
     public function show($id)
     {
         $producto = Producto::with(['categoria', 'proveedor'])->findOrFail($id);
+        $this->customForms->attachTo($producto, 'productos');
+
         return response()->json($producto);
     }
 
@@ -108,8 +130,8 @@ class ProductoController extends Controller
             'descripcion' => 'nullable|string',
             'precio_compra' => 'required|numeric|min:0',
             'precio_venta' => 'required|numeric|min:0',
-            'stock_minimo' => 'required|integer|min:0',
-            'stock_actual' => 'required|integer|min:0',
+            'stock_minimo' => 'required|numeric|min:0',
+            'stock_actual' => 'required|numeric|min:0',
             'categoria_id' => 'required|exists:categorias,id',
             'proveedor_id' => 'nullable|exists:proveedores,id',
             'activo' => 'boolean',
@@ -117,7 +139,12 @@ class ProductoController extends Controller
             'unidad_medida' => 'nullable|in:u,kg,g,lt,ml',
         ]);
 
+        $this->assertWeightedAllowed($validated);
+
         $producto->update($validated);
+        $this->customForms->syncValues($producto, 'productos', $request->input('custom_fields', []));
+        $this->customForms->attachTo($producto, 'productos');
+
         return response()->json($producto->load(['categoria', 'proveedor']));
     }
 
@@ -208,5 +235,14 @@ class ProductoController extends Controller
             'productos_actualizados' => $actualizados,
             'total_productos' => count($productoIds)
         ]);
+    }
+
+    private function assertWeightedAllowed(array $validated): void
+    {
+        if (($validated['tipo_venta'] ?? 'unidad') === 'peso' && ! $this->features->enabled('catalog.weighted')) {
+            throw ValidationException::withMessages([
+                'tipo_venta' => 'El módulo de productos pesables no está habilitado.',
+            ]);
+        }
     }
 }

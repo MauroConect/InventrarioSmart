@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Iniciar Sesión - ' . ($comercio->nombre_comercio ?? 'Mi Comercio'))
+@section('title', 'Ingresar — InventarioSmart')
 
 @section('content')
 <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4" 
@@ -12,7 +12,7 @@
             </div>
         @endif
         <h2 class="text-2xl sm:text-3xl font-bold text-center mb-6 sm:mb-8 text-gray-800">
-            {{ $comercio->nombre_comercio ?? 'Mi Comercio' }}
+            Ingresar a InventarioSmart
         </h2>
         
         @if ($errors->any())
@@ -28,22 +28,17 @@
             
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2">
-                    Usuario
+                    Email
                 </label>
-                <select
-                    name="user_id"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-base bg-white @error('user_id') border-red-500 @enderror"
+                <input
+                    type="email"
+                    name="email"
+                    value="{{ old('email') }}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-base @error('email') border-red-500 @enderror"
                     required
                     autofocus
                 >
-                    <option value="" disabled {{ old('user_id') ? '' : 'selected' }}>Seleccioná un usuario</option>
-                    @foreach ($users as $u)
-                        <option value="{{ $u->id }}" {{ (string) old('user_id') === (string) $u->id ? 'selected' : '' }}>
-                            {{ $u->name }} @if($u->email) ({{ $u->email }}) @endif
-                        </option>
-                    @endforeach
-                </select>
-                @error('user_id')
+                @error('email')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
@@ -79,6 +74,10 @@
                 <span x-show="loading" x-cloak>Iniciando sesión...</span>
             </button>
         </form>
+        <p class="mt-5 text-center text-sm text-gray-600">
+            ¿Todavía no tenés cuenta?
+            <a href="{{ route('register') }}" class="font-semibold text-blue-600">Registrate</a>
+        </p>
     </div>
 </div>
 @endsection

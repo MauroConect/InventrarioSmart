@@ -67,5 +67,31 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'permission' => \App\Http\Middleware\CheckPermission::class,
         'prefer.web.user' => \App\Http\Middleware\PreferWebSessionUser::class,
+        'tenant' => \App\Http\Middleware\SetTenantContext::class,
+        'platform.superadmin' => \App\Http\Middleware\EnsurePlatformSuperadmin::class,
+        'onboarding.complete' => \App\Http\Middleware\EnsureOnboardingComplete::class,
+        'feature' => \App\Http\Middleware\EnsureTenantFeature::class,
+    ];
+
+    /**
+     * Tenant debe resolverse antes de SubstituteBindings: los modelos con
+     * TenantScope no encuentran filas si el comercio todavía no está en contexto.
+     *
+     * @var array<int, class-string>
+     */
+    protected $middlewarePriority = [
+        \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
+        \Illuminate\Cookie\Middleware\EncryptCookies::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+        \App\Http\Middleware\PreferWebSessionUser::class,
+        \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        \Illuminate\Routing\Middleware\ThrottleRequestsWithRedis::class,
+        \Illuminate\Contracts\Session\Middleware\AuthenticatesSessions::class,
+        \App\Http\Middleware\SetTenantContext::class,
+        \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        \Illuminate\Auth\Middleware\Authorize::class,
     ];
 }

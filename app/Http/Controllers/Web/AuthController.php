@@ -5,42 +5,78 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 
 class AuthController extends Controller
 {
     public function showLoginForm()
     {
         if (Auth::check()) {
-            return redirect()->route('dashboard');
-        }
-        $users = User::query()
-            ->orderBy('name')
-            ->orderBy('email')
-            ->get(['id', 'name', 'email']);
+            if (! Auth::user()->hasVerifiedEmail()) {
+                return redirect()->route('verification.notice');
+            }
+            if (Auth::user()->isPlatformSuperadmin()) {
+                return redirect()->route('platform.dashboard');
+            }
+            if (Auth::user()->onboarding && ! Auth::user()->onboarding->completed_at) {
+                return redirect()->route('onboarding.show');
+            }
 
-        return view('auth.login', compact('users'));
+            $sessionKey = config('tenancy.session_key', 'tenant_id');
+            $hasMemberships = Auth::user()->tenants()
+                ->wherePivot('status', config('tenancy.active_status', 'active'))
+                ->where('tenants.status', config('tenancy.active_status', 'active'))
+                ->exists();
+
+            if ($hasMemberships && ! session()->has($sessionKey)) {
+                return redirect()->route('tenant.select');
+            }
+
+            return redirect()->route('home');
+        }
+        return view('auth.login');
     }
 
     public function login(Request $request)
     {
         $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'password' => 'required',
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
         ]);
 
-        $user = User::find($request->user_id);
-
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             return back()->withErrors([
-                'user_id' => 'Las credenciales proporcionadas son incorrectas.',
-            ])->withInput($request->only('user_id'));
+                'email' => 'Las credenciales proporcionadas son incorrectas.',
+            ])->withInput($request->only('email'));
         }
 
-        Auth::login($user, $request->remember ?? false);
-
         $request->session()->regenerate();
+        $user = $request->user();
+
+        if (! $user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
+
+        if ($user->isPlatformSuperadmin()) {
+            return redirect()->route('platform.dashboard');
+        }
+
+        if ($user->onboarding && ! $user->onboarding->completed_at) {
+            return redirect()->route('onboarding.show');
+        }
+
+        $tenants = $user->tenants()
+            ->wherePivot('status', config('tenancy.active_status', 'active'))
+            ->where('tenants.status', config('tenancy.active_status', 'active'))
+            ->orderByDesc('tenant_user.is_default')
+            ->get();
+
+        if ($tenants->count() === 1) {
+            $request->session()->put(config('tenancy.session_key', 'tenant_id'), $tenants->first()->getKey());
+        } elseif ($tenants->count() > 1) {
+            return redirect()->route('tenant.select');
+        } elseif (! config('tenancy.legacy_mode', true) || $user->onboarding) {
+            return redirect()->route('onboarding.show');
+        }
 
         return redirect()->intended(route('home'));
     }
@@ -48,6 +84,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         Auth::logout();
+        $request->session()->forget(config('tenancy.session_key', 'tenant_id'));
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

@@ -2,16 +2,25 @@
 
 namespace App\Models;
 
+use App\Support\Tenancy\TenantContext;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Auth\MustVerifyEmail;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmailContract
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, MustVerifyEmail, Notifiable;
 
     public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_OWNER = 'owner';
+
     public const ROLE_VENDEDOR = 'vendedor';
 
     protected $fillable = [
@@ -29,6 +38,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'is_platform_superadmin' => 'boolean',
     ];
 
     protected $appends = [
@@ -40,9 +50,32 @@ class User extends Authenticatable
         return $this->hasMany(Venta::class, 'usuario_id');
     }
 
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(TenantUser::class);
+    }
+
+    public function tenants(): BelongsToMany
+    {
+        return $this->belongsToMany(Tenant::class)
+            ->using(TenantUser::class)
+            ->withPivot(['role', 'is_default', 'status'])
+            ->withTimestamps();
+    }
+
+    public function onboarding(): HasOne
+    {
+        return $this->hasOne(TenantOnboarding::class);
+    }
+
+    public function isPlatformSuperadmin(): bool
+    {
+        return (bool) $this->is_platform_superadmin;
+    }
+
     public function isAdmin(): bool
     {
-        return $this->normalizedRoleKey() === self::ROLE_ADMIN;
+        return in_array($this->normalizedRoleKey(), [self::ROLE_OWNER, self::ROLE_ADMIN], true);
     }
 
     /** Mostrador: usa el mismo conjunto de permisos que "vendedor" en config. */
@@ -53,7 +86,30 @@ class User extends Authenticatable
 
     protected function normalizedRoleKey(): string
     {
-        return strtolower(trim((string) $this->role));
+        return strtolower(trim((string) ($this->currentTenantRole() ?? $this->role)));
+    }
+
+    public function currentTenantRole(): ?string
+    {
+        $context = app(TenantContext::class);
+
+        if (! $context->hasTenant()) {
+            return null;
+        }
+
+        $tenantId = $context->id();
+
+        if ($this->relationLoaded('memberships')) {
+            return $this->memberships
+                ->first(fn (TenantUser $membership) => (int) $membership->tenant_id === $tenantId
+                    && $membership->status === config('tenancy.active_status', 'active'))
+                ?->role ?? '';
+        }
+
+        return $this->memberships()
+            ->where('tenant_id', $tenantId)
+            ->where('status', config('tenancy.active_status', 'active'))
+            ->value('role') ?? '';
     }
 
     /**
@@ -67,6 +123,9 @@ class User extends Authenticatable
         }
         if ($k === self::ROLE_ADMIN) {
             return self::ROLE_ADMIN;
+        }
+        if ($k === self::ROLE_OWNER) {
+            return self::ROLE_OWNER;
         }
         $vendedorNames = config('permissions.vendedor_role_names', []);
         if (is_array($vendedorNames) && in_array($k, $vendedorNames, true)) {

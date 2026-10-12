@@ -162,10 +162,10 @@
                             class="w-full px-3 py-2 border border-gray-300 rounded-md text-base"
                             required
                         >
-                        <button type="button" @click="abrirEscanerCodigoProducto()" class="mt-2 w-full sm:w-auto px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-sm font-medium">
+                        <button type="button" x-show="scannerEnabled" @click="abrirEscanerCodigoProducto()" class="mt-2 w-full sm:w-auto px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-sm font-medium">
                             Escanear con cámara
                         </button>
-                        <p class="text-xs text-gray-500 mt-1">Se propone un código interno automático (INT…). Si el producto trae otro en la etiqueta, escanealo o escribilo y reemplaza este. La cámara requiere HTTPS.</p>
+                        <p class="text-xs text-gray-500 mt-1">Se propone un código interno automático (INT…). <span x-show="scannerEnabled">Si el producto trae otro en la etiqueta, escanealo o escribilo y reemplaza este. La cámara requiere HTTPS.</span></p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
@@ -189,11 +189,11 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Stock Mínimo *</label>
-                        <input type="number" x-model.number="formData.stock_minimo" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                        <input type="number" :step="weightedEnabled ? 0.001 : 1" x-model.number="formData.stock_minimo" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Stock Actual *</label>
-                        <input type="number" x-model.number="formData.stock_actual" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                        <input type="number" :step="weightedEnabled ? 0.001 : 1" x-model.number="formData.stock_actual" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Categoría *</label>
@@ -219,7 +219,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Venta</label>
                         <select x-model="formData.tipo_venta" @change="formData.unidad_medida = formData.tipo_venta === 'peso' ? 'kg' : 'u'" class="w-full px-3 py-2 border border-gray-300 rounded-md">
                             <option value="unidad">Por Unidad</option>
-                            <option value="peso">Por Peso (Kg, g, etc.)</option>
+                            <option value="peso" x-show="weightedEnabled">Por Peso (Kg, g, etc.)</option>
                         </select>
                     </div>
                     <div>
@@ -243,6 +243,7 @@
                         <span class="text-sm text-gray-700">Producto activo</span>
                     </label>
                 </div>
+                @include('partials.custom-form-fields')
                 <div class="flex justify-end gap-2 pt-4 border-t">
                     <button type="button" @click="closeModal()" class="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
                     <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" x-text="editing ? 'Actualizar' : 'Guardar'"></button>
@@ -302,7 +303,10 @@
 <script>
 function productos(canManage) {
     return {
+        ...customFormMixin('productos'),
         canManage: !!canManage,
+        scannerEnabled: !!(window.tenantModules && window.tenantModules.scanner),
+        weightedEnabled: !!(window.tenantModules && window.tenantModules.weighted),
         productos: [],
         categorias: [],
         proveedores: [],
@@ -334,6 +338,7 @@ function productos(canManage) {
                 tasks.push(this.fetchProveedores());
             }
             await Promise.all(tasks);
+            await this.loadCustomFields();
             this.registrarAtajos();
             this.abrirModalDesdeQuerySiCorresponde();
         },
@@ -446,6 +451,8 @@ function productos(canManage) {
             };
             this.error = '';
             this.success = '';
+            this.resetCustomValues();
+            this.showAddCustomField = false;
             this.showModal = true;
         },
         
@@ -468,6 +475,8 @@ function productos(canManage) {
             };
             this.error = '';
             this.success = '';
+            this.hydrateCustomValues(producto.custom_fields);
+            this.showAddCustomField = false;
             this.showModal = true;
         },
 
@@ -651,12 +660,12 @@ function productos(canManage) {
                 this.error = '';
                 this.success = '';
                 if (this.editing) {
-                    await axios.put(`/api/productos/${this.editing}`, this.formData, {
+                    await axios.put(`/api/productos/${this.editing}`, { ...this.formData, custom_fields: this.customValues }, {
                         withCredentials: true
                     });
                     this.success = 'Producto actualizado correctamente';
                 } else {
-                    await axios.post('/api/productos', this.formData, {
+                    await axios.post('/api/productos', { ...this.formData, custom_fields: this.customValues }, {
                         withCredentials: true
                     });
                     this.success = 'Producto creado correctamente';

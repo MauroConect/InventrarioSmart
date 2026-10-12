@@ -1,14 +1,84 @@
 @extends('layouts.app')
 
-@section('title', 'Configuración del Comercio')
-@section('page-title', 'Configuración del Comercio')
+@section('title', 'Ajustes')
+@section('page-title', 'Ajustes')
 
 @section('content')
-<div x-data="configComercio()" x-init="init()" class="space-y-6">
+<div class="space-y-6">
     <div class="flex justify-between items-center">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Configuración del Comercio</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Ajustes</h1>
     </div>
 
+    <div x-data="configModulos()" x-init="init()" id="modulos" class="space-y-4">
+        <div x-show="error" x-cloak class="p-4 bg-red-100 border border-red-400 text-red-700 rounded" x-text="error"></div>
+        <div x-show="success" x-cloak class="p-4 bg-green-100 border border-green-400 text-green-700 rounded" x-text="success"></div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="mb-4 border-b pb-2">
+                <h2 class="text-lg font-semibold text-gray-800">Módulos</h2>
+                <p class="mt-1 text-sm text-gray-500">Activá o desactivá lo que usa tu comercio. El producto base queda siempre encendido.</p>
+            </div>
+
+            <template x-if="loading">
+                <div class="py-8 text-center text-gray-500">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p class="mt-2">Cargando módulos...</p>
+                </div>
+            </template>
+
+            <template x-if="!loading">
+                <div class="space-y-6">
+                    <template x-for="group in grouped()" :key="group.key">
+                        <div>
+                            <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400" x-text="group.label"></p>
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <template x-for="mod in group.items" :key="mod.key">
+                                    <div class="flex items-start justify-between gap-4 rounded-lg border p-4"
+                                         :class="!mod.is_ready ? 'bg-gray-50 opacity-70' : 'bg-white'">
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-semibold text-gray-800" x-text="mod.name"></p>
+                                            <p class="mt-1 text-xs leading-5 text-gray-500" x-text="mod.description"></p>
+                                            <p x-show="mod.locked" class="mt-2 text-[11px] font-medium text-gray-400">Incluido en el producto base</p>
+                                            <p x-show="!mod.is_ready" class="mt-2 inline-block rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-gray-600">Próximamente</p>
+                                            <p x-show="mod.is_ready && mod.depends_on.length && !mod.locked" class="mt-2 text-[11px] text-gray-400">
+                                                Requiere: <span x-text="dependencyNames(mod)"></span>
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            :aria-checked="mod.enabled.toString()"
+                                            :disabled="mod.locked || !mod.is_ready || saving"
+                                            @click="toggle(mod)"
+                                            class="relative inline-flex h-6 w-11 shrink-0 rounded-full transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed"
+                                            :class="mod.enabled ? 'bg-blue-600' : 'bg-gray-300'"
+                                        >
+                                            <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition mt-0.5"
+                                                  :class="mod.enabled ? 'translate-x-5' : 'translate-x-1'"></span>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="flex justify-end">
+                        <button
+                            type="button"
+                            @click="guardar()"
+                            :disabled="saving"
+                            class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium"
+                        >
+                            <span x-show="!saving">Guardar módulos</span>
+                            <span x-show="saving" x-cloak>Guardando...</span>
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+<div x-data="configComercio()" x-init="init()" class="space-y-6">
     <div x-show="error" x-cloak class="p-4 bg-red-100 border border-red-400 text-red-700 rounded" x-text="error"></div>
     <div x-show="success" x-cloak class="p-4 bg-green-100 border border-green-400 text-green-700 rounded" x-text="success"></div>
 
@@ -156,9 +226,94 @@
         </form>
     </template>
 </div>
+</div>
 
 @push('scripts')
 <script>
+function configModulos() {
+    return {
+        loading: true,
+        saving: false,
+        error: '',
+        success: '',
+        modules: [],
+        families: {},
+
+        grouped() {
+            return Object.keys(this.families)
+                .map((key) => ({
+                    key,
+                    label: this.families[key],
+                    items: this.modules.filter((mod) => mod.family === key),
+                }))
+                .filter((group) => group.items.length > 0);
+        },
+
+        dependencyNames(mod) {
+            return (mod.depends_on || [])
+                .map((key) => this.modules.find((item) => item.key === key)?.name || key)
+                .join(', ');
+        },
+
+        async init() {
+            try {
+                const res = await axios.get('/api/modulos');
+                this.modules = res.data.modules || [];
+                this.families = res.data.families || {};
+            } catch (e) {
+                this.error = e.response?.data?.message || 'Error al cargar los módulos';
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        toggle(mod) {
+            if (mod.locked || !mod.is_ready || this.saving) {
+                return;
+            }
+
+            mod.enabled = !mod.enabled;
+
+            if (mod.enabled) {
+                (mod.depends_on || []).forEach((key) => {
+                    const dependency = this.modules.find((item) => item.key === key);
+                    if (dependency && !dependency.locked) {
+                        dependency.enabled = true;
+                    }
+                });
+                return;
+            }
+
+            this.modules.forEach((item) => {
+                if ((item.depends_on || []).includes(mod.key)) {
+                    item.enabled = false;
+                }
+            });
+        },
+
+        async guardar() {
+            try {
+                this.saving = true;
+                this.error = '';
+                this.success = '';
+
+                const res = await axios.put('/api/modulos', {
+                    modules: this.modules.filter((mod) => mod.enabled).map((mod) => mod.key),
+                });
+
+                this.modules = res.data.modules || this.modules;
+                this.success = 'Módulos actualizados. El menú se va a refrescar...';
+                setTimeout(() => window.location.reload(), 700);
+            } catch (e) {
+                const errors = e.response?.data?.errors?.modules;
+                this.error = (Array.isArray(errors) && errors[0]) || e.response?.data?.message || 'Error al guardar los módulos';
+            } finally {
+                this.saving = false;
+            }
+        }
+    };
+}
+
 function configComercio() {
     return {
         loading: true,

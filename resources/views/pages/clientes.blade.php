@@ -80,6 +80,7 @@
                 <input type="text" x-model="formData.telefono" placeholder="Teléfono" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <input type="email" x-model="formData.email" placeholder="Email" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <textarea x-model="formData.direccion" placeholder="Dirección" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
+                @include('partials.custom-form-fields')
                 <div class="flex flex-col sm:flex-row justify-end gap-2 pt-3 border-t">
                     <button type="button" @click="closeModal()" class="w-full sm:w-auto px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
                     <button type="submit" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Guardar</button>
@@ -93,6 +94,7 @@
 <script>
 function clientes(canManage) {
     return {
+        ...customFormMixin('clientes'),
         canManage: !!canManage,
         clientes: [],
         loading: true,
@@ -101,7 +103,7 @@ function clientes(canManage) {
         formData: { nombre: '', apellido: '', dni: '', cuit: '', telefono: '', email: '', direccion: '', activo: true },
 
         async init() {
-            await this.fetch();
+            await Promise.all([this.fetch(), this.loadCustomFields()]);
         },
 
         async fetch() {
@@ -120,6 +122,8 @@ function clientes(canManage) {
             if (!this.canManage) return;
             this.editing = null;
             this.formData = { nombre: '', apellido: '', dni: '', cuit: '', telefono: '', email: '', direccion: '', activo: true };
+            this.resetCustomValues();
+            this.showAddCustomField = false;
             this.showModal = true;
         },
         
@@ -135,6 +139,8 @@ function clientes(canManage) {
                 direccion: cliente.direccion ?? '',
                 activo: cliente.activo !== false && cliente.activo !== 0,
             };
+            this.hydrateCustomValues(cliente.custom_fields);
+            this.showAddCustomField = false;
             this.showModal = true;
         },
         
@@ -168,7 +174,7 @@ function clientes(canManage) {
         async save() {
             if (!this.canManage) return;
             try {
-                const body = this.payloadCliente();
+                const body = { ...this.payloadCliente(), custom_fields: this.customValues };
                 if (this.editing) {
                     await axios.put('/api/clientes/' + this.editing, body);
                 } else {

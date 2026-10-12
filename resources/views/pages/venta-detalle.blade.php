@@ -5,7 +5,9 @@
 
 @section('content')
 @php
-    $puedeAgregarItemsVenta = auth()->check() && auth()->user()->hasPermission('ventas.create');
+    $puedeAgregarItemsVenta = auth()->check()
+        && auth()->user()->hasPermission('ventas.create')
+        && app(\App\Services\Modules\TenantFeatureService::class)->enabled('sales.open_orders');
 @endphp
 <div x-data="ventaDetalle({{ $puedeAgregarItemsVenta ? 'true' : 'false' }})" x-init="init()" class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -29,12 +31,12 @@
                     class="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-800 min-w-[11rem]"
                 >
                     <option value="">Acciones</option>
-                    <option value="cerrar">Cerrar venta</option>
+                    <option value="cerrar" x-show="venta && (venta.estado || '').toLowerCase() === 'abierta'">Cerrar venta</option>
                 </select>
             </div>
             <button
                 @click="facturarAfip()"
-                x-show="venta && venta.estado_facturacion !== 'facturada'"
+                x-show="afipEnabled && venta && venta.estado_facturacion !== 'facturada'"
                 :disabled="facturando"
                 class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
             >
@@ -278,6 +280,7 @@ function ventaDetalle(puedeAgregarItems) {
         ventaId: @json($id ?? null),
         loading: true,
         facturando: false,
+        afipEnabled: !!(window.tenantModules && window.tenantModules.afip),
         agregandoItems: false,
         error: '',
         success: '',
@@ -296,6 +299,9 @@ function ventaDetalle(puedeAgregarItems) {
         },
 
         motivoBloqueoAgregarItems() {
+            if (!this.puedeAgregarItems) {
+                return 'Este comercio usa el POS de mostrador: la venta se cierra al cobrar.';
+            }
             if (!this.venta) return 'Cargando…';
             if (this.venta.estado === 'cancelada') {
                 return 'No se pueden agregar productos a una venta cancelada.';

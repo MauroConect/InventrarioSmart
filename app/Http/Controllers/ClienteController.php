@@ -4,12 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\DeudaCliente;
+use App\Services\CustomForms\CustomFormService;
 use App\Support\CuitValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ClienteController extends Controller
 {
+    public function __construct(private readonly CustomFormService $customForms)
+    {
+    }
+
     /**
      * Normaliza CUIT (solo dígitos o null) antes de validar.
      */
@@ -71,10 +76,16 @@ class ClienteController extends Controller
         }
 
         if ($request->boolean('all')) {
-            return response()->json($query->orderBy('apellido')->orderBy('nombre')->get());
+            $clientes = $query->orderBy('apellido')->orderBy('nombre')->get();
+            $this->customForms->attachToMany($clientes, 'clientes');
+
+            return response()->json($clientes);
         }
 
-        return response()->json($query->paginate(15));
+        $page = $query->paginate(15);
+        $this->customForms->attachToMany($page->getCollection(), 'clientes');
+
+        return response()->json($page);
     }
 
     public function store(Request $request)
@@ -116,6 +127,7 @@ class ClienteController extends Controller
             ];
             
             $cliente = Cliente::create($clienteData);
+            $this->customForms->syncValues($cliente, 'clientes', $request->input('custom_fields', []));
             
             // Si tiene deuda, crear registro de deuda
             if (isset($validated['tiene_deuda']) && $validated['tiene_deuda'] && isset($validated['monto_deuda'])) {
@@ -159,6 +171,8 @@ class ClienteController extends Controller
             }
             
             DB::commit();
+            $this->customForms->attachTo($cliente, 'clientes');
+
             return response()->json($cliente->load('deudas'), 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -171,6 +185,8 @@ class ClienteController extends Controller
     public function show($id)
     {
         $cliente = Cliente::with(['cuentaCorriente', 'deudas'])->findOrFail($id);
+        $this->customForms->attachTo($cliente, 'clientes');
+
         return response()->json($cliente);
     }
 
@@ -198,6 +214,9 @@ class ClienteController extends Controller
         }
 
         $cliente->update($validated);
+        $this->customForms->syncValues($cliente, 'clientes', $request->input('custom_fields', []));
+        $this->customForms->attachTo($cliente, 'clientes');
+
         return response()->json($cliente);
     }
 

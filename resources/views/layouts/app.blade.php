@@ -4,17 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'El Cristo')</title>
+    <title>@yield('title', $comercio->nombre_comercio ?? 'InventarioSmart')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         [x-cloak] { display: none !important; }
+        :root {
+            --tenant-primary: {{ $comercio->color_primario ?? '#2563eb' }};
+            --tenant-sidebar: {{ $comercio->color_sidebar ?? '#111827' }};
+        }
     </style>
     @stack('styles')
 </head>
 <body class="bg-gray-100">
     @auth
+        @php($tenantFeatures = app(\App\Services\Modules\TenantFeatureService::class))
         <div class="min-h-screen flex" x-data="{ sidebarOpen: window.innerWidth >= 1024 }" x-init="window.addEventListener('resize', () => { if (window.innerWidth >= 1024) sidebarOpen = true; else sidebarOpen = false; })">
             <aside
                 x-show="sidebarOpen"
@@ -24,11 +29,15 @@
                 x-transition:leave="transition ease-in duration-300"
                 x-transition:leave-start="translate-x-0"
                 x-transition:leave-end="-translate-x-full"
-                class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white flex flex-col"
+                class="fixed lg:static inset-y-0 left-0 z-50 w-64 text-white flex flex-col"
+                style="background-color: var(--tenant-sidebar)"
                 x-cloak
             >
                 <div class="flex items-center justify-between h-16 px-6 border-b border-gray-700">
-                    <h1 class="text-xl font-bold">El Cristo</h1>
+                    <div class="flex min-w-0 items-center gap-2">
+                        @if($comercio->logo_url ?? false)<img src="{{ $comercio->logo_url }}" alt="" class="h-9 w-9 rounded object-contain">@endif
+                        <h1 class="truncate text-xl font-bold">{{ $comercio->nombre_comercio ?? 'InventarioSmart' }}</h1>
+                    </div>
                     <button @click="sidebarOpen = false" class="lg:hidden text-gray-400 hover:text-white">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -42,22 +51,22 @@
                             <span class="mr-3">📊</span> Dashboard
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('categorias.view'))
+                    @if($tenantFeatures->enabled('core.catalog') && Auth::user()->hasPermission('categorias.view'))
                         <a href="{{ route('categorias.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('categorias.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📁</span> Categorías
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('productos.view'))
+                    @if($tenantFeatures->enabled('core.catalog') && Auth::user()->hasPermission('productos.view'))
                         <a href="{{ route('productos.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('productos.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📦</span> Productos
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('productos.manage'))
+                    @if($tenantFeatures->enabled('core.catalog') && Auth::user()->hasPermission('productos.manage'))
                         <a href="{{ route('aumento-masivo.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('aumento-masivo.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📈</span> Aumento Masivo
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('proveedores.view'))
+                    @if($tenantFeatures->enabled('core.catalog') && Auth::user()->hasPermission('proveedores.view'))
                         <a href="{{ route('proveedores.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('proveedores.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">🚚</span> Proveedores
                         </a>
@@ -67,50 +76,67 @@
                             <span class="mr-3">👥</span> Clientes
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('cajas.view'))
+                    @if($tenantFeatures->enabled('core.cash') && Auth::user()->hasPermission('cajas.view'))
                         <a href="{{ route('cajas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cajas.index') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">💰</span> Cajas
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('cuentas_corrientes.view'))
+                    @if($tenantFeatures->enabled('finance.credit') && Auth::user()->hasPermission('cuentas_corrientes.view'))
                         <a href="{{ route('cuentas-corrientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cuentas-corrientes.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">💳</span> Cuentas Corrientes
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('deudas.view'))
+                    @if($tenantFeatures->enabled('finance.credit') && Auth::user()->hasPermission('deudas.view'))
                         <a href="{{ route('deudas-clientes.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('deudas-clientes.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📋</span> Deudas
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('stock.view'))
+                    @if($tenantFeatures->enabled('core.stock') && Auth::user()->hasPermission('stock.view'))
                         <a href="{{ route('movimientos-stock.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('movimientos-stock.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📦</span> Stock
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('ventas.view'))
-                        <a href="{{ route('ventas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('ventas.*') ? 'bg-gray-700' : '' }}">
+                    @if($tenantFeatures->enabled('core.pos') && Auth::user()->hasPermission('ventas.view'))
+                        <a href="{{ route('ventas.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('ventas.index') || request()->routeIs('ventas.show') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">🛒</span> Ventas
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('ventas.facturar'))
+                    @if($tenantFeatures->enabled('sales.open_orders') && Auth::user()->hasPermission('ventas.view'))
+                        <a href="{{ route('ventas.abiertas') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('ventas.abiertas') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">🍽️</span> Comandas
+                        </a>
+                    @endif
+                    @if($tenantFeatures->enabled('services.appointments') && Auth::user()->hasPermission('turnos.view'))
+                        <a href="{{ route('turnos.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('turnos.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">📅</span> Turnos
+                        </a>
+                    @endif
+                    @if($tenantFeatures->enabled('fiscal.afip') && Auth::user()->hasPermission('ventas.facturar'))
                         <a href="{{ route('facturacion.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('facturacion.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">🧾</span> Facturacion
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('cheques.view'))
+                    @if($tenantFeatures->enabled('finance.cheques') && Auth::user()->hasPermission('cheques.view'))
                         <a href="{{ route('cheques.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('cheques.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">💵</span> Cheques
                         </a>
                     @endif
-                    @if(Auth::user()->hasPermission('admin'))
+                    @if($tenantFeatures->enabled('operations.audit') && Auth::user()->hasPermission('admin'))
                         <a href="{{ route('auditoria.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('auditoria.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📜</span> Auditoría
                         </a>
+                    @endif
+                    @if(Auth::user()->hasPermission('admin'))
                         <a href="{{ route('usuarios.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('usuarios.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">👤</span> Usuarios
                         </a>
-                        <a href="{{ route('configuracion-fiscal.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('configuracion-fiscal.*') ? 'bg-gray-700' : '' }}">
-                            <span class="mr-3">🧾</span> Configuracion Fiscal
+                        @if($tenantFeatures->enabled('fiscal.afip'))
+                            <a href="{{ route('configuracion-fiscal.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('configuracion-fiscal.*') ? 'bg-gray-700' : '' }}">
+                                <span class="mr-3">🧾</span> Configuracion Fiscal
+                            </a>
+                        @endif
+                        <a href="{{ route('configuracion-comercio.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('configuracion-comercio.*') ? 'bg-gray-700' : '' }}">
+                            <span class="mr-3">⚙️</span> Ajustes
                         </a>
                     @endif
                 </nav>
@@ -148,7 +174,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
-                    <h2 class="text-xl font-semibold text-gray-800">@yield('page-title', 'El Cristo')</h2>
+                    <h2 class="text-xl font-semibold text-gray-800">@yield('page-title', $comercio->nombre_comercio ?? 'InventarioSmart')</h2>
                 </header>
 
                 <main class="flex-1 overflow-y-auto p-4 lg:p-6">
@@ -188,6 +214,7 @@
         axios.defaults.headers.common['Accept'] = 'application/json';
         axios.defaults.headers.common['Content-Type'] = 'application/json';
         axios.defaults.withCredentials = true;
+        window.tenantModules = @json(isset($tenantFeatures) ? $tenantFeatures->frontendFlags() : []);
 
         axios.interceptors.response.use(
             (r) => r,
@@ -241,6 +268,73 @@
             });
         })();
     </script>
+    <script>
+        function customFormMixin(formKey) {
+            return {
+                customFormKey: formKey,
+                customFields: [],
+                customValues: {},
+                customTypes: {},
+                customCanManage: false,
+                showAddCustomField: false,
+                newCustomField: { label: '', type: 'number', required: false },
+                async loadCustomFields() {
+                    try {
+                        const res = await axios.get('/api/formularios/' + this.customFormKey + '/campos');
+                        this.customFields = res.data.fields || [];
+                        this.customTypes = res.data.types || {};
+                        this.customCanManage = !!res.data.can_manage;
+                        this.resetCustomValues();
+                    } catch (e) {
+                        this.customFields = [];
+                    }
+                },
+                resetCustomValues() {
+                    const next = {};
+                    this.customFields.forEach((field) => {
+                        next[field.id] = field.type === 'checkbox' ? false : '';
+                    });
+                    this.customValues = next;
+                },
+                hydrateCustomValues(list) {
+                    this.resetCustomValues();
+                    (list || []).forEach((field) => {
+                        this.customValues[field.id] = field.value;
+                    });
+                },
+                async addCustomField() {
+                    const label = (this.newCustomField.label || '').trim();
+                    if (!label) return;
+                    try {
+                        const res = await axios.post('/api/formularios/' + this.customFormKey + '/campos', this.newCustomField);
+                        this.customFields = [...this.customFields, res.data];
+                        this.customValues = { ...this.customValues, [res.data.id]: res.data.type === 'checkbox' ? false : '' };
+                        this.newCustomField = { label: '', type: 'number', required: false };
+                        this.showAddCustomField = false;
+                    } catch (e) {
+                        alert(e.response?.data?.message || Object.values(e.response?.data?.errors || {})[0]?.[0] || 'No se pudo crear el campo.');
+                    }
+                },
+                async removeCustomField(fieldId) {
+                    const field = this.customFields.find((item) => String(item.id) === String(fieldId));
+                    if (!field) return;
+                    if (!confirm('¿Quitar el campo "' + field.label + '"? Se borra de todos los registros.')) return;
+                    try {
+                        await axios.delete('/api/formularios/' + this.customFormKey + '/campos/' + field.id);
+                        this.customFields = this.customFields.filter((item) => String(item.id) !== String(field.id));
+                        const next = { ...this.customValues };
+                        delete next[field.id];
+                        this.customValues = next;
+                    } catch (e) {
+                        alert(e.response?.data?.message || 'No se pudo quitar el campo.');
+                    }
+                },
+            };
+        }
+    </script>
+    @if(isset($tenantFeatures) && $tenantFeatures->enabled('platform.support'))
+        @include('support._widget')
+    @endif
     @stack('scripts')
 </body>
 </html>

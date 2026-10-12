@@ -29,7 +29,7 @@ class MovimientoStockController extends Controller
         $validated = $request->validate([
             'producto_id' => 'required|exists:productos,id',
             'tipo' => 'required|in:entrada,salida,ajuste',
-            'cantidad' => 'required|integer|min:1',
+            'cantidad' => 'required|numeric|min:0.001',
             'motivo' => 'required|string|max:255',
             'observaciones' => 'nullable|string',
         ]);

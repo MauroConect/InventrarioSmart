@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ItemVenta extends Model
 {
-    use HasFactory;
+    use BelongsToTenant, HasFactory;
 
     protected $table = 'items_venta';
 
@@ -20,7 +21,7 @@ class ItemVenta extends Model
     ];
 
     protected $casts = [
-        'cantidad' => 'integer',
+        'cantidad' => 'decimal:3',
         'precio_unitario' => 'decimal:2',
         'subtotal' => 'decimal:2',
     ];

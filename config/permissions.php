@@ -7,6 +7,7 @@
  */
 return [
     'roles' => [
+        'owner' => ['*'],
         'admin' => ['*'],
 
         'vendedor' => [
@@ -18,6 +19,9 @@ return [
             'categorias.view',
             'productos.view',
             'stock.view',
+            'support.use',
+            'turnos.view',
+            'turnos.manage',
         ],
     ],
 

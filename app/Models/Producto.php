@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+use App\Models\Concerns\HasCustomFormValues;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Producto extends Model
 {
-    use HasFactory;
+    use BelongsToTenant, HasCustomFormValues, HasFactory;
 
     protected $table = 'productos';
 
@@ -30,7 +32,7 @@ class Producto extends Model
         'precio_compra' => 'decimal:2',
         'precio_venta' => 'decimal:2',
         'stock_minimo' => 'integer',
-        'stock_actual' => 'integer',
+        'stock_actual' => 'decimal:3',
         'activo' => 'boolean',
     ];
 

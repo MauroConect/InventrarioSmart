@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class ConfiguracionComercio extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'configuracion_comercio';
 
     protected $fillable = [
@@ -36,17 +40,35 @@ class ConfiguracionComercio extends Model
 
     public static function actual(): self
     {
-        return Cache::remember('configuracion_comercio', 300, function () {
-            return static::first() ?? new static([
-                'nombre_comercio' => 'Mi Comercio',
-                'color_primario' => '#1e40af',
-                'color_sidebar' => '#1f2937',
-            ]);
-        });
+        $context = app(TenantContext::class);
+        $defaults = fn () => new static([
+            'nombre_comercio' => 'InventarioSmart',
+            'color_primario' => '#2563eb',
+            'color_sidebar' => '#111827',
+        ]);
+
+        if (! $context->hasTenant()) {
+            if (! config('tenancy.legacy_mode', true)) {
+                return $defaults();
+            }
+
+            return $context->runWithoutScope(
+                fn () => static::withoutGlobalScopes()->first() ?? $defaults()
+            );
+        }
+
+        $key = config('tenancy.cache_prefix', 'tenant').':'.$context->id().':configuracion_comercio';
+
+        return Cache::remember($key, 300, fn () => static::query()->first() ?? $defaults());
     }
 
-    public static function limpiarCache(): void
+    public static function limpiarCache(?int $tenantId = null): void
     {
-        Cache::forget('configuracion_comercio');
+        $context = app(TenantContext::class);
+        $tenantId ??= $context->hasTenant() ? $context->id() : null;
+
+        if ($tenantId) {
+            Cache::forget(config('tenancy.cache_prefix', 'tenant').':'.$tenantId.':configuracion_comercio');
+        }
     }
 }
