@@ -1,3 +1,5 @@
+> Documento histórico de análisis. Para esta entrega rige la [ADR de MySQL compartida](14-ADR-MULTITENANT-COMPARTIDO.md); las propuestas de instancia dedicada y las validaciones externas de este texto no se consideran implementadas.
+
 # Arquitectura fiscal y AFIP
 
 ## Objetivo

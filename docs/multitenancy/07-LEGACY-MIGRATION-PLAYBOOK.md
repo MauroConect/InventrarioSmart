@@ -1,3 +1,5 @@
+> Documento histórico de análisis. Para esta entrega rige la [ADR de MySQL compartida](14-ADR-MULTITENANT-COMPARTIDO.md); las propuestas de instancia dedicada y las validaciones externas de este texto no se consideran implementadas.
+
 # Playbook de migración legacy
 
 > **Requiere reinterpretación por cliente.** Los datos legacy se migran hacia la base dedicada de una única instancia; no se reparten en una base compartida mediante `tenant_id`.
