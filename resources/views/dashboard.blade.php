@@ -4,7 +4,12 @@
 @section('page-title', 'Dashboard')
 
 @section('content')
-<div x-data="dashboard()" x-init="init()" class="space-y-6">
+@php
+    $features = app(\App\Services\Modules\TenantFeatureService::class);
+    $dashboardCheques = $features->enabled('finance.cheques') && auth()->user()->isAdmin();
+    $dashboardCredit = $features->enabled('finance.credit') && auth()->user()->isAdmin();
+@endphp
+<div x-data="dashboard()" class="space-y-6">
     <!-- Estadísticas principales -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div class="bg-white p-4 sm:p-6 rounded-lg shadow">
@@ -73,6 +78,7 @@
             </template>
         </div>
         
+        @if($dashboardCredit)
         <div class="bg-white p-4 sm:p-6 rounded-lg shadow">
             <h3 class="text-base sm:text-lg font-semibold text-gray-600">Deudas Pendientes</h3>
             <template x-if="loading">
@@ -82,6 +88,7 @@
                 <p class="text-xl sm:text-2xl font-bold text-red-600" x-text="'$' + (stats.deudas_pendientes || 0).toFixed(2)"></p>
             </template>
         </div>
+        @endif
         
         <div class="bg-white p-4 sm:p-6 rounded-lg shadow">
             <h3 class="text-base sm:text-lg font-semibold text-gray-600">Stock Bajo</h3>
@@ -93,7 +100,8 @@
             </template>
         </div>
         
-        <div class="bg-white p-4 sm:p-6 rounded-lg shadow">
+        @if($dashboardCheques)
+        <div x-show="chequesEnabled" class="bg-white p-4 sm:p-6 rounded-lg shadow">
             <h3 class="text-base sm:text-lg font-semibold text-gray-600">Cheques Próximos</h3>
             <template x-if="loading">
                 <div class="animate-pulse h-8 bg-gray-200 rounded mt-2"></div>
@@ -102,10 +110,12 @@
                 <p class="text-xl sm:text-2xl font-bold text-amber-600" x-text="stats.cheques_proximos || 0"></p>
             </template>
         </div>
+        @endif
     </div>
 
     <!-- Cheques Próximos a Vencer -->
-    <div class="bg-white rounded-lg shadow">
+    @if($dashboardCheques)
+    <div x-show="chequesEnabled" class="bg-white rounded-lg shadow">
         <div class="p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <h2 class="text-lg sm:text-xl font-semibold text-gray-800">Cheques Próximos a Vencer (30 días)</h2>
             <a href="{{ route('cheques.index') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap">
@@ -118,12 +128,18 @@
                 <p class="mt-2 text-sm text-gray-500">Cargando cheques...</p>
             </div>
         </template>
-        <template x-if="!loadingCheques && cheques.length === 0">
+        <template x-if="!loadingCheques && errorCheques">
+            <div class="p-8 text-center text-red-600" role="alert">
+                <p x-text="errorCheques"></p>
+                <button type="button" @click="fetchCheques()" class="mt-2 text-blue-600 underline">Reintentar</button>
+            </div>
+        </template>
+        <template x-if="!loadingCheques && !errorCheques && cheques.length === 0">
             <div class="p-8 text-center text-gray-500">
                 <p>No hay cheques próximos a vencer</p>
             </div>
         </template>
-        <template x-if="!loadingCheques && cheques.length > 0">
+        <template x-if="!loadingCheques && !errorCheques && cheques.length > 0">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -154,6 +170,7 @@
             </div>
         </template>
     </div>
+    @endif
 </div>
 
 @push('scripts')
@@ -161,7 +178,10 @@
 function dashboard() {
     return {
         loading: true,
-        loadingCheques: true,
+        chequesEnabled: @json($dashboardCheques),
+        loadingCheques: @json($dashboardCheques),
+        errorCheques: '',
+        refreshTimer: null,
         stats: {
             caja_abierta: 0,
             total_productos: 0,
@@ -178,14 +198,19 @@ function dashboard() {
         cheques: [],
         
         async init() {
-            await Promise.all([
-                this.fetchEstadisticas(),
-                this.fetchCheques()
-            ]);
-            
-            // Actualizar cada 30 segundos
-            setInterval(() => this.fetchEstadisticas(), 30000);
-            setInterval(() => this.fetchCheques(), 30000);
+            this.refreshTimer = setInterval(() => this.refresh(), 30000);
+            await this.refresh();
+        },
+
+        async refresh() {
+            const requests = [this.fetchEstadisticas()];
+            if (this.chequesEnabled) requests.push(this.fetchCheques());
+            await Promise.all(requests);
+        },
+
+        destroy() {
+            clearInterval(this.refreshTimer);
+            this.refreshTimer = null;
         },
         
         async fetchEstadisticas() {
@@ -218,8 +243,13 @@ function dashboard() {
         },
         
         async fetchCheques() {
+            if (!this.chequesEnabled) {
+                this.loadingCheques = false;
+                return;
+            }
             try {
                 this.loadingCheques = true;
+                this.errorCheques = '';
                 const token = localStorage.getItem('token');
                 const response = await axios.get('/api/cheques-proximos-vencer', {
                     params: { dias: 30 },
@@ -227,7 +257,12 @@ function dashboard() {
                 });
                 this.cheques = Array.isArray(response.data) ? response.data.slice(0, 5) : [];
             } catch (error) {
-                console.error('Error al cargar cheques:', error);
+                this.cheques = [];
+                if ([403, 404].includes(error.response?.status)) {
+                    this.chequesEnabled = false;
+                } else {
+                    this.errorCheques = 'No pudimos cargar los cheques. Volvé a intentar.';
+                }
             } finally {
                 this.loadingCheques = false;
             }
