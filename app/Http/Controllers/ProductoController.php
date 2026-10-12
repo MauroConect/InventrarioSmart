@@ -2,11 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Proveedor;
+
+use App\Models\Categoria;
+
 use App\Models\ItemVenta;
 use App\Models\Producto;
 use App\Services\CustomForms\CustomFormService;
 use App\Services\Modules\TenantFeatureService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Validation\ValidationException;
 
 class ProductoController extends Controller
@@ -89,15 +95,15 @@ class ProductoController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'codigo' => 'required|string|unique:productos,codigo',
+            'codigo' => ['required', 'string', Rule::unique('productos', 'codigo')->where('tenant_id', app(TenantContext::class)->id())],
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
             'precio_compra' => 'required|numeric|min:0',
             'precio_venta' => 'required|numeric|min:0',
             'stock_minimo' => 'required|numeric|min:0',
             'stock_actual' => 'required|numeric|min:0',
-            'categoria_id' => 'required|exists:categorias,id',
-            'proveedor_id' => 'nullable|exists:proveedores,id',
+            'categoria_id' => ['required', 'integer', Categoria::tenantExistsRule()],
+            'proveedor_id' => ['nullable', 'integer', Proveedor::tenantExistsRule()],
             'activo' => 'boolean',
             'tipo_venta' => 'nullable|in:unidad,peso',
             'unidad_medida' => 'nullable|in:u,kg,g,lt,ml',
@@ -125,15 +131,15 @@ class ProductoController extends Controller
         $producto = Producto::findOrFail($id);
         
         $validated = $request->validate([
-            'codigo' => 'required|string|unique:productos,codigo,' . $id,
+            'codigo' => ['required', 'string', Rule::unique('productos', 'codigo')->where('tenant_id', app(TenantContext::class)->id())->ignore($producto->id)],
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
             'precio_compra' => 'required|numeric|min:0',
             'precio_venta' => 'required|numeric|min:0',
             'stock_minimo' => 'required|numeric|min:0',
             'stock_actual' => 'required|numeric|min:0',
-            'categoria_id' => 'required|exists:categorias,id',
-            'proveedor_id' => 'nullable|exists:proveedores,id',
+            'categoria_id' => ['required', 'integer', Categoria::tenantExistsRule()],
+            'proveedor_id' => ['nullable', 'integer', Proveedor::tenantExistsRule()],
             'activo' => 'boolean',
             'tipo_venta' => 'nullable|in:unidad,peso',
             'unidad_medida' => 'nullable|in:u,kg,g,lt,ml',
@@ -176,6 +182,7 @@ class ProductoController extends Controller
 
     public function getByProveedor(Request $request, $proveedorId)
     {
+        Proveedor::findOrFail($proveedorId);
         $productos = Producto::with(['categoria', 'proveedor'])
             ->where('proveedor_id', $proveedorId)
             ->where('activo', true)
@@ -187,9 +194,9 @@ class ProductoController extends Controller
     public function aumentoMasivo(Request $request)
     {
         $validated = $request->validate([
-            'proveedor_id' => 'nullable|exists:proveedores,id',
+            'proveedor_id' => ['nullable', 'integer', Proveedor::tenantExistsRule()],
             'producto_ids' => 'required|array|min:1',
-            'producto_ids.*' => 'required|exists:productos,id',
+            'producto_ids.*' => ['required', 'integer', Producto::tenantExistsRule()],
             'porcentaje_aumento' => 'required|numeric|min:0|max:1000',
             'aplicar_a_compra' => 'boolean',
             'aplicar_a_venta' => 'boolean',

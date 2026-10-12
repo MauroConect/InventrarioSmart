@@ -27,7 +27,7 @@ class MovimientoStockController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'producto_id' => 'required|exists:productos,id',
+            'producto_id' => ['required', 'integer', Producto::tenantExistsRule()],
             'tipo' => 'required|in:entrada,salida,ajuste',
             'cantidad' => 'required|numeric|min:0.001',
             'motivo' => 'required|string|max:255',

@@ -3,12 +3,20 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use App\Models\Concerns\HasTenantRelations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Venta extends Model
 {
     use BelongsToTenant, HasFactory;
+
+    use HasTenantRelations;
+
+    protected function tenantRelations(): array
+    {
+        return ['caja_id' => Caja::class, 'cliente_id' => Cliente::class, 'usuario_id' => User::class];
+    }
 
     protected $table = 'ventas';
 

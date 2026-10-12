@@ -2,6 +2,7 @@
 
 namespace App\Models\Concerns;
 
+use App\Models\User;
 use App\Support\Tenancy\TenantContext;
 use LogicException;
 
@@ -17,7 +18,16 @@ trait HasTenantRelations
 
             foreach ($model->tenantRelations() as $column => $relatedModel) {
                 $id = $model->getAttribute($column);
-                if ($id !== null && ! $relatedModel::query()->whereKey($id)->where((new $relatedModel)->getTenantColumn(), $context->id())->exists()) {
+                if ($id === null) {
+                    continue;
+                }
+                $query = $relatedModel::query()->whereKey($id);
+                if ($relatedModel === User::class) {
+                    $query->whereHas('memberships', fn ($q) => $q->where('tenant_id', $context->id())->where('status', 'active'));
+                } else {
+                    $query->where((new $relatedModel)->getTenantColumn(), $context->id());
+                }
+                if (! $query->exists()) {
                     throw new LogicException("La relación {$column} no pertenece al comercio activo.");
                 }
             }

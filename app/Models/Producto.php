@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use App\Models\Concerns\HasTenantRelations;
 use App\Models\Concerns\HasCustomFormValues;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,13 @@ use Illuminate\Database\Eloquent\Model;
 class Producto extends Model
 {
     use BelongsToTenant, HasCustomFormValues, HasFactory;
+
+    use HasTenantRelations;
+
+    protected function tenantRelations(): array
+    {
+        return ['categoria_id' => Categoria::class, 'proveedor_id' => Proveedor::class];
+    }
 
     protected $table = 'productos';
 

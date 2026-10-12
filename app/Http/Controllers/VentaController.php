@@ -66,7 +66,7 @@ class VentaController extends Controller
         abort_unless($this->features->enabled('sales.open_orders'), 403, 'El módulo de ventas abiertas no está habilitado.');
 
         $validated = $request->validate([
-            'caja_id' => 'required|exists:cajas,id',
+            'caja_id' => ['required', 'integer', Caja::tenantExistsRule()],
             'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
             'etiqueta' => 'nullable|string|max:80',
         ]);
@@ -97,10 +97,10 @@ class VentaController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'caja_id' => 'required|exists:cajas,id',
+            'caja_id' => ['required', 'integer', Caja::tenantExistsRule()],
             'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
             'items' => 'required|array|min:1',
-            'items.*.producto_id' => 'required|exists:productos,id',
+            'items.*.producto_id' => ['required', 'integer', Producto::tenantExistsRule()],
             'items.*.cantidad' => 'required|numeric|min:0.001',
             'descuento' => 'nullable|numeric|min:0',
             'tipo_pago' => 'required|in:efectivo,tarjeta,transferencia,cuenta_corriente,mixto',
@@ -302,7 +302,7 @@ class VentaController extends Controller
     {
         $validated = $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.producto_id' => 'required|exists:productos,id',
+            'items.*.producto_id' => ['required', 'integer', Producto::tenantExistsRule()],
             'items.*.cantidad' => 'required|numeric|min:0.001',
         ]);
 
@@ -660,7 +660,7 @@ class VentaController extends Controller
     {
         $validated = $request->validate([
             'venta_ids' => 'required|array|min:1',
-            'venta_ids.*' => 'integer|exists:ventas,id',
+            'venta_ids.*' => ['integer', 'integer', Venta::tenantExistsRule()],
         ]);
 
         $resultados = [];
