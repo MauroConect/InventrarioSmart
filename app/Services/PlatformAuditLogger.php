@@ -102,7 +102,7 @@ class PlatformAuditLogger
     private function isSensitiveKey(string $key): bool
     {
         return (bool) preg_match(
-            '/password|passwd|secret|token|authorization|cookie|certificate|private.?key|credential|api.?key/i',
+            '/password|passwd|passphrase|secret|token|authorization|cookie|certificate|certificado|clave.?privada|private.?key|credential|api.?key/i',
             $key
         );
     }

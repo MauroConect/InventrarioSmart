@@ -69,6 +69,8 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
     Route::post('ventas/{id}/descuento', [VentaController::class, 'actualizarDescuento'])->middleware(['feature:core.pos', 'permission:ventas.create']);
     Route::post('ventas/{id}/cerrar', [VentaController::class, 'cerrar'])->middleware(['feature:core.pos', 'permission:ventas.create']);
     Route::post('ventas/{id}/adjuntos', [VentaController::class, 'agregarAdjuntos'])->middleware(['feature:core.pos', 'permission:ventas.create']);
+    Route::get('ventas/{id}/adjuntos/{adjunto}', [VentaController::class, 'descargarAdjunto'])->middleware(['feature:core.pos', 'permission:ventas.view'])->whereNumber(['id', 'adjunto'])->name('api.ventas.adjuntos.download');
+    Route::delete('ventas/{id}/adjuntos/{adjunto}', [VentaController::class, 'eliminarAdjunto'])->middleware(['feature:core.pos', 'permission:ventas.create'])->whereNumber(['id', 'adjunto']);
     Route::post('ventas/{id}/facturar-afip', [VentaController::class, 'facturarAfip'])->middleware(['feature:fiscal.afip', 'permission:ventas.facturar']);
     Route::get('ventas-pendientes-facturacion', [VentaController::class, 'pendientesFacturacion'])->middleware(['feature:fiscal.afip', 'permission:ventas.facturar']);
     Route::post('ventas-facturar-lote', [VentaController::class, 'facturarLote'])->middleware(['feature:fiscal.afip', 'permission:ventas.facturar']);

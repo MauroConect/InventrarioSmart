@@ -17,6 +17,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        \Illuminate\Support\Facades\Queue::looping(fn () => app(TenantContext::class)->clear());
         $this->app->booted(function () {
             if ($this->app->runningInConsole()) {
                 return;

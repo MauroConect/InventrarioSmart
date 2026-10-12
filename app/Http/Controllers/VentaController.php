@@ -100,6 +100,8 @@ class VentaController extends Controller
             'caja_id' => ['required', 'integer', Caja::tenantExistsRule()],
             'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
             'items' => 'required|array|min:1',
+            'adjuntos' => 'nullable|array|max:5',
+            'adjuntos.*' => 'file|mimes:pdf,jpg,jpeg,png,webp|max:10240',
             'items.*.producto_id' => ['required', 'integer', Producto::tenantExistsRule()],
             'items.*.cantidad' => 'required|numeric|min:0.001',
             'descuento' => 'nullable|numeric|min:0',
@@ -123,6 +125,7 @@ class VentaController extends Controller
             ], 400);
         }
 
+        $uploadedAttachments = [];
         DB::beginTransaction();
         try {
             $total = 0;
@@ -263,19 +266,8 @@ class VentaController extends Controller
                 $cuentaCorrienteParaVenta->save();
             }
 
-            // Guardar adjuntos si vienen en el mismo request
             if ($request->hasFile('adjuntos')) {
-                foreach ($request->file('adjuntos') as $file) {
-                    $ruta = $file->store('ventas_adjuntos', 'public');
-
-                    VentaAdjunto::create([
-                        'venta_id' => $venta->id,
-                        'ruta' => $ruta,
-                        'nombre_original' => $file->getClientOriginalName(),
-                        'mime' => $file->getClientMimeType(),
-                        'size' => $file->getSize(),
-                    ]);
-                }
+                $uploadedAttachments = app(\App\Services\Tenancy\SaleAttachmentService::class)->upload($venta, $request->file('adjuntos'));
             }
 
             DB::commit();
@@ -283,6 +275,7 @@ class VentaController extends Controller
             return response()->json($venta->load(['caja', 'cliente', 'usuario', 'items.producto', 'adjuntos']), 201);
         } catch (\Exception $e) {
             DB::rollBack();
+            foreach ($uploadedAttachments as $attachment) { Storage::disk('private')->delete($attachment->ruta); }
             return response()->json([
                 'message' => $e->getMessage()
             ], 400);
@@ -430,32 +423,32 @@ class VentaController extends Controller
     {
         $venta = Venta::findOrFail($id);
 
-        $validated = $request->validate([
-            'adjuntos' => 'required|array',
-            'adjuntos.*' => 'file|max:10240',
-        ]);
-
-        $adjuntosCreados = [];
-
-        foreach ($request->file('adjuntos') as $file) {
-            $ruta = $file->store('ventas_adjuntos', 'public');
-
-            $adjunto = VentaAdjunto::create([
-                'venta_id' => $venta->id,
-                'ruta' => $ruta,
-                'nombre_original' => $file->getClientOriginalName(),
-                'mime' => $file->getClientMimeType(),
-                'size' => $file->getSize(),
-            ]);
-
-            $adjuntosCreados[] = $adjunto;
-        }
+        $request->validate(['adjuntos' => 'required|array|min:1|max:5', 'adjuntos.*' => 'file|mimes:pdf,jpg,jpeg,png,webp|max:10240']);
+        $adjuntosCreados = app(\App\Services\Tenancy\SaleAttachmentService::class)->upload($venta, $request->file('adjuntos'));
 
         return response()->json([
             'message' => 'Adjuntos cargados correctamente',
             'venta' => $venta->load('adjuntos'),
             'adjuntos' => $adjuntosCreados,
         ], 201);
+    }
+
+    public function descargarAdjunto($id, $adjunto)
+    {
+        $attachment = Venta::findOrFail($id)->adjuntos()->findOrFail($adjunto);
+        try { app(\App\Services\Tenancy\SaleAttachmentService::class)->assertPrivatePath($attachment); }
+        catch (\RuntimeException) { abort(404); }
+        abort_unless(Storage::disk('private')->exists($attachment->ruta), 404);
+        return Storage::disk('private')->download($attachment->ruta, $attachment->nombre_original, ['Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
+    }
+
+    public function eliminarAdjunto($id, $adjunto)
+    {
+        $attachment = Venta::findOrFail($id)->adjuntos()->findOrFail($adjunto);
+        app(\App\Services\Tenancy\SaleAttachmentService::class)->assertPrivatePath($attachment);
+        Storage::disk('private')->delete($attachment->ruta);
+        $attachment->delete();
+        return response()->noContent();
     }
 
     public function cerrar(Request $request, $id)

@@ -18,12 +18,14 @@ return [
             'ignore_exceptions' => false,
         ],
         'single' => [
+            'tap' => [\App\Logging\TenantLogContext::class],
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
         ],
         'daily' => [
+            'tap' => [\App\Logging\TenantLogContext::class],
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
@@ -31,6 +33,7 @@ return [
             'replace_placeholders' => true,
         ],
         'stderr' => [
+            'tap' => [\App\Logging\TenantLogContext::class],
             'driver' => 'monolog',
             'level' => env('LOG_LEVEL', 'debug'),
             'handler' => StreamHandler::class,

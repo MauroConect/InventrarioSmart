@@ -8,7 +8,12 @@ use Illuminate\Support\Facades\Storage;
 
 class VentaAdjunto extends Model
 {
+    use \App\Models\Concerns\BelongsToTenant, \App\Models\Concerns\HasTenantRelations;
     use HasFactory;
+
+    protected $hidden = ['ruta'];
+
+    protected function tenantRelations(): array { return ['venta_id' => Venta::class]; }
 
     protected $table = 'venta_adjuntos';
 
@@ -29,7 +34,7 @@ class VentaAdjunto extends Model
 
     public function getUrlAttribute()
     {
-        return Storage::disk('public')->url($this->ruta);
+        return route('api.ventas.adjuntos.download', ['id' => $this->venta_id, 'adjunto' => $this->id]);
     }
 }
 

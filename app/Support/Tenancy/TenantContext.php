@@ -49,12 +49,15 @@ class TenantContext
     public function run(Tenant $tenant, Closure $callback): mixed
     {
         $previous = $this->tenant;
+        $previousBypassDepth = $this->bypassDepth;
         $this->tenant = $tenant;
+        $this->bypassDepth = 0;
 
         try {
             return $callback($tenant);
         } finally {
             $this->tenant = $previous;
+            $this->bypassDepth = $previousBypassDepth;
         }
     }
 
