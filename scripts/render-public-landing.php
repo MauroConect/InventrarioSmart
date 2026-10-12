@@ -10,7 +10,7 @@ Illuminate\Support\Facades\URL::forceScheme('https');
 $view = app(App\Http\Controllers\Web\LandingController::class)();
 $html = $view->with('publicLanding', true)->render();
 $html = str_replace('https://landing-export.invalid', '', $html);
-if (preg_match('/localhost|127\.0\.0\.1|csrf-token|href="\/(login|register|app|platform)/i', $html)) {
+if (preg_match('/landing-export\.invalid|localhost|127\.0\.0\.1|csrf-token|href="\/(login|register|app|platform)/i', $html)) {
     throw new RuntimeException('The public landing contains an application-only URL or session metadata.');
 }
 echo $html;

@@ -33,6 +33,12 @@
                 ['key'=>'dashboard','label'=>'Resumen del negocio','title'=>'Una vista para empezar el día.','description'=>'Revisá la caja, las ventas y los productos desde el dashboard. Los indicadores te ayudan a decidir dónde poner la atención.','image'=>asset('images/marketing/pantalla-dashboard.png'),'alt'=>'Dashboard real con indicadores y gráficos de ejemplo','points'=>['Ventas del día y del mes','Productos con stock bajo','Resumen de la caja']],
                 ['key'=>'modulos','label'=>'Configuración','title'=>'Tus funciones, a un clic.','description'=>'Desde Ajustes → Módulos, activás o desactivás funciones opcionales. La base del sistema queda siempre incluida para que puedas seguir vendiendo, controlando el stock y trabajando con tu caja.','image'=>asset('images/marketing/pantalla-modulos.png'),'alt'=>'Captura real del panel Módulos en Ajustes, con cuatro funciones base incluidas y módulos opcionales','points'=>['Catálogo, stock, POS y caja incluidos','Funciones opcionales según tu operación','Una configuración propia para cada comercio']],
             ];
+            if (!empty($publicLanding)) {
+                foreach ($screens as &$screen) {
+                    $screen['image'] = parse_url($screen['image'], PHP_URL_PATH);
+                }
+                unset($screen);
+            }
         @endphp
         <div class="product-showcase" x-data="{ active: 0, zoom: false, screens: @js($screens) }" @keydown.escape.window="if (zoom) { zoom = false; $refs.zoomButton.focus(); }" x-effect="document.body.style.overflow = zoom ? 'hidden' : ''">
             <div class="screen-tabs" role="tablist" aria-label="Pantallas del sistema">
