@@ -6,6 +6,7 @@ use App\Models\Caja;
 use App\Models\Venta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CajaController extends Controller
 {
@@ -66,17 +67,18 @@ class CajaController extends Controller
         }
 
         // Calcular montos
-        $totalVentas = $caja->ventas()->sum('total_final');
-        $cantidadVentas = $caja->ventas()->count();
+        $closedSales = $caja->ventas()->whereIn('estado', ['cerrada', 'completada']);
+        $totalVentas = (clone $closedSales)->sum('total_final');
+        $cantidadVentas = (clone $closedSales)->count();
         $totalIngresos = $caja->movimientos()->where('tipo', 'ingreso')->sum('monto');
         $totalEgresos = $caja->movimientos()->where('tipo', 'egreso')->sum('monto');
-        $montoEsperado = $caja->monto_apertura + $totalVentas + $totalIngresos - $totalEgresos;
+        $montoEsperado = $this->expectedCash($caja);
 
         // Obtener movimientos detallados
         $movimientos = $caja->movimientos()->with('usuario')->orderBy('created_at', 'desc')->get();
         
         // Obtener ventas detalladas
-        $ventas = $caja->ventas()->with('cliente')->orderBy('fecha', 'desc')->get();
+        $ventas = (clone $closedSales)->with('cliente')->orderBy('fecha', 'desc')->get();
 
         $porMedioPago = [
             'efectivo' => 0.0,
@@ -148,55 +150,28 @@ class CajaController extends Controller
         ]);
     }
 
+    private function expectedCash(Caja $caja): float
+    {
+        $sales = $caja->ventas()->whereIn('estado', ['cerrada', 'completada']);
+        $cash = (clone $sales)->where('tipo_pago', 'efectivo')->sum('total_final');
+        $mixed = (clone $sales)->where('tipo_pago', 'mixto')->sum('monto_efectivo');
+        return round((float) $caja->monto_apertura + $cash + $mixed + $caja->movimientos()->where('tipo', 'ingreso')->sum('monto') - $caja->movimientos()->where('tipo', 'egreso')->sum('monto'), 2);
+    }
+
     public function cerrar(Request $request, $id)
     {
-        $caja = Caja::findOrFail($id);
-
-        if ($caja->estado === 'cerrada') {
-            return response()->json([
-                'message' => 'La caja ya está cerrada'
-            ], 400);
-        }
-
-        $user = $request->user();
-        if (! $user->isAdmin() && $caja->usuario_id !== $user->id) {
-            return response()->json([
-                'message' => 'No tiene permiso para cerrar esta caja'
-            ], 403);
-        }
-
-        $ventasAbiertas = Venta::where('caja_id', $caja->id)
-            ->whereIn('estado', ['abierta', 'abierto'])
-            ->count();
-
-        if ($ventasAbiertas > 0) {
-            return response()->json([
-                'message' => 'No se puede cerrar la caja porque existen ventas con estado abierto.'
-            ], 400);
-        }
-
-        // Calcular monto esperado
-        $montoEsperado = $caja->monto_apertura + $caja->ventas()->sum('total_final');
-        $ingresos = $caja->movimientos()->where('tipo', 'ingreso')->sum('monto');
-        $egresos = $caja->movimientos()->where('tipo', 'egreso')->sum('monto');
-        $montoEsperado = $montoEsperado + $ingresos - $egresos;
-
-        $validated = $request->validate([
-            'monto_real' => 'required|numeric|min:0',
-            'observaciones' => 'nullable|string',
-        ]);
-
-        $caja->fecha_cierre = now();
-        $caja->monto_real = $validated['monto_real'];
-        $caja->monto_cierre = $validated['monto_real']; // Mantener compatibilidad
-        $caja->monto_esperado = $montoEsperado;
-        $caja->diferencia = $validated['monto_real'] - $montoEsperado;
-        $caja->estado = 'cerrada';
-        if (isset($validated['observaciones'])) {
-            $caja->observaciones = $validated['observaciones'];
-        }
-
-        $caja->save();
+        $validated = $request->validate(['monto_real' => 'required|numeric|min:0', 'observaciones' => 'nullable|string']);
+        $caja = DB::transaction(function () use ($request, $id, $validated) {
+            $caja = Caja::lockForUpdate()->findOrFail($id);
+            abort_unless($request->user()->isAdmin() || $caja->usuario_id === $request->user()->id, 403);
+            if ($caja->estado === 'cerrada') { return $caja; }
+            if ($caja->ventas()->where('estado', 'abierta')->exists()) { throw ValidationException::withMessages(['caja' => 'Hay comandas abiertas; cerralas o anulalas antes de cerrar la caja.']); }
+            $expected = $this->expectedCash($caja);
+            $caja->fill(['fecha_cierre' => now(), 'monto_real' => $validated['monto_real'], 'monto_cierre' => $validated['monto_real'], 'monto_esperado' => $expected, 'diferencia' => $validated['monto_real'] - $expected, 'estado' => 'cerrada']);
+            if (isset($validated['observaciones'])) { $caja->observaciones = $validated['observaciones']; }
+            $caja->save();
+            return $caja;
+        });
         return response()->json($caja->load('usuario'));
     }
 }

@@ -59,6 +59,8 @@ class UserController extends Controller
     public function update(Request $request, User $usuario)
     {
         $membership = $this->membershipOrFail($usuario);
+        $identityChange = collect(['name', 'email', 'password'])->contains(fn ($field) => $request->filled($field) && ($field === 'password' || $request->input($field) !== $usuario->$field));
+        abort_if($identityChange && $request->user()->id !== $usuario->id && $usuario->memberships()->where('status', 'active')->count() > 1, 403, 'La identidad compartida la administra su titular; sólo podés cambiar su rol en este comercio.');
         $input = $request->all();
         if (array_key_exists('password', $input) && $input['password'] === '') {
             unset($input['password']);
@@ -113,7 +115,7 @@ class UserController extends Controller
             ], 400);
         }
 
-        $membership->delete();
+        $membership->update(['status' => 'inactive']);
 
         return response()->json(['message' => 'Usuario eliminado correctamente.']);
     }

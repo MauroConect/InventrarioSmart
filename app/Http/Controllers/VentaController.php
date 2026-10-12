@@ -9,6 +9,8 @@ use App\Models\Caja;
 use App\Models\Cliente;
 use App\Models\VentaAdjunto;
 use App\Models\CuentaCorriente;
+use App\Models\MovimientoStock;
+use App\Services\Tenancy\TenantReceiptNumber;
 use App\Models\MovimientoCuentaCorriente;
 use App\Services\AfipFacturacionService;
 use App\Services\Modules\TenantFeatureService;
@@ -63,34 +65,13 @@ class VentaController extends Controller
 
     public function abrir(Request $request)
     {
-        abort_unless($this->features->enabled('sales.open_orders'), 403, 'El módulo de ventas abiertas no está habilitado.');
-
-        $validated = $request->validate([
-            'caja_id' => ['required', 'integer', Caja::tenantExistsRule()],
-            'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
-            'etiqueta' => 'nullable|string|max:80',
-        ]);
-
-        $caja = Caja::findOrFail($validated['caja_id']);
-        if ($caja->estado === 'cerrada') {
-            return response()->json(['message' => 'No se pueden abrir comandas en una caja cerrada.'], 400);
-        }
-
-        $ultimaFactura = Venta::max('id') ?? 0;
-        $venta = Venta::create([
-            'caja_id' => $caja->id,
-            'cliente_id' => $validated['cliente_id'] ?? null,
-            'usuario_id' => $request->user()->id,
-            'etiqueta' => $validated['etiqueta'] ?? null,
-            'numero_factura' => 'CMD-'.str_pad((string) ($ultimaFactura + 1), 8, '0', STR_PAD_LEFT),
-            'fecha' => now(),
-            'total' => 0,
-            'descuento' => 0,
-            'total_final' => 0,
-            'tipo_pago' => 'efectivo',
-            'estado' => 'abierta',
-        ]);
-
+        abort_unless($this->features->enabled('sales.open_orders'), 403);
+        $validated = $request->validate(['caja_id' => ['required', 'integer', Caja::tenantExistsRule()], 'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()], 'etiqueta' => 'nullable|string|max:80']);
+        $venta = DB::transaction(function () use ($validated, $request) {
+            $caja = Caja::lockForUpdate()->findOrFail($validated['caja_id']);
+            if ($caja->estado !== 'abierta') { throw ValidationException::withMessages(['caja_id' => 'La caja está cerrada.']); }
+            return Venta::create(['caja_id' => $caja->id, 'cliente_id' => $validated['cliente_id'] ?? null, 'usuario_id' => $request->user()->id, 'etiqueta' => $validated['etiqueta'] ?? null, 'numero_factura' => app(TenantReceiptNumber::class)->next('CMD'), 'fecha' => now(), 'total' => 0, 'descuento' => 0, 'total_final' => 0, 'tipo_pago' => 'efectivo', 'estado' => 'abierta']);
+        });
         return response()->json($venta->load(['caja', 'cliente', 'usuario', 'items.producto']), 201);
     }
 
@@ -126,14 +107,20 @@ class VentaController extends Controller
         $uploadedAttachments = [];
         DB::beginTransaction();
         try {
+            $caja = Caja::lockForUpdate()->findOrFail($validated['caja_id']);
+            if ($caja->estado === 'cerrada') { throw ValidationException::withMessages(['caja_id' => 'La caja está cerrada.']); }
             $total = 0;
             $items = [];
+            $lockedProducts = Producto::whereIn('id', array_column($validated['items'], 'producto_id'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
 
             foreach ($validated['items'] as $itemData) {
-                $producto = Producto::findOrFail($itemData['producto_id']);
+                $producto = $lockedProducts->get($itemData['producto_id']);
+                if (! $producto) { throw ValidationException::withMessages(['items' => 'Producto no disponible.']); }
                 $cantidad = $this->normalizeCantidad($producto, (float) $itemData['cantidad']);
 
-                $subtotal = $producto->precio_venta * $cantidad;
+                $before = (float) $producto->stock_actual;
+                if ($cantidad > $before) { throw ValidationException::withMessages(['items' => 'Stock insuficiente.']); }
+                $subtotal = round($producto->precio_venta * $cantidad, 2);
                 $total += $subtotal;
 
                 $items[] = [
@@ -141,6 +128,8 @@ class VentaController extends Controller
                     'cantidad' => $cantidad,
                     'precio_unitario' => $producto->precio_venta,
                     'subtotal' => $subtotal,
+                    'stock_before' => $before,
+                    'stock_after' => $before - $cantidad,
                 ];
 
                 $producto->stock_actual -= $cantidad;
@@ -148,7 +137,8 @@ class VentaController extends Controller
             }
 
             $descuento = $validated['descuento'] ?? 0;
-            $totalFinal = $total - $descuento;
+            if ($descuento > $total) { throw ValidationException::withMessages(['descuento' => 'El descuento supera el total.']); }
+            $totalFinal = round($total - $descuento, 2);
 
             $cuentaCorrienteParaVenta = null;
             $saldoActualCuentaCorriente = null;
@@ -163,7 +153,7 @@ class VentaController extends Controller
 
                 $cuentaCorrienteParaVenta = CuentaCorriente::where('cliente_id', $validated['cliente_id'])
                     ->where('activa', true)
-                    ->first();
+                    ->lockForUpdate()->first();
 
                 if (! $cuentaCorrienteParaVenta) {
                     DB::rollBack();
@@ -185,8 +175,7 @@ class VentaController extends Controller
             }
 
             // Generar número de factura
-            $ultimaFactura = Venta::max('id') ?? 0;
-            $numeroFactura = 'FAC-' . str_pad($ultimaFactura + 1, 8, '0', STR_PAD_LEFT);
+            $numeroFactura = app(TenantReceiptNumber::class)->next('FAC');
 
             // Validar que la suma de montos mixtos sea igual al total final
             $montoTarjeta = null;
@@ -250,6 +239,7 @@ class VentaController extends Controller
                     'precio_unitario' => $item['precio_unitario'],
                     'subtotal' => $item['subtotal'],
                 ]);
+                MovimientoStock::create(['producto_id' => $item['producto']->id, 'tipo' => 'salida', 'cantidad' => $item['cantidad'], 'cantidad_anterior' => $item['stock_before'], 'cantidad_actual' => $item['stock_after'], 'motivo' => 'Venta '.$numeroFactura, 'usuario_id' => $request->user()->id]);
             }
 
             if ($cuentaCorrienteParaVenta && $saldoActualCuentaCorriente !== null) {
@@ -274,9 +264,8 @@ class VentaController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             foreach ($uploadedAttachments as $attachment) { Storage::disk('private')->delete($attachment->ruta); }
-            return response()->json([
-                'message' => $e->getMessage()
-            ], 400);
+            if ($e instanceof ValidationException) { throw $e; }
+            return response()->json(['message' => 'No se pudo registrar la venta.'], 400);
         }
     }
 
@@ -315,10 +304,16 @@ class VentaController extends Controller
 
         DB::beginTransaction();
         try {
+            Caja::lockForUpdate()->findOrFail($venta->caja_id);
+            $venta = Venta::lockForUpdate()->findOrFail($id);
+            if ($venta->estado !== 'abierta') { throw ValidationException::withMessages(['venta' => 'La comanda ya no está abierta.']); }
+            $lockedProducts = Producto::whereIn('id', array_column($validated['items'], 'producto_id'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             foreach ($validated['items'] as $itemData) {
-                $producto = Producto::findOrFail($itemData['producto_id']);
+                $producto = $lockedProducts->get($itemData['producto_id']);
                 $cantidad = $this->normalizeCantidad($producto, (float) $itemData['cantidad']);
-                $subtotal = (float) $producto->precio_venta * $cantidad;
+                $before = (float) $producto->stock_actual;
+                if ($cantidad > $before) { throw ValidationException::withMessages(['items' => 'Stock insuficiente.']); }
+                $subtotal = round((float) $producto->precio_venta * $cantidad, 2);
 
                 ItemVenta::create([
                     'venta_id' => $venta->id,
@@ -330,6 +325,7 @@ class VentaController extends Controller
 
                 $producto->stock_actual -= $cantidad;
                 $producto->save();
+                MovimientoStock::create(['producto_id' => $producto->id, 'tipo' => 'salida', 'cantidad' => $cantidad, 'cantidad_anterior' => $before, 'cantidad_actual' => $producto->stock_actual, 'motivo' => 'Comanda '.$venta->numero_factura, 'usuario_id' => $request->user()->id]);
             }
 
             $this->recalcularTotalesVenta($venta->fresh(['items']));
@@ -343,7 +339,8 @@ class VentaController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return response()->json(['message' => $e->getMessage()], 400);
+            if ($e instanceof ValidationException) { throw $e; }
+            return response()->json(['message' => 'No se pudo actualizar la comanda.'], 400);
         }
     }
 
@@ -369,6 +366,9 @@ class VentaController extends Controller
 
         DB::beginTransaction();
         try {
+            Caja::lockForUpdate()->findOrFail($venta->caja_id);
+            $venta = Venta::lockForUpdate()->findOrFail($id);
+            if ($venta->estado !== 'abierta') { throw ValidationException::withMessages(['venta' => 'La comanda ya no está abierta.']); }
             $venta->descuento = (float) $validated['descuento'];
             $this->recalcularTotalesVenta($venta);
 
@@ -381,7 +381,8 @@ class VentaController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return response()->json(['message' => $e->getMessage()], 400);
+            if ($e instanceof ValidationException) { throw $e; }
+            return response()->json(['message' => 'No se pudo actualizar el descuento.'], 400);
         }
     }
 
@@ -391,7 +392,8 @@ class VentaController extends Controller
         $total = (float) $venta->items->sum(fn ($i) => (float) $i->subtotal);
         $descuento = (float) ($venta->descuento ?? 0);
         $venta->total = $total;
-        $venta->total_final = $total - $descuento;
+        if ($descuento > $total) { throw ValidationException::withMessages(['descuento' => 'El descuento supera el total.']); }
+        $venta->total_final = round($total - $descuento, 2);
 
         switch ($venta->tipo_pago) {
             case 'transferencia':
@@ -458,7 +460,7 @@ class VentaController extends Controller
         }
 
         if ($venta->estado === 'cerrada') {
-            return response()->json(['message' => 'La venta ya está cerrada.'], 400);
+            return response()->json(['message' => 'La venta ya está cerrada.', 'venta' => $venta]);
         }
 
         if ($venta->items->isEmpty()) {
@@ -478,6 +480,10 @@ class VentaController extends Controller
 
         DB::beginTransaction();
         try {
+            $cash = Caja::lockForUpdate()->findOrFail($venta->caja_id);
+            $venta = Venta::lockForUpdate()->findOrFail($id);
+            if ($venta->estado === 'cerrada') { DB::commit(); return response()->json(['message' => 'La venta ya está cerrada.', 'venta' => $venta]); }
+            if ($venta->estado !== 'abierta' || $cash->estado === 'cerrada') { throw ValidationException::withMessages(['venta' => 'La comanda o caja no está abierta.']); }
             if (array_key_exists('cliente_id', $validated)) {
                 $venta->cliente_id = $validated['cliente_id'];
             }
@@ -517,7 +523,7 @@ class VentaController extends Controller
 
                     return response()->json(['message' => 'La cuenta corriente requiere un cliente.'], 422);
                 }
-                $cuenta = CuentaCorriente::where('cliente_id', $venta->cliente_id)->where('activa', true)->first();
+                $cuenta = CuentaCorriente::where('cliente_id', $venta->cliente_id)->where('activa', true)->lockForUpdate()->first();
                 if (! $cuenta) {
                     DB::rollBack();
 
@@ -551,7 +557,8 @@ class VentaController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return response()->json(['message' => $e->getMessage()], 400);
+            if ($e instanceof ValidationException) { throw $e; }
+            return response()->json(['message' => 'No se pudo cerrar la venta.'], 400);
         }
     }
 
@@ -560,17 +567,25 @@ class VentaController extends Controller
         abort_unless($this->features->enabled('sales.open_orders'), 403, 'El módulo de ventas abiertas no está habilitado.');
 
         $venta = Venta::with('items.producto')->findOrFail($id);
+        if ($venta->estado === 'cancelada') { return response()->json(['message' => 'Comanda ya anulada.', 'venta' => $venta]); }
         if ($venta->estado !== 'abierta') {
             return response()->json(['message' => 'Solo se puede anular una comanda abierta.'], 400);
         }
 
         DB::beginTransaction();
         try {
+            Caja::lockForUpdate()->findOrFail($venta->caja_id);
+            $venta = Venta::lockForUpdate()->findOrFail($id);
+            if ($venta->estado === 'cancelada') { DB::commit(); return response()->json(['message' => 'Comanda ya anulada.', 'venta' => $venta]); }
+            if ($venta->estado !== 'abierta') { throw ValidationException::withMessages(['venta' => 'La comanda ya no está abierta.']); }
+            $venta->load('items');
             foreach ($venta->items as $item) {
-                $producto = $item->producto;
+                $producto = Producto::lockForUpdate()->find($item->producto_id);
                 if ($producto) {
+                    $before = (float) $producto->stock_actual;
                     $producto->stock_actual = (float) $producto->stock_actual + (float) $item->cantidad;
                     $producto->save();
+                    MovimientoStock::create(['producto_id' => $producto->id, 'tipo' => 'entrada', 'cantidad' => $item->cantidad, 'cantidad_anterior' => $before, 'cantidad_actual' => $producto->stock_actual, 'motivo' => 'Anulación '.$venta->numero_factura, 'usuario_id' => request()->user()->id]);
                 }
             }
             $venta->estado = 'cancelada';
@@ -651,7 +666,7 @@ class VentaController extends Controller
     {
         $validated = $request->validate([
             'venta_ids' => 'required|array|min:1',
-            'venta_ids.*' => ['integer', 'integer', Venta::tenantExistsRule()],
+            'venta_ids.*' => ['integer', Venta::tenantExistsRule()],
         ]);
 
         $resultados = [];
@@ -717,7 +732,8 @@ class VentaController extends Controller
 
     private function normalizeCantidad(Producto $producto, float $cantidad): float
     {
-        $pesable = $this->features->enabled('catalog.weighted') && $producto->esPesable();
+        if ($producto->esPesable() && ! $this->features->enabled('catalog.weighted')) { throw ValidationException::withMessages(['items' => 'El módulo de productos pesables está deshabilitado.']); }
+        $pesable = $producto->esPesable();
 
         if ($pesable) {
             if ($cantidad < 0.001) {
@@ -729,6 +745,7 @@ class VentaController extends Controller
             return round($cantidad, 3);
         }
 
+        if (abs($cantidad - round($cantidad)) > 0.000001) { throw ValidationException::withMessages(['items' => 'Un producto por unidad requiere cantidad entera.']); }
         $enteros = (int) round($cantidad);
         if ($enteros < 1) {
             throw ValidationException::withMessages([

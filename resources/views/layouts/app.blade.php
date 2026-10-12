@@ -229,6 +229,7 @@
         axios.defaults.withCredentials = true;
         window.tenantModules = @json(isset($tenantFeatures) ? $tenantFeatures->frontendFlags() : []);
         window.commerceBranding = @json(['name' => $commerceName, 'ticketMessage' => $comercio->mensaje_ticket ?? 'Venta registrada en el sistema.']);
+        window.createOperationKey = () => window.crypto.randomUUID ? window.crypto.randomUUID() : Array.from(window.crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
 
         axios.interceptors.response.use(
             (r) => r,

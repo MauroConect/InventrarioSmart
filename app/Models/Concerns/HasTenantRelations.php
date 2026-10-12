@@ -23,7 +23,8 @@ trait HasTenantRelations
                 }
                 $query = $relatedModel::query()->whereKey($id);
                 if ($relatedModel === User::class) {
-                    $query->whereHas('memberships', fn ($q) => $q->where('tenant_id', $context->id())->where('status', 'active'));
+                    $requiresActive = ! $model->exists || $model->isDirty($column);
+                    $query->whereHas('memberships', function ($q) use ($context, $requiresActive) { $q->where('tenant_id', $context->id()); if ($requiresActive) { $q->where('status', 'active'); } });
                 } else {
                     $query->where((new $relatedModel)->getTenantColumn(), $context->id());
                 }

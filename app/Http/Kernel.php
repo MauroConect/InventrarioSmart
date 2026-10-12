@@ -93,5 +93,9 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\SetTenantContext::class,
         \Illuminate\Routing\Middleware\SubstituteBindings::class,
         \Illuminate\Auth\Middleware\Authorize::class,
+        \App\Http\Middleware\CheckPermission::class,
+        \App\Http\Middleware\EnsureTenantFeature::class,
+        \App\Http\Middleware\EnsureOnboardingComplete::class,
+        \App\Http\Middleware\TenantIdempotency::class,
     ];
 }

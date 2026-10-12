@@ -37,7 +37,7 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
         ]);
     })->middleware('tenant');
 
-    Route::middleware(['verified', 'tenant', 'onboarding.complete'])->group(function () {
+    Route::middleware(['verified', 'tenant', 'onboarding.complete', \App\Http\Middleware\TenantIdempotency::class])->group(function () {
     Route::middleware(['feature:core.cash', 'permission:cajas.view'])->group(function () {
         Route::get('cajas', [CajaController::class, 'index'])->name('api.cajas.index');
         Route::get('cajas/{id}', [CajaController::class, 'show'])->name('api.cajas.show');

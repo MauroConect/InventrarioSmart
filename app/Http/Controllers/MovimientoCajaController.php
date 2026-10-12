@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\MovimientoCaja;
 use App\Models\Caja;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class MovimientoCajaController extends Controller
 {
@@ -21,25 +23,12 @@ class MovimientoCajaController extends Controller
 
     public function store(Request $request)
     {
-        $caja = Caja::findOrFail($request->caja_id);
-
-        if ($caja->estado === 'cerrada') {
-            return response()->json([
-                'message' => 'No se pueden agregar movimientos a una caja cerrada'
-            ], 400);
-        }
-
-        $validated = $request->validate([
-            'caja_id' => 'required|exists:cajas,id',
-            'tipo' => 'required|in:ingreso,egreso',
-            'monto' => 'required|numeric|min:0.01',
-            'concepto' => 'required|string|max:255',
-            'observaciones' => 'nullable|string',
-        ]);
-
-        $validated['usuario_id'] = $request->user()->id;
-
-        $movimiento = MovimientoCaja::create($validated);
+        $validated = $request->validate(['caja_id' => ['required', 'integer', Caja::tenantExistsRule()], 'tipo' => 'required|in:ingreso,egreso', 'monto' => 'required|numeric|min:0.01', 'concepto' => 'required|string|max:255', 'observaciones' => 'nullable|string']);
+        $movimiento = DB::transaction(function () use ($request, $validated) {
+            $caja = Caja::lockForUpdate()->findOrFail($validated['caja_id']);
+            if ($caja->estado !== 'abierta') { throw ValidationException::withMessages(['caja_id' => 'La caja está cerrada.']); }
+            return MovimientoCaja::create($validated + ['usuario_id' => $request->user()->id]);
+        });
         return response()->json($movimiento->load(['caja', 'usuario']), 201);
     }
 

@@ -136,7 +136,7 @@ class FinanceTenantIsolationTest extends TestCase
         $this->postJson('/api/cuentas-corrientes/1/movimiento', ['tipo' => 'debe', 'monto' => 10, 'concepto' => 'Cruce', 'venta_id' => 2])->assertUnprocessable()->assertJsonValidationErrors('venta_id');
         $this->postJson('/api/deudas-clientes', ['cliente_id' => 1, 'venta_id' => 2, 'monto_total' => 10])->assertUnprocessable()->assertJsonValidationErrors('venta_id');
         $this->postJson('/api/deudas-clientes', ['cliente_id' => 2, 'monto_total' => 10])->assertUnprocessable()->assertJsonValidationErrors('cliente_id');
-        $this->postJson('/api/movimientos-caja', ['caja_id' => 2, 'tipo' => 'ingreso', 'monto' => 10, 'concepto' => 'Cruce'])->assertNotFound();
+        $this->postJson('/api/movimientos-caja', ['caja_id' => 2, 'tipo' => 'ingreso', 'monto' => 10, 'concepto' => 'Cruce'])->assertUnprocessable()->assertJsonValidationErrors('caja_id');
         $this->assertDatabaseCount('movimientos_cuenta_corriente', 2);
         $this->assertDatabaseCount('deudas_clientes', 2);
         $this->assertDatabaseCount('movimientos_caja', 2);

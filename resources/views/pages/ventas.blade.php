@@ -715,6 +715,7 @@ function ventas() {
         items: [{ producto_id: '', cantidad: 1 }],
         busquedaProducto: {},
         adjuntos: [],
+        saleOperationKey: null,
         codigoScanBuffer: '',
         scannerCameraAbierto: false,
         openOrdersEnabled: @json($openOrdersEnabled),
@@ -1082,6 +1083,8 @@ function ventas() {
             this.error = '';
             this.success = '';
             const headers = this.authHeaders();
+            this.saleOperationKey ??= window.createOperationKey();
+            headers['Idempotency-Key'] = this.saleOperationKey;
 
             try {
                 const payload = {
@@ -1098,30 +1101,22 @@ function ventas() {
                     payload.monto_transferencia = parseFloat(this.montoTransferencia) || 0;
                 }
 
-                const response = await axios.post('/api/ventas', payload, {
-                    headers
-                });
-
-                if (this.adjuntos && this.adjuntos.length > 0 && response.data?.id) {
-                    try {
-                        const formData = new FormData();
-                        this.adjuntos.forEach((file) => {
-                            formData.append('adjuntos[]', file);
-                        });
-
-                        await axios.post(`/api/ventas/${response.data.id}/adjuntos`, formData, {
-                            headers: {
-                                ...headers,
-                                'Content-Type': 'multipart/form-data'
-                            }
-                        });
-                    } catch (adjuntoError) {
-                        console.error('Error al subir adjuntos:', adjuntoError);
+                let body = payload;
+                if (this.adjuntos?.length) {
+                    body = new FormData();
+                    for (const [key, value] of Object.entries(payload)) {
+                        if (key === 'items') value.forEach((item, i) => Object.entries(item).forEach(([field, data]) => body.append(`items[${i}][${field}]`, data)));
+                        else if (value != null) body.append(key, value);
                     }
+                    this.adjuntos.forEach(file => body.append('adjuntos[]', file));
+                    headers['Content-Type'] = 'multipart/form-data';
                 }
+                const response = await axios.post('/api/ventas', body, { headers });
 
+                this.saleOperationKey = null;
                 return response.data;
             } catch (error) {
+                if (error.response && error.response.status < 500 && error.response.status !== 409) this.saleOperationKey = null;
                 this.error = error.response?.data?.message || 'Error al registrar la venta';
                 return null;
             } finally {
@@ -1200,6 +1195,7 @@ function ventas() {
         },
         
         resetForm() {
+            this.saleOperationKey = null;
             this.clienteId = '';
             this.tipoPago = 'efectivo';
             this.montoTarjeta = '';

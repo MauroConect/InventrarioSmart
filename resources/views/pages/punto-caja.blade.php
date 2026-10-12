@@ -12,7 +12,7 @@
         </button>
     </div>
 
-    <p class="text-sm text-gray-600">Operación de caja sin pasar por la API ni permisos extra: solo tu sesión.</p>
+    <p class="text-sm text-gray-600">Abrí tu caja al comenzar el día y revisá los cobros antes del cierre.</p>
 
     <div x-show="error" x-cloak class="p-4 bg-red-100 border border-red-400 text-red-700 rounded" x-text="error"></div>
     <div x-show="success" x-cloak class="p-4 bg-green-100 border border-green-400 text-green-700 rounded" x-text="success"></div>

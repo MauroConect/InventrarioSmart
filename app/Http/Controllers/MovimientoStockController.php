@@ -29,7 +29,7 @@ class MovimientoStockController extends Controller
         $validated = $request->validate([
             'producto_id' => ['required', 'integer', Producto::tenantExistsRule()],
             'tipo' => 'required|in:entrada,salida,ajuste',
-            'cantidad' => 'required|numeric|min:0.001',
+            'cantidad' => ['required', 'numeric', $request->input('tipo') === 'ajuste' ? 'min:0' : 'min:0.001'],
             'motivo' => 'required|string|max:255',
             'observaciones' => 'nullable|string',
         ]);
@@ -37,14 +37,16 @@ class MovimientoStockController extends Controller
         $producto = Producto::findOrFail($validated['producto_id']);
 
         $movimiento = DB::transaction(function() use ($producto, $validated, $request) {
+            $producto = Producto::lockForUpdate()->findOrFail($validated['producto_id']);
             $cantidadAnterior = $producto->stock_actual;
+            if (! $producto->esPesable() && abs($validated['cantidad'] - round($validated['cantidad'])) > 0.000001) { throw \Illuminate\Validation\ValidationException::withMessages(['cantidad' => 'Un producto por unidad requiere cantidad entera.']); }
             $cantidad = $validated['cantidad'];
 
             if ($validated['tipo'] === 'entrada') {
                 $cantidadActual = $cantidadAnterior + $cantidad;
             } elseif ($validated['tipo'] === 'salida') {
                 if ($cantidadAnterior < $cantidad) {
-                    throw new \Exception('Stock insuficiente');
+                    throw \Illuminate\Validation\ValidationException::withMessages(['cantidad' => 'Stock insuficiente']);
                 }
                 $cantidadActual = $cantidadAnterior - $cantidad;
             } else { // ajuste

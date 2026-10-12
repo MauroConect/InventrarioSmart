@@ -180,14 +180,26 @@ function comandas() {
             this.seleccionada = this.comandas.find((c) => c.id === id) || null;
             this.error = '';
         },
+        operationKeys: {},
+        async sendMutation(operation, url, payload) {
+            this.operationKeys[operation] ??= window.createOperationKey();
+            try {
+                const response = await axios.post(url, payload, { headers: { ...this.authHeaders(), 'Idempotency-Key': this.operationKeys[operation] } });
+                delete this.operationKeys[operation];
+                return response;
+            } catch (error) {
+                if (error.response && error.response.status < 500 && error.response.status !== 409) delete this.operationKeys[operation];
+                throw error;
+            }
+        },
         async abrirComanda() {
             this.error = '';
             this.loading = true;
             try {
-                const res = await axios.post('/api/ventas/abrir', {
+                const res = await this.sendMutation('open', '/api/ventas/abrir', {
                     caja_id: Number(this.cajaId),
                     etiqueta: this.etiqueta || null,
-                }, { headers: this.authHeaders() });
+                });
                 this.etiqueta = '';
                 this.success = 'Comanda abierta.';
                 await this.cargarComandas();
@@ -208,9 +220,9 @@ function comandas() {
             if (!this.seleccionada) return;
             this.error = '';
             try {
-                await axios.post('/api/ventas/' + this.seleccionada.id + '/items', {
+                await this.sendMutation('item:' + this.seleccionada.id + ':' + prod.id, '/api/ventas/' + this.seleccionada.id + '/items', {
                     items: [{ producto_id: prod.id, cantidad: this.cantidad || 1 }],
-                }, { headers: this.authHeaders() });
+                });
                 this.busqueda = '';
                 this.cantidad = 1;
                 await this.cargarComandas();
@@ -222,12 +234,12 @@ function comandas() {
             if (!this.seleccionada) return;
             this.error = '';
             try {
-                await axios.post('/api/ventas/' + this.seleccionada.id + '/cerrar', {
+                await this.sendMutation('close:' + this.seleccionada.id, '/api/ventas/' + this.seleccionada.id + '/cerrar', {
                     tipo_pago: this.tipoPago,
                     monto_efectivo: this.montoEfectivo || null,
                     monto_tarjeta: this.montoTarjeta || null,
                     monto_transferencia: this.montoTransferencia || null,
-                }, { headers: this.authHeaders() });
+                });
                 this.showCierre = false;
                 this.success = 'Comanda cobrada.';
                 this.seleccionada = null;
@@ -239,7 +251,7 @@ function comandas() {
         async anular() {
             if (!this.seleccionada || !confirm('¿Anular esta comanda y devolver el stock?')) return;
             try {
-                await axios.post('/api/ventas/' + this.seleccionada.id + '/cancelar', {}, { headers: this.authHeaders() });
+                await this.sendMutation('cancel:' + this.seleccionada.id, '/api/ventas/' + this.seleccionada.id + '/cancelar', {});
                 this.success = 'Comanda anulada.';
                 this.seleccionada = null;
                 await this.cargarComandas();

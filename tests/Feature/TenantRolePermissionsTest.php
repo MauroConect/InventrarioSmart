@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\TenantModule;
+use App\Models\{Caja, User};
+use App\Support\Tenancy\TenantContext;
 use Tests\MySqlTenantTestCase;
 
 class TenantRolePermissionsTest extends MySqlTenantTestCase
@@ -41,5 +43,33 @@ class TenantRolePermissionsTest extends MySqlTenantTestCase
         $user->tenants()->detach();
         $this->getJson('/api/productos')->assertForbidden();
         $this->assertFalse($user->hasPermission('productos.manage'));
+    }
+
+    public function test_tenant_admin_cannot_replace_a_shared_users_global_credentials(): void
+    {
+        [$a, $admin] = $this->commerce('A'); [$b, $shared] = $this->commerce('B');
+        $a->users()->attach($shared, ['role' => 'vendedor', 'status' => 'active']);
+        $before = $shared->password;
+        $this->signIn($a, $admin);
+        $this->putJson('/api/usuarios/'.$shared->id, ['name' => $shared->name, 'email' => $shared->email, 'password' => 'Changed-Fictitious-123!', 'role' => 'stock'])->assertForbidden();
+        $this->assertSame($before, $shared->fresh()->password);
+        $this->putJson('/api/usuarios/'.$shared->id, ['name' => $shared->name, 'email' => $shared->email, 'role' => 'stock'])->assertOk();
+        $this->assertDatabaseHas('tenant_user', ['tenant_id' => $a->id, 'user_id' => $shared->id, 'role' => 'stock']);
+        $this->assertDatabaseHas('tenant_user', ['tenant_id' => $b->id, 'user_id' => $shared->id, 'role' => 'admin']);
+    }
+
+    public function test_revoking_membership_preserves_history_but_removes_operational_access(): void
+    {
+        [$tenant, $admin] = $this->commerce();
+        $staff = User::create(['name' => 'Staff ficticio', 'email' => 'staff@example.test', 'password' => 'Fictitious-123!', 'role' => 'vendedor']);
+        $staff->forceFill(['email_verified_at' => now()])->save();
+        $tenant->users()->attach($staff, ['role' => 'vendedor', 'status' => 'active']);
+        $cash = app(TenantContext::class)->run($tenant, fn () => Caja::create(['usuario_id' => $staff->id, 'fecha_apertura' => now(), 'monto_apertura' => 0]));
+        $this->signIn($tenant, $admin);
+        $this->deleteJson('/api/usuarios/'.$staff->id)->assertOk();
+        $this->assertDatabaseHas('tenant_user', ['tenant_id' => $tenant->id, 'user_id' => $staff->id, 'status' => 'inactive']);
+        $this->postJson('/api/cajas/'.$cash->id.'/cerrar', ['monto_real' => 0])->assertOk();
+        $this->signIn($tenant, $staff);
+        $this->getJson('/api/cajas')->assertForbidden();
     }
 }

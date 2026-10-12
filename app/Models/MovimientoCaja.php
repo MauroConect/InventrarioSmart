@@ -13,7 +13,7 @@ class MovimientoCaja extends Model
 
     protected function tenantRelations(): array
     {
-        return ['caja_id' => Caja::class];
+        return ['caja_id' => Caja::class, 'usuario_id' => User::class];
     }
 
     protected $table = 'movimientos_caja';
