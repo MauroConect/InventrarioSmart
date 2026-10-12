@@ -9,7 +9,7 @@ La landing local se sirve con Laravel en `/`. La publicación en Vercel usa una 
 3. Ejecutar `npm run check:landing` y `node --test tests/Frontend/marketing-configurator.test.cjs`.
 4. Revisar `landing/public` y publicar los cambios junto con las fuentes en Git.
 
-Vercel usa raíz `landing`, framework **Other**, salida `public` y el comando definido en `landing/vercel.json`. La verificación compara hashes de fuentes y archivos exportados para impedir desplegar una copia desactualizada. El build remoto no necesita PHP, base de datos ni variables del sistema operativo.
+Vercel usa raíz `landing`, framework **Other**, salida `public` y el comando definido en `landing/vercel.json`. Habilitar **Include source files outside of the Root Directory in the Build Step** para que el verificador acceda a las fuentes del repositorio. La verificación compara hashes de fuentes y archivos exportados, normalizando finales de línea Windows/Linux, para impedir desplegar una copia desactualizada. El build remoto no necesita PHP, base de datos ni variables del sistema operativo.
 
 ## Contenido y alcance
 

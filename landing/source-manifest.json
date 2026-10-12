@@ -2,7 +2,7 @@
   "sources": {
     "resources/views/marketing/landing.blade.php": "8e80d6969c5166e703ad4b33b3231bd2197d6151e6d0b7ff54a9bfbe06febb23",
     "resources/views/marketing/layout.blade.php": "db4eabbe0e005523b0b44c6bc245f818ad8e31edca95655da85e415b9f7db93a",
-    "app/Http/Controllers/Web/LandingController.php": "82a3bee566675039e099fe9ec7c6a65bf781eb6d28cda4dd5398b0354a9e272a",
+    "app/Http/Controllers/Web/LandingController.php": "ac04f13a2ce3f350a5e0e9f16d650a8f25f2af83e67065fdae73744f1c44f9ba",
     "config/modules.php": "7d3f4a71f74de7c2ea7fdb4667ecd6cc6d2e01cb71c9dd92fba4c19f99ffeb5e",
     "public/css/marketing.css": "6e957017b6847a858465df117365934e92d5a55ded0d5987fa6bb1a2f564a885",
     "public/js/marketing-configurator.js": "cb8a0f73c41690fac60c166249e90c818a1d5a655b5b075fcc9f7cfcb3c1a906",
