@@ -28,7 +28,7 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,
 
 // Sanctum: sesión + Bearer. prefer.web.user: Blade manda sobre token en localStorage.
 Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
-    Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/user', [AuthController::class, 'user'])->middleware('tenant');
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/tenant-context', function (TenantContext $context) {
         return response()->json([
@@ -124,40 +124,42 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
         Route::post('productos/aumento-masivo', [ProductoController::class, 'aumentoMasivo']);
     });
 
-    Route::middleware('permission:admin')->group(function () {
-        Route::get('auditoria/timeline', [AuditoriaController::class, 'timeline'])->middleware('feature:operations.audit')->name('api.auditoria.timeline');
+    Route::group([], function () {
+        Route::get('auditoria/timeline', [AuditoriaController::class, 'timeline'])->middleware(['feature:operations.audit', 'permission:audit.view'])->name('api.auditoria.timeline');
 
-        Route::apiResource('usuarios', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::apiResource('usuarios', UserController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('permission:admin');
 
-        Route::get('configuracion-fiscal', [ConfiguracionFiscalController::class, 'show'])->middleware('feature:fiscal.afip');
-        Route::post('configuracion-fiscal', [ConfiguracionFiscalController::class, 'update'])->middleware('feature:fiscal.afip');
-        Route::get('configuracion-comercio', [ConfiguracionComercioController::class, 'show']);
-        Route::post('configuracion-comercio', [ConfiguracionComercioController::class, 'update']);
-        Route::get('modulos', [TenantSettingsModuleController::class, 'index']);
-        Route::put('modulos', [TenantSettingsModuleController::class, 'update']);
+        Route::get('configuracion-fiscal', [ConfiguracionFiscalController::class, 'show'])->middleware('feature:fiscal.afip')->middleware('permission:admin');
+        Route::post('configuracion-fiscal', [ConfiguracionFiscalController::class, 'update'])->middleware('feature:fiscal.afip')->middleware('permission:admin');
+        Route::get('configuracion-comercio', [ConfiguracionComercioController::class, 'show'])->middleware('permission:admin');
+        Route::post('configuracion-comercio', [ConfiguracionComercioController::class, 'update'])->middleware('permission:admin');
+        Route::get('modulos', [TenantSettingsModuleController::class, 'index'])->middleware('permission:admin');
+        Route::put('modulos', [TenantSettingsModuleController::class, 'update'])->middleware('permission:admin');
 
-        Route::apiResource('proveedores', ProveedorController::class)->middleware('feature:core.catalog')->names('api.proveedores');
+        Route::apiResource('proveedores', ProveedorController::class)->only(['index', 'show'])->middleware(['feature:core.catalog', 'permission:proveedores.view'])->names('api.proveedores');
+        Route::apiResource('proveedores', ProveedorController::class)->only(['store', 'update', 'destroy'])->middleware(['feature:core.catalog', 'permission:proveedores.manage'])->names('api.proveedores');
 
-        Route::get('movimientos-caja', [MovimientoCajaController::class, 'index']);
-        Route::post('movimientos-caja', [MovimientoCajaController::class, 'store']);
-        Route::get('movimientos-caja/{id}', [MovimientoCajaController::class, 'show']);
+        Route::get('movimientos-caja', [MovimientoCajaController::class, 'index'])->middleware('permission:movimientos_caja.view');
+        Route::post('movimientos-caja', [MovimientoCajaController::class, 'store'])->middleware('permission:movimientos_caja.manage');
+        Route::get('movimientos-caja/{id}', [MovimientoCajaController::class, 'show'])->middleware('permission:movimientos_caja.view');
 
-        Route::get('cuentas-corrientes', [CuentaCorrienteController::class, 'index'])->middleware('feature:finance.credit');
-        Route::post('cuentas-corrientes', [CuentaCorrienteController::class, 'store'])->middleware('feature:finance.credit');
-        Route::get('cuentas-corrientes/{id}', [CuentaCorrienteController::class, 'show'])->middleware('feature:finance.credit');
-        Route::post('cuentas-corrientes/{id}/movimiento', [CuentaCorrienteController::class, 'agregarMovimiento'])->middleware('feature:finance.credit');
+        Route::get('cuentas-corrientes', [CuentaCorrienteController::class, 'index'])->middleware('feature:finance.credit')->middleware('permission:cuentas_corrientes.view');
+        Route::post('cuentas-corrientes', [CuentaCorrienteController::class, 'store'])->middleware('feature:finance.credit')->middleware('permission:cuentas_corrientes.manage');
+        Route::get('cuentas-corrientes/{id}', [CuentaCorrienteController::class, 'show'])->middleware('feature:finance.credit')->middleware('permission:cuentas_corrientes.view');
+        Route::post('cuentas-corrientes/{id}/movimiento', [CuentaCorrienteController::class, 'agregarMovimiento'])->middleware('feature:finance.credit')->middleware('permission:cuentas_corrientes.manage');
 
-        Route::get('deudas-clientes', [DeudaClienteController::class, 'index'])->middleware('feature:finance.credit');
-        Route::post('deudas-clientes', [DeudaClienteController::class, 'store'])->middleware('feature:finance.credit');
-        Route::get('deudas-clientes/{id}', [DeudaClienteController::class, 'show'])->middleware('feature:finance.credit');
-        Route::post('deudas-clientes/{id}/pago', [DeudaClienteController::class, 'registrarPago'])->middleware('feature:finance.credit');
+        Route::get('deudas-clientes', [DeudaClienteController::class, 'index'])->middleware('feature:finance.credit')->middleware('permission:deudas.view');
+        Route::post('deudas-clientes', [DeudaClienteController::class, 'store'])->middleware('feature:finance.credit')->middleware('permission:deudas.manage');
+        Route::get('deudas-clientes/{id}', [DeudaClienteController::class, 'show'])->middleware('feature:finance.credit')->middleware('permission:deudas.view');
+        Route::post('deudas-clientes/{id}/pago', [DeudaClienteController::class, 'registrarPago'])->middleware('feature:finance.credit')->middleware('permission:deudas.manage');
 
-        Route::apiResource('cheques', ChequeController::class)->middleware('feature:finance.cheques')->names('api.cheques');
-        Route::get('cheques-proximos-vencer', [ChequeController::class, 'proximosAVencer'])->middleware('feature:finance.cheques');
-        Route::get('cheques-por-mes', [ChequeController::class, 'porMes'])->middleware('feature:finance.cheques');
-        Route::get('cheques-por-fecha', [ChequeController::class, 'porFecha'])->middleware('feature:finance.cheques');
-        Route::get('cheques-estadisticas', [ChequeController::class, 'estadisticas'])->middleware('feature:finance.cheques');
-        Route::post('cheques/{id}/marcar-cobrado', [ChequeController::class, 'marcarCobrado'])->middleware('feature:finance.cheques');
+        Route::apiResource('cheques', ChequeController::class)->only(['index', 'show'])->middleware(['feature:finance.cheques', 'permission:cheques.view'])->names('api.cheques');
+        Route::apiResource('cheques', ChequeController::class)->only(['store', 'update', 'destroy'])->middleware(['feature:finance.cheques', 'permission:cheques.manage'])->names('api.cheques');
+        Route::get('cheques-proximos-vencer', [ChequeController::class, 'proximosAVencer'])->middleware('feature:finance.cheques')->middleware('permission:cheques.view');
+        Route::get('cheques-por-mes', [ChequeController::class, 'porMes'])->middleware('feature:finance.cheques')->middleware('permission:cheques.view');
+        Route::get('cheques-por-fecha', [ChequeController::class, 'porFecha'])->middleware('feature:finance.cheques')->middleware('permission:cheques.view');
+        Route::get('cheques-estadisticas', [ChequeController::class, 'estadisticas'])->middleware('feature:finance.cheques')->middleware('permission:cheques.view');
+        Route::post('cheques/{id}/marcar-cobrado', [ChequeController::class, 'marcarCobrado'])->middleware('feature:finance.cheques')->middleware('permission:cheques.manage');
     });
 
     Route::get('formularios/{form}/campos', [CustomFormFieldController::class, 'index']);
@@ -173,7 +175,7 @@ Route::middleware(['auth:sanctum', 'prefer.web.user'])->group(function () {
         Route::delete('turnos/{turno}', [TurnoController::class, 'destroy']);
     });
 
-    Route::middleware(['feature:platform.support', 'throttle:support'])->group(function () {
+    Route::middleware(['feature:platform.support', 'permission:support.use', 'throttle:support'])->group(function () {
         Route::get('support/conversations', [SupportChatController::class, 'index']);
         Route::post('support/conversations', [SupportChatController::class, 'store']);
         Route::get('support/conversations/{conversation}', [SupportChatController::class, 'show']);

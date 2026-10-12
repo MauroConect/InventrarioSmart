@@ -38,8 +38,10 @@ class TenantSelectionController extends Controller
         abort_unless($tenant, 403, 'No tienes acceso al comercio solicitado.');
 
         $request->session()->put(config('tenancy.session_key', 'tenant_id'), $tenant->getKey());
+        $request->session()->forget('url.intended');
+        $request->session()->regenerate();
 
-        return redirect()->intended(route('home'));
+        return redirect()->route('home');
     }
 
     private function activeTenants(Request $request)

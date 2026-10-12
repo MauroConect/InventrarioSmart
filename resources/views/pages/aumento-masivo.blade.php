@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Aumento Masivo de Precios - El Cristo')
+@section('title', 'Aumento Masivo de Precios')
 @section('page-title', 'Aumento Masivo de Precios')
 
 @section('content')

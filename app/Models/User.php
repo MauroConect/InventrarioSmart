@@ -119,7 +119,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     {
         $k = $this->normalizedRoleKey();
         if ($k === '') {
-            return self::ROLE_VENDEDOR;
+            return '';
         }
         if ($k === self::ROLE_ADMIN) {
             return self::ROLE_ADMIN;
@@ -137,6 +137,9 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     public function hasPermission(string $permission): bool
     {
+        if ($this->isPlatformSuperadmin() && ! app(TenantContext::class)->hasTenant()) {
+            return false;
+        }
         if ($this->isAdmin()) {
             return true;
         }
@@ -156,6 +159,9 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function getPermissionsAttribute(): array
     {
+        if ($this->isPlatformSuperadmin() && ! app(TenantContext::class)->hasTenant()) {
+            return [];
+        }
         if ($this->isAdmin()) {
             return ['*'];
         }

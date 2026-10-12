@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', $comercio->nombre_comercio ?? 'InventarioSmart')</title>
+    @php
+        $activeTenant = app(\App\Support\Tenancy\TenantContext::class)->hasTenant() ? app(\App\Support\Tenancy\TenantContext::class)->tenant() : null;
+        $commerceName = $comercio->nombre_comercio ?? $activeTenant?->name ?? 'InventarioSmart';
+    @endphp
+    <title>@yield('title', 'InventarioSmart'){{ $activeTenant ? ' — '.$commerceName : '' }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -121,7 +125,7 @@
                             <span class="mr-3">💵</span> Cheques
                         </a>
                     @endif
-                    @if($tenantFeatures->enabled('operations.audit') && Auth::user()->hasPermission('admin'))
+                    @if($tenantFeatures->enabled('operations.audit') && Auth::user()->hasPermission('audit.view'))
                         <a href="{{ route('auditoria.index') }}" class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 {{ request()->routeIs('auditoria.*') ? 'bg-gray-700' : '' }}">
                             <span class="mr-3">📜</span> Auditoría
                         </a>
@@ -175,6 +179,15 @@
                         </svg>
                     </button>
                     <h2 class="text-xl font-semibold text-gray-800">@yield('page-title', $comercio->nombre_comercio ?? 'InventarioSmart')</h2>
+                    @if($activeTenant)
+                        <div class="ml-auto min-w-0 pl-3 text-right text-sm" aria-label="Comercio activo">
+                            <span class="block max-w-48 truncate font-semibold text-gray-800">{{ $activeTenant->name }}</span>
+                            <span class="text-xs text-gray-500">{{ Auth::user()->currentTenantRole() }}</span>
+                            @if(Auth::user()->tenants()->wherePivot('status', 'active')->where('tenants.status', 'active')->count() > 1)
+                                <a href="{{ route('tenant.select') }}" class="ml-2 text-xs font-medium text-blue-600 hover:underline">Cambiar comercio</a>
+                            @endif
+                        </div>
+                    @endif
                 </header>
 
                 <main class="flex-1 overflow-y-auto p-4 lg:p-6">
@@ -215,6 +228,7 @@
         axios.defaults.headers.common['Content-Type'] = 'application/json';
         axios.defaults.withCredentials = true;
         window.tenantModules = @json(isset($tenantFeatures) ? $tenantFeatures->frontendFlags() : []);
+        window.commerceBranding = @json(['name' => $commerceName, 'ticketMessage' => $comercio->mensaje_ticket ?? 'Venta registrada en el sistema.']);
 
         axios.interceptors.response.use(
             (r) => r,

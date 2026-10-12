@@ -26,6 +26,12 @@ $puntoCajaView = static function () {
 Route::get('/', LandingController::class)->name('landing');
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
+Route::middleware('guest')->group(function () {
+    Route::get('/forgot-password', [\App\Http\Controllers\Web\PasswordResetController::class, 'requestForm'])->name('password.request');
+    Route::post('/forgot-password', [\App\Http\Controllers\Web\PasswordResetController::class, 'send'])->middleware('throttle:5,1')->name('password.email');
+    Route::get('/reset-password/{token}', [\App\Http\Controllers\Web\PasswordResetController::class, 'resetForm'])->name('password.reset');
+    Route::post('/reset-password', [\App\Http\Controllers\Web\PasswordResetController::class, 'reset'])->middleware('throttle:6,1')->name('password.update');
+});
 Route::get('/register', [RegisterController::class, 'create'])->middleware('guest')->name('register');
 Route::post('/register', [RegisterController::class, 'store'])->middleware(['guest', 'throttle:4,1'])->name('register.store');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -94,6 +100,9 @@ Route::middleware('auth')->group(function () use ($puntoCajaView) {
             return redirect()->route('cajas.index');
         }
 
+        foreach (['productos.view' => 'productos.index', 'cuentas_corrientes.view' => 'cuentas-corrientes.index', 'stock.view' => 'movimientos-stock.index', 'turnos.view' => 'turnos.index'] as $permission => $route) {
+            if ($user && $user->hasPermission($permission)) { return redirect()->route($route); }
+        }
         abort(403, 'No tienes permisos para acceder al sistema.');
     })->name('home');
 
@@ -165,7 +174,7 @@ Route::middleware('auth')->group(function () use ($puntoCajaView) {
     })->middleware('permission:admin')->name('usuarios.index');
     Route::get('/auditoria', function () {
         return view('pages.auditoria');
-    })->middleware(['feature:operations.audit', 'permission:admin'])->name('auditoria.index');
+    })->middleware(['feature:operations.audit', 'permission:audit.view'])->name('auditoria.index');
     Route::get('/turnos', function () {
         return view('pages.turnos');
     })->middleware(['feature:services.appointments', 'permission:turnos.view'])->name('turnos.index');

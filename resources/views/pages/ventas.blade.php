@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ventas - El Cristo')
+@section('title', 'Ventas')
 @section('page-title', 'Ventas')
 
 @section('content')
@@ -508,6 +508,10 @@ const TICKET_THERMAL_STYLES = `
                 </style>
 `;
 
+function escapeHtmlTicket(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char]));
+}
+
 function construirHtmlTicketDesdeVentaGuardada(venta) {
     const fechaStr = venta.fecha
         ? new Date(venta.fecha).toLocaleString('es-AR')
@@ -619,12 +623,12 @@ function construirHtmlTicketDesdeVentaGuardada(venta) {
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>El Cristo</title>
+                <title>${escapeHtmlTicket(window.commerceBranding?.name || "InventarioSmart")}</title>
                 ${TICKET_THERMAL_STYLES}
             </head>
             <body>
                 <div class="header">
-                    <h1>El Cristo</h1>
+                    <h1>${escapeHtmlTicket(window.commerceBranding?.name || "InventarioSmart")}</h1>
                     <p>${venta.numero_factura ? `Nº ${venta.numero_factura} · ` : ''}Fecha: ${fechaStr}</p>
                 </div>
 
@@ -671,7 +675,7 @@ function construirHtmlTicketDesdeVentaGuardada(venta) {
                 ${bloquePagoExtra}
 
                 <div class="footer">
-                    <p>El Cristo. Venta registrada en el sistema.</p>
+                    <p>${escapeHtmlTicket(window.commerceBranding?.ticketMessage || "Venta registrada en el sistema.")}</p>
                     <p>Conserve este comprobante.</p>
                 </div>
 

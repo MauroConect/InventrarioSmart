@@ -126,7 +126,7 @@ class UserController extends Controller
         $extra = config('permissions.vendedor_role_names', []);
         $extra = is_array($extra) ? $extra : [];
 
-        $roles = array_merge([User::ROLE_ADMIN, User::ROLE_VENDEDOR], $extra);
+        $roles = array_merge([User::ROLE_ADMIN, User::ROLE_VENDEDOR, 'stock', 'finanzas', 'auditor'], $extra);
 
         return array_values(array_unique(array_map(
             fn ($r) => strtolower(trim((string) $r)),

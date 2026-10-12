@@ -10,6 +10,10 @@ return [
         'owner' => ['*'],
         'admin' => ['*'],
 
+        'stock' => ['categorias.view', 'categorias.manage', 'productos.view', 'productos.manage', 'proveedores.view', 'proveedores.manage', 'stock.view', 'stock.manage', 'support.use'],
+        'finanzas' => ['clientes.view', 'cajas.view', 'movimientos_caja.view', 'movimientos_caja.manage', 'ventas.view', 'ventas.facturar', 'cuentas_corrientes.view', 'cuentas_corrientes.manage', 'deudas.view', 'deudas.manage', 'cheques.view', 'cheques.manage', 'support.use'],
+        'auditor' => ['dashboard.view', 'audit.view', 'categorias.view', 'productos.view', 'proveedores.view', 'stock.view', 'clientes.view', 'cajas.view', 'movimientos_caja.view', 'ventas.view', 'cuentas_corrientes.view', 'deudas.view', 'cheques.view', 'turnos.view'],
+
         'vendedor' => [
             'cajas.view',
             'cajas.manage',

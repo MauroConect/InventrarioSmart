@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Usuarios - El Cristo')
+@section('title', 'Usuarios')
 @section('page-title', 'Usuarios')
 
 @section('content')
@@ -47,7 +47,7 @@
                                     <span
                                         class="px-2 py-1 text-xs rounded-full font-medium"
                                         :class="(u.role || '').toLowerCase() === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'"
-                                        x-text="u.role || 'vendedor'"
+                                        x-text="u.memberships?.[0]?.role || u.role || 'vendedor'"
                                     ></span>
                                 </td>
                                 <td class="px-6 py-4 text-sm">
@@ -124,6 +124,9 @@
                     <select x-model="formData.role" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="admin">Administrador</option>
                         <option value="vendedor">Vendedor</option>
+                        <option value="stock">Stock</option>
+                        <option value="finanzas">Finanzas</option>
+                        <option value="auditor">Auditor (consulta)</option>
                     </select>
                 </div>
                 <div class="flex flex-col sm:flex-row justify-end gap-2 pt-3 border-t">
@@ -206,7 +209,7 @@ function usuariosAdmin() {
 
         edit(u) {
             this.editing = u.id;
-            this.formData = { name: u.name, email: u.email, password: '', role: (u.role || 'vendedor').toLowerCase() };
+            this.formData = { name: u.name, email: u.email, password: '', role: (u.memberships?.[0]?.role || u.role || 'vendedor').toLowerCase() };
             this.showModal = true;
             this.error = '';
         },

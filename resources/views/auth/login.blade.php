@@ -74,6 +74,8 @@
                 <span x-show="loading" x-cloak>Iniciando sesión...</span>
             </button>
         </form>
+        @if(session('status'))<p role="status" class="mt-4 rounded bg-blue-50 p-3 text-sm text-blue-800">{{ session('status') }}</p>@endif
+        <a href="{{ route('password.request') }}" class="mt-4 block text-center text-sm text-blue-600">Olvidé mi contraseña</a>
         <p class="mt-5 text-center text-sm text-gray-600">
             ¿Todavía no tenés cuenta?
             <a href="{{ route('register') }}" class="font-semibold text-blue-600">Registrate</a>

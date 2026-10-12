@@ -42,7 +42,7 @@ class ConfiguracionComercio extends Model
     {
         $context = app(TenantContext::class);
         $defaults = fn () => new static([
-            'nombre_comercio' => 'InventarioSmart',
+            'nombre_comercio' => $context->hasTenant() ? $context->tenant()->name : 'InventarioSmart',
             'color_primario' => '#2563eb',
             'color_sidebar' => '#111827',
         ]);
