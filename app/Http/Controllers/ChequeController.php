@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\Cheque;
+use App\Models\Caja;
+use App\Models\Proveedor;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
 class ChequeController extends Controller
@@ -33,16 +37,12 @@ class ChequeController extends Controller
 
         if ($request->has('proximos_vencer')) {
             $dias = $request->input('dias', 30);
-            $fecha = Carbon::now()->addDays($dias);
-            $query->where('estado', 'pendiente')
-                  ->where('fecha_vencimiento', '<=', $fecha)
-                  ->where('fecha_vencimiento', '>=', Carbon::now())
+            $query->proximosAVencer($dias)
                   ->orderBy('fecha_vencimiento', 'asc');
         }
 
         if ($request->has('vencidos')) {
-            $query->where('estado', 'pendiente')
-                  ->where('fecha_vencimiento', '<', Carbon::now())
+            $query->vencidos()
                   ->orderBy('fecha_vencimiento', 'asc');
         }
 
@@ -66,13 +66,14 @@ class ChequeController extends Controller
             $query->orderBy('fecha_vencimiento', 'asc');
         }
 
-        return response()->json($query->paginate($request->input('per_page', 15)));
+        $perPage = (int) $request->input('per_page', 15);
+        return response()->json($query->paginate($perPage > 0 && $perPage <= 100 ? $perPage : 15));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'numero_cheque' => 'required|string|unique:cheques,numero_cheque',
+            'numero_cheque' => ['required', 'string', 'max:255', Rule::unique('cheques', 'numero_cheque')->where('tenant_id', app(TenantContext::class)->id())],
             'banco' => 'required|string|max:255',
             'fecha_ingreso' => 'required|date',
             'fecha_vencimiento' => 'required|date|after_or_equal:fecha_ingreso',
@@ -80,8 +81,8 @@ class ChequeController extends Controller
             'tipo' => 'required|in:recibido,emitido',
             'estado' => 'nullable|in:pendiente,cobrado,vencido,rechazado,depositado',
             'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
-            'proveedor_id' => 'nullable|exists:proveedores,id',
-            'caja_id' => 'nullable|exists:cajas,id',
+            'proveedor_id' => ['nullable', 'integer', Proveedor::tenantExistsRule()],
+            'caja_id' => ['nullable', 'integer', Caja::tenantExistsRule()],
             'fecha_cobro' => 'nullable|date',
             'observaciones' => 'nullable|string',
         ]);
@@ -122,7 +123,7 @@ class ChequeController extends Controller
         $cheque = Cheque::findOrFail($id);
 
         $validated = $request->validate([
-            'numero_cheque' => 'required|string|unique:cheques,numero_cheque,' . $id,
+            'numero_cheque' => ['required', 'string', 'max:255', Rule::unique('cheques', 'numero_cheque')->where('tenant_id', app(TenantContext::class)->id())->ignore($cheque)],
             'banco' => 'required|string|max:255',
             'fecha_ingreso' => 'required|date',
             'fecha_vencimiento' => 'required|date|after_or_equal:fecha_ingreso',
@@ -130,8 +131,8 @@ class ChequeController extends Controller
             'tipo' => 'required|in:recibido,emitido',
             'estado' => 'nullable|in:pendiente,cobrado,vencido,rechazado,depositado',
             'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
-            'proveedor_id' => 'nullable|exists:proveedores,id',
-            'caja_id' => 'nullable|exists:cajas,id',
+            'proveedor_id' => ['nullable', 'integer', Proveedor::tenantExistsRule()],
+            'caja_id' => ['nullable', 'integer', Caja::tenantExistsRule()],
             'fecha_cobro' => 'nullable|date',
             'observaciones' => 'nullable|string',
         ]);

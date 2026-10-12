@@ -64,7 +64,7 @@ class ClientTenantIsolationTest extends TestCase
             });
         }
         Schema::create('cheques', function (Blueprint $table): void {
-            $table->id(); $table->string('numero_cheque')->unique();
+            $table->id(); $table->unsignedBigInteger('tenant_id'); $table->string('numero_cheque')->unique();
         });
         Schema::create('custom_form_fields', function (Blueprint $table): void {
             $table->id(); $table->unsignedBigInteger('tenant_id'); $table->string('form_key'); $table->string('name');

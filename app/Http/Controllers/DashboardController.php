@@ -84,9 +84,6 @@ class DashboardController extends Controller
         // Cheques próximos a vencer (7 días)
         $chequesProximos = Cheque::query()
             ->where(function ($query): void {
-                $query->whereHas('cliente')->orWhereHas('proveedor')->orWhereHas('caja');
-            })
-            ->where(function ($query): void {
                 $query->whereNull('cliente_id')->orWhereHas('cliente');
             })
             ->where(function ($query): void {

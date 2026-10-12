@@ -2,13 +2,20 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+use App\Models\Concerns\HasTenantRelations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
 class Cheque extends Model
 {
-    use HasFactory;
+    use BelongsToTenant, HasFactory, HasTenantRelations;
+
+    protected function tenantRelations(): array
+    {
+        return ['cliente_id' => Cliente::class, 'proveedor_id' => Proveedor::class, 'caja_id' => Caja::class];
+    }
 
     protected $table = 'cheques';
 
@@ -58,17 +65,16 @@ class Cheque extends Model
     // Scope para cheques próximos a vencer
     public function scopeProximosAVencer($query, $dias = 30)
     {
-        $fecha = Carbon::now()->addDays($dias);
+        $hoy = Carbon::today();
         return $query->where('estado', 'pendiente')
-            ->where('fecha_vencimiento', '<=', $fecha)
-            ->where('fecha_vencimiento', '>=', Carbon::now());
+            ->whereBetween('fecha_vencimiento', [$hoy->toDateString(), $hoy->copy()->addDays($dias)->toDateString()]);
     }
 
     // Scope para cheques vencidos
     public function scopeVencidos($query)
     {
         return $query->where('estado', 'pendiente')
-            ->where('fecha_vencimiento', '<', Carbon::now());
+            ->where('fecha_vencimiento', '<', Carbon::today()->toDateString());
     }
 
     // Scope para cheques por fecha
@@ -87,7 +93,7 @@ class Cheque extends Model
     // Método para verificar si está próximo a vencer
     public function estaProximoAVencer($dias = 30)
     {
-        $hoy = Carbon::now();
+        $hoy = Carbon::today();
         $vencimiento = Carbon::parse($this->fecha_vencimiento);
         $diferencia = $hoy->diffInDays($vencimiento, false);
         
@@ -100,13 +106,13 @@ class Cheque extends Model
     public function estaVencido()
     {
         return $this->estado === 'pendiente' && 
-               Carbon::parse($this->fecha_vencimiento)->isPast();
+               Carbon::parse($this->fecha_vencimiento)->isBefore(Carbon::today());
     }
 
     // Método para obtener días hasta vencimiento
     public function diasHastaVencimiento()
     {
-        $hoy = Carbon::now();
+        $hoy = Carbon::today();
         $vencimiento = Carbon::parse($this->fecha_vencimiento);
         return $hoy->diffInDays($vencimiento, false);
     }

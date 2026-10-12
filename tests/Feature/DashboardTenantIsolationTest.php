@@ -93,6 +93,7 @@ class DashboardTenantIsolationTest extends TestCase
         });
         Schema::create('cheques', function (Blueprint $t): void {
             $t->id();
+            $t->unsignedBigInteger('tenant_id');
             $t->unsignedBigInteger('cliente_id')->nullable();
             $t->unsignedBigInteger('proveedor_id')->nullable();
             $t->unsignedBigInteger('caja_id')->nullable();
@@ -108,7 +109,7 @@ class DashboardTenantIsolationTest extends TestCase
             DB::table('ventas')->insert(['id' => $id, 'tenant_id' => $id, 'caja_id' => $id, 'cliente_id' => $id, 'fecha' => now(), 'total_final' => $id * 100]);
             DB::table('items_venta')->insert(['tenant_id' => $id, 'venta_id' => $id, 'producto_id' => $id, 'cantidad' => $id, 'subtotal' => $id * 100]);
             DB::table('deudas_clientes')->insert(['tenant_id' => $id, 'cliente_id' => $id, 'venta_id' => $id, 'monto_pendiente' => $id * 10]);
-            DB::table('cheques')->insert(['cliente_id' => $id, 'fecha_vencimiento' => now()->addDay()->toDateString()]);
+            DB::table('cheques')->insert(['tenant_id' => $id, 'cliente_id' => $id, 'fecha_vencimiento' => now()->addDay()->toDateString()]);
         }
     }
 
@@ -150,14 +151,15 @@ class DashboardTenantIsolationTest extends TestCase
         DB::table('items_venta')->insert(['tenant_id' => 1, 'venta_id' => 2, 'producto_id' => 1, 'cantidad' => 999, 'subtotal' => 99999]);
         DB::table('items_venta')->insert(['tenant_id' => 1, 'venta_id' => 1, 'producto_id' => 2, 'cantidad' => 999, 'subtotal' => 99999]);
         DB::table('deudas_clientes')->insert(['tenant_id' => 1, 'cliente_id' => 1, 'venta_id' => 2, 'monto_pendiente' => 99999]);
-        DB::table('cheques')->insert(['cliente_id' => 1, 'proveedor_id' => 2, 'fecha_vencimiento' => now()->addDay()->toDateString()]);
-        DB::table('cheques')->insert(['cliente_id' => null, 'proveedor_id' => null, 'caja_id' => null, 'fecha_vencimiento' => now()->addDay()->toDateString()]);
+        DB::table('cheques')->insert(['tenant_id' => 1, 'cliente_id' => 1, 'proveedor_id' => 2, 'fecha_vencimiento' => now()->addDay()->toDateString()]);
+        DB::table('cheques')->insert(['tenant_id' => 1, 'cliente_id' => null, 'proveedor_id' => null, 'caja_id' => null, 'fecha_vencimiento' => now()->addDay()->toDateString()]);
         app(TenantContext::class)->run(Tenant::findOrFail(1), function (): void {
             $controller = app(DashboardController::class);
             $request = $this->request(1);
             $stats = $controller->estadisticas($request)->getData(true);
             $this->assertEquals(10, $stats['deudas_pendientes']);
-            $this->assertSame(1, $stats['cheques_proximos']);
+            // Explicit ownership survives nullable references (e.g. a deleted client).
+            $this->assertSame(2, $stats['cheques_proximos']);
             $ranking = $controller->productosMasVendidos($request)->getData(true);
             $this->assertCount(1, $ranking);
             $this->assertEquals(1, $ranking[0]['cantidad_vendida']);
