@@ -27,7 +27,7 @@ class CuentaCorrienteController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'cliente_id' => 'required|exists:clientes,id|unique:cuentas_corrientes,cliente_id',
+            'cliente_id' => ['required', 'integer', Cliente::tenantExistsRule(), 'unique:cuentas_corrientes,cliente_id'],
             'limite_credito' => 'required|numeric|min:0',
             'activa' => 'boolean',
         ]);

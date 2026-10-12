@@ -6,6 +6,7 @@ use App\Models\Venta;
 use App\Models\ItemVenta;
 use App\Models\Producto;
 use App\Models\Caja;
+use App\Models\Cliente;
 use App\Models\VentaAdjunto;
 use App\Models\CuentaCorriente;
 use App\Models\MovimientoCuentaCorriente;
@@ -66,7 +67,7 @@ class VentaController extends Controller
 
         $validated = $request->validate([
             'caja_id' => 'required|exists:cajas,id',
-            'cliente_id' => 'nullable|exists:clientes,id',
+            'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
             'etiqueta' => 'nullable|string|max:80',
         ]);
 
@@ -97,7 +98,7 @@ class VentaController extends Controller
     {
         $validated = $request->validate([
             'caja_id' => 'required|exists:cajas,id',
-            'cliente_id' => 'nullable|exists:clientes,id',
+            'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
             'items' => 'required|array|min:1',
             'items.*.producto_id' => 'required|exists:productos,id',
             'items.*.cantidad' => 'required|numeric|min:0.001',
@@ -475,7 +476,7 @@ class VentaController extends Controller
 
         $validated = $request->validate([
             'tipo_pago' => 'nullable|in:efectivo,tarjeta,transferencia,cuenta_corriente,mixto',
-            'cliente_id' => 'nullable|exists:clientes,id',
+            'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
             'monto_tarjeta' => 'nullable|numeric|min:0',
             'monto_efectivo' => 'nullable|numeric|min:0',
             'monto_transferencia' => 'nullable|numeric|min:0',

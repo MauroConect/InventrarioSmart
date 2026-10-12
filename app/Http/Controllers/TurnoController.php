@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\Turno;
 use App\Services\CustomForms\CustomFormService;
 use Carbon\Carbon;
@@ -66,7 +67,7 @@ class TurnoController extends Controller
     private function validated(Request $request, ?Turno $turno = null): array
     {
         $data = $request->validate([
-            'cliente_id' => 'nullable|exists:clientes,id',
+            'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
             'nombre' => 'required|string|max:120',
             'telefono' => 'nullable|string|max:40',
             'email' => 'nullable|email|max:120',

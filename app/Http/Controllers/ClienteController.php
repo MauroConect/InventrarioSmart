@@ -6,8 +6,10 @@ use App\Models\Cliente;
 use App\Models\DeudaCliente;
 use App\Services\CustomForms\CustomFormService;
 use App\Support\CuitValidator;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ClienteController extends Controller
 {
@@ -95,7 +97,7 @@ class ClienteController extends Controller
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
             'apellido' => 'required|string|max:255',
-            'dni' => 'required|string|unique:clientes,dni|max:20',
+            'dni' => ['required', 'string', 'max:20', Rule::unique('clientes', 'dni')->where('tenant_id', app(TenantContext::class)->id())],
             'cuit' => $this->cuitRules(),
             'telefono' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
@@ -199,7 +201,7 @@ class ClienteController extends Controller
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
             'apellido' => 'required|string|max:255',
-            'dni' => 'required|string|unique:clientes,dni,' . $id . '|max:20',
+            'dni' => ['required', 'string', 'max:20', Rule::unique('clientes', 'dni')->where('tenant_id', app(TenantContext::class)->id())->ignore($cliente)],
             'cuit' => $this->cuitRules(),
             'telefono' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',

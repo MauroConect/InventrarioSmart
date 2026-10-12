@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\Cheque;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -78,7 +79,7 @@ class ChequeController extends Controller
             'monto' => 'required|numeric|min:0',
             'tipo' => 'required|in:recibido,emitido',
             'estado' => 'nullable|in:pendiente,cobrado,vencido,rechazado,depositado',
-            'cliente_id' => 'nullable|exists:clientes,id',
+            'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
             'proveedor_id' => 'nullable|exists:proveedores,id',
             'caja_id' => 'nullable|exists:cajas,id',
             'fecha_cobro' => 'nullable|date',
@@ -128,7 +129,7 @@ class ChequeController extends Controller
             'monto' => 'required|numeric|min:0',
             'tipo' => 'required|in:recibido,emitido',
             'estado' => 'nullable|in:pendiente,cobrado,vencido,rechazado,depositado',
-            'cliente_id' => 'nullable|exists:clientes,id',
+            'cliente_id' => ['nullable', 'integer', Cliente::tenantExistsRule()],
             'proveedor_id' => 'nullable|exists:proveedores,id',
             'caja_id' => 'nullable|exists:cajas,id',
             'fecha_cobro' => 'nullable|date',

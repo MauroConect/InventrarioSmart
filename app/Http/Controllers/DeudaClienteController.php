@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\DeudaCliente;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ class DeudaClienteController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'cliente_id' => 'required|exists:clientes,id',
+            'cliente_id' => ['required', 'integer', Cliente::tenantExistsRule()],
             'venta_id' => 'nullable|exists:ventas,id',
             'monto_total' => 'required|numeric|min:0.01',
             'cuotas_originales' => 'nullable|integer|min:1',
