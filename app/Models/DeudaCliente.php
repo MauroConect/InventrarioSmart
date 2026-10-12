@@ -2,12 +2,19 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+use App\Models\Concerns\HasTenantRelations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class DeudaCliente extends Model
 {
-    use HasFactory;
+    use BelongsToTenant, HasFactory, HasTenantRelations;
+
+    protected function tenantRelations(): array
+    {
+        return ['cliente_id' => Cliente::class, 'venta_id' => Venta::class];
+    }
 
     protected $table = 'deudas_clientes';
 

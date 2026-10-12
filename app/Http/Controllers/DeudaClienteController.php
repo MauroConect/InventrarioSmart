@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\DeudaCliente;
+use App\Models\Venta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class DeudaClienteController extends Controller
 {
@@ -28,7 +30,7 @@ class DeudaClienteController extends Controller
     {
         $validated = $request->validate([
             'cliente_id' => ['required', 'integer', Cliente::tenantExistsRule()],
-            'venta_id' => 'nullable|exists:ventas,id',
+            'venta_id' => ['nullable', 'integer', Venta::tenantExistsRule()],
             'monto_total' => 'required|numeric|min:0.01',
             'cuotas_originales' => 'nullable|integer|min:1',
             'cuotas_pagadas' => 'nullable|integer|min:0',
@@ -80,10 +82,14 @@ class DeudaClienteController extends Controller
         $deuda = DeudaCliente::findOrFail($id);
 
         $validated = $request->validate([
-            'monto' => 'required|numeric|min:0.01|max:' . $deuda->monto_pendiente,
+            'monto' => 'required|numeric|decimal:0,2|min:0.01',
         ]);
 
-        DB::transaction(function() use ($deuda, $validated) {
+        $deuda = DB::transaction(function() use ($deuda, $validated) {
+            $deuda = DeudaCliente::query()->lockForUpdate()->findOrFail($deuda->id);
+            if ($validated['monto'] > $deuda->monto_pendiente) {
+                throw ValidationException::withMessages(['monto' => 'El pago supera el saldo pendiente.']);
+            }
             $deuda->monto_pagado += $validated['monto'];
             $deuda->monto_pendiente -= $validated['monto'];
 
@@ -99,6 +105,7 @@ class DeudaClienteController extends Controller
             }
 
             $deuda->save();
+            return $deuda;
         });
 
         return response()->json($deuda->load(['cliente', 'venta']));

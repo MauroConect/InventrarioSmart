@@ -85,6 +85,7 @@ class DashboardTenantIsolationTest extends TestCase
         });
         Schema::create('deudas_clientes', function (Blueprint $t): void {
             $t->id();
+            $t->unsignedBigInteger('tenant_id');
             $t->unsignedBigInteger('cliente_id');
             $t->unsignedBigInteger('venta_id')->nullable();
             $t->string('estado')->default('pendiente');
@@ -106,7 +107,7 @@ class DashboardTenantIsolationTest extends TestCase
             DB::table('productos')->insert(['id' => $id, 'tenant_id' => $id, 'nombre' => 'Producto '.$id, 'codigo' => 'P'.$id]);
             DB::table('ventas')->insert(['id' => $id, 'tenant_id' => $id, 'caja_id' => $id, 'cliente_id' => $id, 'fecha' => now(), 'total_final' => $id * 100]);
             DB::table('items_venta')->insert(['tenant_id' => $id, 'venta_id' => $id, 'producto_id' => $id, 'cantidad' => $id, 'subtotal' => $id * 100]);
-            DB::table('deudas_clientes')->insert(['cliente_id' => $id, 'venta_id' => $id, 'monto_pendiente' => $id * 10]);
+            DB::table('deudas_clientes')->insert(['tenant_id' => $id, 'cliente_id' => $id, 'venta_id' => $id, 'monto_pendiente' => $id * 10]);
             DB::table('cheques')->insert(['cliente_id' => $id, 'fecha_vencimiento' => now()->addDay()->toDateString()]);
         }
     }
@@ -148,7 +149,7 @@ class DashboardTenantIsolationTest extends TestCase
     {
         DB::table('items_venta')->insert(['tenant_id' => 1, 'venta_id' => 2, 'producto_id' => 1, 'cantidad' => 999, 'subtotal' => 99999]);
         DB::table('items_venta')->insert(['tenant_id' => 1, 'venta_id' => 1, 'producto_id' => 2, 'cantidad' => 999, 'subtotal' => 99999]);
-        DB::table('deudas_clientes')->insert(['cliente_id' => 1, 'venta_id' => 2, 'monto_pendiente' => 99999]);
+        DB::table('deudas_clientes')->insert(['tenant_id' => 1, 'cliente_id' => 1, 'venta_id' => 2, 'monto_pendiente' => 99999]);
         DB::table('cheques')->insert(['cliente_id' => 1, 'proveedor_id' => 2, 'fecha_vencimiento' => now()->addDay()->toDateString()]);
         DB::table('cheques')->insert(['cliente_id' => null, 'proveedor_id' => null, 'caja_id' => null, 'fecha_vencimiento' => now()->addDay()->toDateString()]);
         app(TenantContext::class)->run(Tenant::findOrFail(1), function (): void {

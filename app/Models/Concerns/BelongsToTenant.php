@@ -6,6 +6,8 @@ use App\Models\Scopes\TenantScope;
 use App\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 use LogicException;
 
 trait BelongsToTenant
@@ -43,6 +45,20 @@ trait BelongsToTenant
     public function getTenantColumn(): string
     {
         return 'tenant_id';
+    }
+
+    public static function tenantExistsRule(): Exists
+    {
+        $model = new static;
+        $context = app(TenantContext::class);
+
+        return Rule::exists($model->getTable(), $model->getKeyName())->where(function ($query) use ($context, $model): void {
+            if ($context->hasTenant()) {
+                $query->where($model->getTenantColumn(), $context->id());
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        });
     }
 
     public function tenant(): BelongsTo

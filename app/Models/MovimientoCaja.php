@@ -3,12 +3,18 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use App\Models\Concerns\HasTenantRelations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MovimientoCaja extends Model
 {
-    use BelongsToTenant, HasFactory;
+    use BelongsToTenant, HasFactory, HasTenantRelations;
+
+    protected function tenantRelations(): array
+    {
+        return ['caja_id' => Caja::class];
+    }
 
     protected $table = 'movimientos_caja';
 

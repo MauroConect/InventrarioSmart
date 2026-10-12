@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\CuentaCorriente;
 use App\Models\Cliente;
 use App\Models\MovimientoCuentaCorriente;
+use App\Models\Venta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CuentaCorrienteController extends Controller
 {
@@ -60,13 +62,17 @@ class CuentaCorrienteController extends Controller
 
         $validated = $request->validate([
             'tipo' => 'required|in:debe,haber',
-            'monto' => 'required|numeric|min:0.01',
+            'monto' => 'required|numeric|decimal:0,2|min:0.01',
             'concepto' => 'required|string|max:255',
             'observaciones' => 'nullable|string',
-            'venta_id' => 'nullable|exists:ventas,id',
+            'venta_id' => ['nullable', 'integer', Venta::tenantExistsRule()],
         ]);
 
-        DB::transaction(function () use ($cuenta, $validated) {
+        $cuenta = DB::transaction(function () use ($cuenta, $validated) {
+            $cuenta = CuentaCorriente::query()->lockForUpdate()->findOrFail($cuenta->id);
+            if (! $cuenta->activa) {
+                throw ValidationException::withMessages(['cuenta_corriente_id' => 'La cuenta corriente está inactiva.']);
+            }
             MovimientoCuentaCorriente::create([
                 'cuenta_corriente_id' => $cuenta->id,
                 ...$validated,
@@ -78,6 +84,7 @@ class CuentaCorrienteController extends Controller
                 $cuenta->saldo -= $validated['monto'];
             }
             $cuenta->save();
+            return $cuenta;
         });
 
         $cuenta->refresh();

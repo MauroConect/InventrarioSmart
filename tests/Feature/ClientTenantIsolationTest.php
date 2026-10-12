@@ -53,10 +53,10 @@ class ClientTenantIsolationTest extends TestCase
             });
         }
         Schema::create('cuentas_corrientes', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('cliente_id');
+            $table->id(); $table->unsignedBigInteger('tenant_id'); $table->unsignedBigInteger('cliente_id');
         });
         Schema::create('deudas_clientes', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('cliente_id');
+            $table->id(); $table->unsignedBigInteger('tenant_id'); $table->unsignedBigInteger('cliente_id');
         });
         foreach (['productos', 'cajas'] as $name) {
             Schema::create($name, function (Blueprint $table): void {
