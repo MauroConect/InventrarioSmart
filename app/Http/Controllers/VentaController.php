@@ -111,8 +111,6 @@ class VentaController extends Controller
             'monto_transferencia' => 'nullable|numeric|min:0',
             'cuotas' => 'nullable|integer|min:1|max:24',
             'recargo_cuotas' => 'nullable|numeric|min:0|max:100',
-            'adjuntos' => 'nullable|array',
-            'adjuntos.*' => 'file|max:10240',
         ]);
 
         $this->assertCreditPaymentAllowed($validated['tipo_pago'] ?? null);

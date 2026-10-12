@@ -60,4 +60,20 @@ class SaleAttachmentsTest extends MySqlTenantTestCase
         $this->assertSame('fictitious-content', Storage::disk('private')->get($path));
         $this->artisan('tenant:privatize-sale-attachments', ['--apply' => true])->assertExitCode(0);
     }
+
+    public function test_inline_sale_upload_rejects_unsupported_mime_before_stock_changes(): void
+    {
+        Storage::fake('private');
+        [$a, $owner] = $this->commerce();
+        [$cash, $product] = app(TenantContext::class)->run($a, function () use ($owner) {
+            $category = \App\Models\Categoria::create(['nombre' => 'Ficticia']);
+            $product = \App\Models\Producto::create(['codigo' => 'ATT-TEST', 'nombre' => 'Producto', 'categoria_id' => $category->id, 'stock_actual' => 10, 'precio_venta' => 10]);
+            $cash = Caja::create(['usuario_id' => $owner->id, 'fecha_apertura' => now(), 'monto_apertura' => 0]);
+            return [$cash, $product];
+        });
+        $this->signIn($a, $owner);
+        $this->postJson('/api/ventas', ['caja_id' => $cash->id, 'items' => [['producto_id' => $product->id, 'cantidad' => 1]], 'tipo_pago' => 'efectivo', 'adjuntos' => [UploadedFile::fake()->create('script.html', 1, 'text/html')]])->assertUnprocessable()->assertJsonValidationErrors('adjuntos.0');
+        $this->assertSame('10.000', app(TenantContext::class)->run($a, fn () => $product->fresh()->stock_actual));
+        $this->assertSame(0, app(TenantContext::class)->run($a, fn () => Venta::count()));
+    }
 }
