@@ -7,7 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class ConfiguracionFiscal extends Model
 {
+    use \App\Models\Concerns\BelongsToTenant;
     use HasFactory;
+
+    protected $hidden = ['passphrase_certificado', 'certificado_path', 'clave_privada_path'];
+    protected $casts = ['passphrase_certificado' => 'encrypted'];
 
     protected $table = 'configuraciones_fiscales';
 

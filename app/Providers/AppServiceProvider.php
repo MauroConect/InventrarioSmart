@@ -13,6 +13,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TenantContext::class);
+        $this->app->bind(\App\Services\Fiscal\FiscalGatewayFactory::class, \App\Services\Fiscal\ArcaGatewayFactory::class);
     }
 
     public function boot(): void

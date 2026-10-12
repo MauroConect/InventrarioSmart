@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use Afip;
+use App\Services\Fiscal\FiscalGatewayFactory;
+use App\Support\Tenancy\TenantContext;
 use App\Models\ConfiguracionFiscal;
 use App\Models\Venta;
 use App\Support\CuitValidator;
@@ -12,8 +13,12 @@ use RuntimeException;
 
 class AfipFacturacionService
 {
+    public function __construct(private readonly FiscalGatewayFactory $gateways) {}
+
     public function facturarVenta(Venta $venta): array
     {
+        if (! app(TenantContext::class)->hasTenant() || (int) $venta->tenant_id !== app(TenantContext::class)->id()) { throw new RuntimeException('La venta no pertenece al comercio activo.'); }
+        if ($venta->estado !== 'cerrada') { throw new RuntimeException('Sólo se factura una venta cerrada.'); }
         $config = ConfiguracionFiscal::query()->first();
 
         if (!$config) {
@@ -57,16 +62,9 @@ class AfipFacturacionService
             'pto_vta' => $ptoVta,
         ]);
 
-        $afip = new Afip([
-            'CUIT' => (int) $cuitEmisor,
-            'production' => $production,
-            'cert' => $config->certificado_path,
-            'key' => $config->clave_privada_path,
-            'passphrase' => $config->passphrase_certificado ?: null,
-            'res_folder' => storage_path('app/afip'),
-        ]);
+        $gateway = $this->gateways->make($config);
 
-        $lastVoucher = $afip->ElectronicBilling->GetLastVoucher($ptoVta, $cbteTipo);
+        $lastVoucher = $gateway->lastVoucher($ptoVta, $cbteTipo);
         $nextVoucher = $lastVoucher + 1;
 
         $data = [
@@ -89,7 +87,7 @@ class AfipFacturacionService
             'MonCotiz' => 1,
         ];
 
-        $result = $afip->ElectronicBilling->CreateVoucher($data);
+        $result = $gateway->createVoucher($data);
 
         Log::info('AFIP facturacion: respuesta', [
             'venta_id' => $venta->id,

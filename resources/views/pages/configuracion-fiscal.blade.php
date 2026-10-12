@@ -66,15 +66,15 @@
                 </select>
             </div>
             <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Path Certificado (CRT/PEM)</label>
-                <input type="text" x-model="form.certificado_path" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="/var/www/storage/certs/certificado.crt">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Archivo de certificado (CRT/PEM)</label>
+                <input type="text" x-model="form.certificado_path" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="certificado.crt">
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Path Clave Privada (KEY)</label>
-                <input type="text" x-model="form.clave_privada_path" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="/var/www/storage/certs/clave.key">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Archivo de clave privada (KEY/PEM)</label>
+                <input type="text" x-model="form.clave_privada_path" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="clave.key">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Passphrase Certificado (opcional)</label>
@@ -91,6 +91,8 @@
         </div>
     </form>
 </div>
+
+<p class="mx-6 mb-4 text-sm text-gray-600">Las credenciales se instalan en el storage privado de este comercio. Ingresá sólo el nombre de archivo, sin rutas. La emisión externa permanece deshabilitada hasta configurar y validar homologación.</p>
 
 @push('scripts')
 <script>
