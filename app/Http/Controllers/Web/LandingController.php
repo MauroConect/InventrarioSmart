@@ -9,6 +9,14 @@ class LandingController extends Controller
 {
     public function __invoke(): View
     {
-        return view('marketing.landing');
+        $catalog = collect(config('modules.catalog', []));
+
+        return view('marketing.landing', [
+            'marketingBaseModules' => $catalog->where('family', 'base')->values()->all(),
+            'marketingOptionalModules' => $catalog->where('is_ready', true)
+                ->whereIn('family', ['retail', 'hospitality', 'services', 'finance'])
+                ->map(fn (array $module) => collect($module)->only(['key', 'name', 'description'])->all())
+                ->values()->all(),
+        ]);
     }
 }

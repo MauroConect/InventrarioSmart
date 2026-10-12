@@ -35,6 +35,8 @@ Thumbs.db
 .phpunit.result.cache
 /coverage
 /graphify-out/
+/.vercel/
+/landing/.vercel/
 
 # Logs
 *.log

@@ -3,7 +3,9 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "build:landing": "node scripts/export-landing.mjs",
+        "check:landing": "node scripts/export-landing.mjs --check"
     },
     "devDependencies": {
         "@vitejs/plugin-react": "^4.2.1",

@@ -1,0 +1,33 @@
+{
+  "sources": {
+    "resources/views/marketing/landing.blade.php": "8e80d6969c5166e703ad4b33b3231bd2197d6151e6d0b7ff54a9bfbe06febb23",
+    "resources/views/marketing/layout.blade.php": "db4eabbe0e005523b0b44c6bc245f818ad8e31edca95655da85e415b9f7db93a",
+    "app/Http/Controllers/Web/LandingController.php": "82a3bee566675039e099fe9ec7c6a65bf781eb6d28cda4dd5398b0354a9e272a",
+    "config/modules.php": "7d3f4a71f74de7c2ea7fdb4667ecd6cc6d2e01cb71c9dd92fba4c19f99ffeb5e",
+    "public/css/marketing.css": "6e957017b6847a858465df117365934e92d5a55ded0d5987fa6bb1a2f564a885",
+    "public/js/marketing-configurator.js": "cb8a0f73c41690fac60c166249e90c818a1d5a655b5b075fcc9f7cfcb3c1a906",
+    "scripts/render-public-landing.php": "3eda4b02c8daf48384825cde9b54be2e0f87f4980b6a17d0da26d698d902e48e",
+    "public/images/marketing/comercio-almacen.webp": "033801ea739457d20801f416312b71ee7669930edcbff511daee589c809dd4d9",
+    "public/images/marketing/comercio-heladeria.webp": "f442ef7d11865483f5d2835e180cde36097adb0a3e43640e88a4735e04e885ca",
+    "public/images/marketing/comercio-servicios.webp": "f0426edcdc7bcbd5a5a46b926119d5ad03a3a77ac2d84b0dd8562a727b788d16",
+    "public/images/marketing/equipo-configurando.webp": "7e706fef1afc3693561d18b69f07b9e80d78e759672ed2881429ab907a14fab4",
+    "public/images/marketing/pantalla-dashboard.png": "0468a20d12f1312c862c73b064ba57b83b9ec2d44b7653470d532c993d3e57d5",
+    "public/images/marketing/pantalla-modulos.png": "ed5143297c0cfcf94465605de40c41556e8d855b2b996e1a7802b5a131cbee71",
+    "public/images/marketing/pantalla-productos.png": "35310926be16f3bdd1f992d2e2d9133c4d0bdda05ff762d8f64943a94c483530",
+    "public/images/marketing/pantalla-ventas.png": "d7a317c67bd9cd10239bda67455d604a1ddf528101065f9daafa3e818db7ba2c"
+  },
+  "outputs": {
+    "index.html": "3d52d906b4b0abf9265dc685d8aa5ca750b50ee668826b9accc819709f65152f",
+    "robots.txt": "16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95",
+    "css/marketing.css": "6e957017b6847a858465df117365934e92d5a55ded0d5987fa6bb1a2f564a885",
+    "js/marketing-configurator.js": "cb8a0f73c41690fac60c166249e90c818a1d5a655b5b075fcc9f7cfcb3c1a906",
+    "images/marketing/comercio-almacen.webp": "033801ea739457d20801f416312b71ee7669930edcbff511daee589c809dd4d9",
+    "images/marketing/comercio-heladeria.webp": "f442ef7d11865483f5d2835e180cde36097adb0a3e43640e88a4735e04e885ca",
+    "images/marketing/comercio-servicios.webp": "f0426edcdc7bcbd5a5a46b926119d5ad03a3a77ac2d84b0dd8562a727b788d16",
+    "images/marketing/equipo-configurando.webp": "7e706fef1afc3693561d18b69f07b9e80d78e759672ed2881429ab907a14fab4",
+    "images/marketing/pantalla-dashboard.png": "0468a20d12f1312c862c73b064ba57b83b9ec2d44b7653470d532c993d3e57d5",
+    "images/marketing/pantalla-modulos.png": "ed5143297c0cfcf94465605de40c41556e8d855b2b996e1a7802b5a131cbee71",
+    "images/marketing/pantalla-productos.png": "35310926be16f3bdd1f992d2e2d9133c4d0bdda05ff762d8f64943a94c483530",
+    "images/marketing/pantalla-ventas.png": "d7a317c67bd9cd10239bda67455d604a1ddf528101065f9daafa3e818db7ba2c"
+  }
+}

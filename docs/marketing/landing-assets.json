@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-12",
+  "generatedPhoto": {
+    "file": "public/images/marketing/equipo-configurando.webp",
+    "generator": "Built-in image_gen",
+    "prompt": "Use case: photorealistic-natural. Asset type: landscape editorial photograph for the InventarioSmart landing page. Primary request: two Latin American small-business owners, a woman shopkeeper in her thirties and a male colleague, working together on a laptop at the counter of a tidy neighborhood store, planning the operation and choosing the tools they need. Genuine concentration and relaxed confidence, one person pointing naturally at the laptop while the other uses the trackpad. Shelves, organized merchandise, notebook and a barcode scanner in the background, warm daylight and subtle blue accents. Wide landscape 3:2 framing, eye-level candid documentary photography, realistic hands and skin. The laptop screen is at an oblique angle, with indistinct blue and white software blocks, no invented readable interface. Convey a productive team and progress through a well-organized work environment. No logos, no legible words, no overlays, no numbers, no watermarks, no testimonial styling.",
+    "export": "1200x800 WebP, quality 86"
+  },
+  "moduleScreenshot": {
+    "file": "public/images/marketing/pantalla-modulos.png",
+    "source": "Captura proporcionada por Mauro del panel Ajustes / Modulos del sistema local.",
+    "changes": "Sin alteraciones del contenido ni de los estados de sus controles."
+  }
+}
