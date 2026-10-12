@@ -5,13 +5,20 @@ namespace App\Http\Controllers;
 use App\Models\Caja;
 use App\Models\Producto;
 use App\Models\Cliente;
+use App\Models\Cheque;
+use App\Models\DeudaCliente;
 use App\Models\Venta;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    public function __construct(private readonly TenantContext $context)
+    {
+    }
+
     /**
      * Obtener estadísticas generales del dashboard
      */
@@ -66,12 +73,28 @@ class DashboardController extends Controller
             ->sum('total_final');
         
         // Deudas pendientes
-        $deudasPendientes = DB::table('deudas_clientes')
+        $deudasPendientes = DeudaCliente::query()
+            ->whereHas('cliente')
+            ->where(function ($query): void {
+                $query->whereNull('venta_id')->orWhereHas('venta');
+            })
             ->where('estado', '!=', 'pagada')
             ->sum('monto_pendiente');
         
         // Cheques próximos a vencer (7 días)
-        $chequesProximos = DB::table('cheques')
+        $chequesProximos = Cheque::query()
+            ->where(function ($query): void {
+                $query->whereHas('cliente')->orWhereHas('proveedor')->orWhereHas('caja');
+            })
+            ->where(function ($query): void {
+                $query->whereNull('cliente_id')->orWhereHas('cliente');
+            })
+            ->where(function ($query): void {
+                $query->whereNull('proveedor_id')->orWhereHas('proveedor');
+            })
+            ->where(function ($query): void {
+                $query->whereNull('caja_id')->orWhereHas('caja');
+            })
             ->where('estado', 'pendiente')
             ->whereBetween('fecha_vencimiento', [
                 $hoy->toDateString(),
@@ -123,12 +146,23 @@ class DashboardController extends Controller
     public function productosMasVendidos(Request $request)
     {
         $limite = $request->input('limite', 10);
-        $fechaInicio = $request->input('fecha_inicio', Carbon::now()->startOfMonth()->toDateString());
-        $fechaFin = $request->input('fecha_fin', Carbon::now()->toDateString());
+        $fechas = $request->validate([
+            'fecha_inicio' => ['sometimes', 'date_format:Y-m-d'],
+            'fecha_fin' => ['sometimes', 'date_format:Y-m-d'],
+        ]);
+        $fechaInicio = Carbon::parse($fechas['fecha_inicio'] ?? Carbon::now()->startOfMonth()->toDateString())->startOfDay();
+        $fechaFin = Carbon::parse($fechas['fecha_fin'] ?? Carbon::now()->toDateString())->endOfDay();
         
         $productos = DB::table('items_venta')
             ->join('productos', 'items_venta.producto_id', '=', 'productos.id')
             ->join('ventas', 'items_venta.venta_id', '=', 'ventas.id')
+            ->when(
+                $this->context->hasTenant(),
+                fn ($query) => $query->where('items_venta.tenant_id', $this->context->id()),
+                fn ($query) => $query->whereRaw('1 = 0')
+            )
+            ->whereColumn('items_venta.tenant_id', 'productos.tenant_id')
+            ->whereColumn('items_venta.tenant_id', 'ventas.tenant_id')
             ->whereBetween('ventas.fecha', [$fechaInicio, $fechaFin])
             ->whereIn('ventas.estado', ['cerrada', 'completada'])
             ->select(
