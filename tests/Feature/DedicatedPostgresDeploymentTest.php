@@ -94,6 +94,7 @@ class DedicatedPostgresDeploymentTest extends TestCase
         app(TenantContext::class)->run($this->tenant, fn () => $this->assertSame('3.000', Producto::findOrFail($product)->stock_actual));
         $this->getJson('/api/cajas/'.$cash.'/resumen-cierre')->assertOk()->assertJsonPath('resumen.monto_esperado', 100);
         $this->postJson('/api/cajas/'.$cash.'/cerrar', ['monto_real' => 100])->assertOk()->assertJsonPath('diferencia', '0.00');
+        $this->withHeader('X-Tenant-Id', $this->tenant->uuid)->getJson('/api/tenant-context')->assertOk()->assertJsonPath('tenant.slug', 'pesquero-guamini');
         $this->withHeader('X-Tenant-Id', 'otro-comercio')->getJson('/api/productos')->assertForbidden();
     }
 

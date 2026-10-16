@@ -7,6 +7,7 @@ use App\Models\TenantDomain;
 use App\Support\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class SetTenantContext
@@ -66,9 +67,11 @@ class SetTenantContext
                 ->where(function ($query) use ($identifier): void {
                     if (is_numeric($identifier)) {
                         $query->whereKey((int) $identifier);
-                    } else {
+                    } elseif (Str::isUuid($identifier)) {
                         $query->where('tenants.uuid', $identifier)
                             ->orWhere('tenants.slug', $identifier);
+                    } else {
+                        $query->where('tenants.slug', $identifier);
                     }
                 })
                 ->first();
