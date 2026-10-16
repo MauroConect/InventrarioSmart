@@ -73,6 +73,12 @@ phpunit.xml
 *.sh
 !deploy.bat
 !deploy.sh
+!docker/vercel-start.sh
+
+# Local-only analysis and tooling
+/graphify-out
+/.vercel
+/landing
 
 # Docker
 docker-compose*.yml

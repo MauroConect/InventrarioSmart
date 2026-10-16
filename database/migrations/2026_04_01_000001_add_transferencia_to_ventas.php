@@ -18,6 +18,8 @@ return new class extends Migration
         $driver = Schema::getConnection()->getDriverName();
         if ($driver === 'mysql') {
             DB::statement("ALTER TABLE ventas MODIFY tipo_pago VARCHAR(32) NOT NULL");
+        } elseif ($driver === 'pgsql') {
+            DB::statement('ALTER TABLE ventas DROP CONSTRAINT IF EXISTS ventas_tipo_pago_check');
         }
     }
 
@@ -30,6 +32,8 @@ return new class extends Migration
         $driver = Schema::getConnection()->getDriverName();
         if ($driver === 'mysql') {
             DB::statement("ALTER TABLE ventas MODIFY tipo_pago ENUM('efectivo','tarjeta','cuenta_corriente','mixto') NOT NULL");
+        } elseif ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE ventas ADD CONSTRAINT ventas_tipo_pago_check CHECK (tipo_pago IN ('efectivo','tarjeta','cuenta_corriente','mixto'))");
         }
     }
 };

@@ -13,7 +13,8 @@ class TenantReceiptNumber
         if (! in_array($series, ['FAC', 'CMD'], true)) { throw new \InvalidArgumentException('Serie interna inválida.'); }
         $tenant = app(TenantContext::class)->id();
         return DB::transaction(function () use ($series, $tenant) {
-            $legacy = (int) Venta::where('numero_factura', 'like', $series.'-%')->selectRaw('COALESCE(MAX(CAST(SUBSTRING(numero_factura, 5) AS UNSIGNED)), 0) AS last_number')->value('last_number');
+            $numberType = DB::getDriverName() === 'pgsql' ? 'BIGINT' : 'UNSIGNED';
+            $legacy = (int) Venta::where('numero_factura', 'like', $series.'-%')->selectRaw("COALESCE(MAX(CAST(SUBSTRING(numero_factura, 5) AS {$numberType})), 0) AS last_number")->value('last_number');
             DB::table('tenant_receipt_counters')->insertOrIgnore(['tenant_id' => $tenant, 'series' => $series, 'value' => $legacy]);
             $row = DB::table('tenant_receipt_counters')->where('tenant_id', $tenant)->where('series', $series)->lockForUpdate()->first();
             $value = $row->value + 1;

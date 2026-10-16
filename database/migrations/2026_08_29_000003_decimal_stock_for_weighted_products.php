@@ -12,6 +12,17 @@ return new class extends Migration
             return;
         }
 
+        if (DB::getDriverName() === 'pgsql') {
+            foreach (['productos' => ['stock_actual', 'stock_minimo'], 'movimientos_stock' => ['cantidad', 'cantidad_anterior', 'cantidad_actual']] as $table => $columns) {
+                if (Schema::hasTable($table)) {
+                    foreach ($columns as $column) {
+                        DB::statement("ALTER TABLE {$table} ALTER COLUMN {$column} TYPE DECIMAL(12,3)");
+                    }
+                }
+            }
+            return;
+        }
+
         DB::statement('ALTER TABLE productos MODIFY stock_actual DECIMAL(12,3) NOT NULL DEFAULT 0');
         DB::statement('ALTER TABLE productos MODIFY stock_minimo DECIMAL(12,3) NOT NULL DEFAULT 0');
 
@@ -25,6 +36,17 @@ return new class extends Migration
     public function down(): void
     {
         if (! Schema::hasTable('productos')) {
+            return;
+        }
+
+        if (DB::getDriverName() === 'pgsql') {
+            foreach (['productos' => ['stock_actual', 'stock_minimo'], 'movimientos_stock' => ['cantidad', 'cantidad_anterior', 'cantidad_actual']] as $table => $columns) {
+                if (Schema::hasTable($table)) {
+                    foreach ($columns as $column) {
+                        DB::statement("ALTER TABLE {$table} ALTER COLUMN {$column} TYPE INTEGER USING {$column}::INTEGER");
+                    }
+                }
+            }
             return;
         }
 

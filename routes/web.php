@@ -24,6 +24,15 @@ $puntoCajaView = static function () {
 };
 
 Route::get('/', LandingController::class)->name('landing');
+if (config('deployment.upload_storage') === 'database') {
+    Route::get('/storage/{path}', fn (string $path) => app(\App\Services\PersistentUploadStore::class)
+        ->download($path, 'public', headers: ['Cache-Control' => 'public, max-age=300'], inline: true))
+        ->where('path', '.*');
+}
+Route::get('/health', function () {
+    \Illuminate\Support\Facades\DB::select('SELECT 1');
+    return response()->json(['status' => 'ok']);
+});
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
 Route::middleware('guest')->group(function () {

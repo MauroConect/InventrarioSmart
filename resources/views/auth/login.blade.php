@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ingresar — InventarioSmart')
+@section('title', 'Ingresar — '.(config('deployment.tenant_name') ?: 'InventarioSmart'))
 
 @section('content')
 <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4" 
@@ -12,7 +12,7 @@
             </div>
         @endif
         <h2 class="text-2xl sm:text-3xl font-bold text-center mb-6 sm:mb-8 text-gray-800">
-            Ingresar a InventarioSmart
+            Ingresar a {{ config('deployment.tenant_name') ?: 'InventarioSmart' }}
         </h2>
         
         @if ($errors->any())
@@ -76,10 +76,12 @@
         </form>
         @if(session('status'))<p role="status" class="mt-4 rounded bg-blue-50 p-3 text-sm text-blue-800">{{ session('status') }}</p>@endif
         <a href="{{ route('password.request') }}" class="mt-4 block text-center text-sm text-blue-600">Olvidé mi contraseña</a>
+        @unless(config('deployment.tenant_slug'))
         <p class="mt-5 text-center text-sm text-gray-600">
             ¿Todavía no tenés cuenta?
             <a href="{{ route('register') }}" class="font-semibold text-blue-600">Registrate</a>
         </p>
+        @endunless
     </div>
 </div>
 @endsection

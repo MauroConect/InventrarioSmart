@@ -24,7 +24,7 @@ return new class extends Migration
             DB::statement(
                 'UPDATE ventas v INNER JOIN cajas c ON v.caja_id = c.id SET v.usuario_id = c.usuario_id WHERE v.usuario_id IS NULL AND c.usuario_id IS NOT NULL'
             );
-        } elseif ($driver === 'sqlite') {
+        } elseif (in_array($driver, ['sqlite', 'pgsql'], true)) {
             DB::statement(
                 'UPDATE ventas SET usuario_id = (SELECT c.usuario_id FROM cajas c WHERE c.id = ventas.caja_id) WHERE usuario_id IS NULL AND EXISTS (SELECT 1 FROM cajas c2 WHERE c2.id = ventas.caja_id AND c2.usuario_id IS NOT NULL)'
             );

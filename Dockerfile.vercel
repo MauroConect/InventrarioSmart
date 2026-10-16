@@ -1,0 +1,26 @@
+FROM dunglas/frankenphp:1-php8.4-bookworm AS base
+RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && install-php-extensions intl zip pdo_pgsql pdo_mysql bcmath gd
+WORKDIR /app
+
+FROM base AS dependencies
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --no-progress --no-scripts --prefer-dist
+COPY . ./
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && composer dump-autoload --no-dev --classmap-authoritative \
+    && php artisan view:cache --no-interaction
+
+FROM base AS runtime
+COPY --from=dependencies --chown=www-data:www-data /app /app
+COPY docker/Caddyfile.vercel /etc/frankenphp/Caddyfile
+COPY docker/vercel-start.sh /usr/local/bin/commerce-start
+RUN chmod +x /usr/local/bin/commerce-start \
+    && chown -R www-data:www-data /config/caddy /data/caddy
+ENV PORT=8080 APP_ENV=production APP_DEBUG=false LOG_CHANNEL=stderr \
+    DB_CONNECTION=pgsql DB_SSLMODE=require SESSION_DRIVER=database CACHE_DRIVER=database \
+    QUEUE_CONNECTION=sync TENANCY_LEGACY_MODE=false UPLOAD_STORAGE=database
+USER www-data
+EXPOSE 8080
+CMD ["commerce-start"]

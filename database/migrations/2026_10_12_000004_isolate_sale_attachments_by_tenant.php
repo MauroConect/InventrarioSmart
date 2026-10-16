@@ -12,7 +12,11 @@ return new class extends Migration
         $invalid = DB::table('venta_adjuntos as a')->leftJoin('ventas as v', 'v.id', '=', 'a.venta_id')->whereNull('v.tenant_id')->exists();
         if ($invalid) { throw new RuntimeException('Hay adjuntos sin una venta con comercio; reconciliar antes de migrar.'); }
         Schema::table('venta_adjuntos', function (Blueprint $t) { $t->unsignedBigInteger('tenant_id')->nullable(); });
-        DB::statement('UPDATE venta_adjuntos a INNER JOIN ventas v ON v.id = a.venta_id SET a.tenant_id = v.tenant_id');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('UPDATE venta_adjuntos a SET tenant_id = v.tenant_id FROM ventas v WHERE v.id = a.venta_id');
+        } else {
+            DB::statement('UPDATE venta_adjuntos a INNER JOIN ventas v ON v.id = a.venta_id SET a.tenant_id = v.tenant_id');
+        }
         Schema::table('venta_adjuntos', function (Blueprint $t) {
             $t->unsignedBigInteger('tenant_id')->nullable(false)->change();
             $t->foreign('tenant_id')->references('id')->on('tenants')->restrictOnDelete();

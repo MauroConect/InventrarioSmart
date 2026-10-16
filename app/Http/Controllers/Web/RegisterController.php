@@ -16,11 +16,13 @@ class RegisterController extends Controller
 {
     public function create(): View
     {
+        abort_if(config('deployment.tenant_slug'), 404);
         return view('auth.register');
     }
 
     public function store(Request $request): RedirectResponse
     {
+        abort_if(config('deployment.tenant_slug'), 404);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email:rfc', 'max:255'],

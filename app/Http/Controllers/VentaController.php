@@ -14,9 +14,9 @@ use App\Services\Tenancy\TenantReceiptNumber;
 use App\Models\MovimientoCuentaCorriente;
 use App\Services\AfipFacturacionService;
 use App\Services\Modules\TenantFeatureService;
+use App\Services\PersistentUploadStore;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class VentaController extends Controller
@@ -263,7 +263,7 @@ class VentaController extends Controller
             return response()->json($venta->load(['caja', 'cliente', 'usuario', 'items.producto', 'adjuntos']), 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            foreach ($uploadedAttachments as $attachment) { Storage::disk('private')->delete($attachment->ruta); }
+            foreach ($uploadedAttachments as $attachment) { app(PersistentUploadStore::class)->delete($attachment->ruta, 'private'); }
             if ($e instanceof ValidationException) { throw $e; }
             return response()->json(['message' => 'No se pudo registrar la venta.'], 400);
         }
@@ -438,15 +438,14 @@ class VentaController extends Controller
         $attachment = Venta::findOrFail($id)->adjuntos()->findOrFail($adjunto);
         try { app(\App\Services\Tenancy\SaleAttachmentService::class)->assertPrivatePath($attachment); }
         catch (\RuntimeException) { abort(404); }
-        abort_unless(Storage::disk('private')->exists($attachment->ruta), 404);
-        return Storage::disk('private')->download($attachment->ruta, $attachment->nombre_original, ['Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
+        return app(PersistentUploadStore::class)->download($attachment->ruta, 'private', $attachment->nombre_original, ['Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
     }
 
     public function eliminarAdjunto($id, $adjunto)
     {
         $attachment = Venta::findOrFail($id)->adjuntos()->findOrFail($adjunto);
         app(\App\Services\Tenancy\SaleAttachmentService::class)->assertPrivatePath($attachment);
-        Storage::disk('private')->delete($attachment->ruta);
+        app(PersistentUploadStore::class)->delete($attachment->ruta, 'private');
         $attachment->delete();
         return response()->noContent();
     }

@@ -4,11 +4,11 @@ namespace App\Services\Tenancy;
 
 use App\Models\Venta;
 use App\Models\VentaAdjunto;
+use App\Services\PersistentUploadStore;
 use App\Support\Tenancy\TenantContext;
 use App\Support\Tenancy\TenantRuntime;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 class SaleAttachmentService
@@ -23,7 +23,7 @@ class SaleAttachmentService
             return DB::transaction(function () use ($sale, $files, &$stored) {
                 $created = [];
                 foreach ($files as $file) {
-                    $path = $file->store($this->runtime->privatePath('sales/'.$sale->id), 'private');
+                    $path = app(PersistentUploadStore::class)->store($file, $this->runtime->privatePath('sales/'.$sale->id), 'private');
                     if (! $path) { throw new RuntimeException('No se pudo guardar el adjunto.'); }
                     $stored[] = $path;
                     $created[] = VentaAdjunto::create(['venta_id' => $sale->id, 'ruta' => $path, 'nombre_original' => basename($file->getClientOriginalName()), 'mime' => $file->getMimeType(), 'size' => $file->getSize()]);
@@ -31,7 +31,7 @@ class SaleAttachmentService
                 return $created;
             });
         } catch (\Throwable $e) {
-            foreach ($stored as $path) { Storage::disk('private')->delete($path); }
+            foreach ($stored as $path) { app(PersistentUploadStore::class)->delete($path, 'private'); }
             throw $e;
         }
     }

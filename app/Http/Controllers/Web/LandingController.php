@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 
 class LandingController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(): View|RedirectResponse
     {
+        if (config('deployment.tenant_slug')) {
+            return redirect()->route(auth()->check() ? 'home' : 'login');
+        }
+
         $catalog = collect(config('modules.catalog', []));
 
         return view('marketing.landing', [
